@@ -1,0 +1,694 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>nathaux.Fx</title>
+  <link rel="stylesheet" href="style.css?v=2" />
+</head>
+<body class="fit-mode">
+  <div id="landingPage" class="landing-page landing-pro">
+  <nav class="landing-nav">
+    <div class="landing-logo">
+      <span class="logo-wave">≋</span>
+      <span>FlowSignal</span>
+    </div>
+
+    <div class="landing-links">
+  <a id="linkContact" href="mailto:renathauxfx@outlook.com">Contact</a>
+  <a id="linkSupport" href="mailto:flowsignal.contact@gmail.com">Support</a>
+  <a id="linkFacebook" href="https://www.facebook.com/profile.php?id=61569229928465" target="_blank">Facebook</a>
+</div>
+
+    <div class="landing-nav-actions">
+      <select id="landingLang">
+       <option value="EN">EN</option>
+       <option value="FR">FR</option>
+       <option value="ES">ES</option>
+      </select>
+
+      <button id="openAdminLoginBtn" class="landing-login-btn">Login</button>
+      <button id="openAccessBtn" class="landing-get-btn">Get Started</button>
+    </div>
+  </nav>
+
+  <section class="hero-section">
+    <div class="hero-left">
+      <div class="hero-pill">
+        <span>● LIVE</span>
+        Real-time signals • Smart money concepts • Built for traders
+      </div>
+
+      <h1>
+        Smarter Signals.<br>
+        <span>Stronger Trades.</span>
+      </h1>
+
+      <p>
+        FlowSignal provides real-time trading signals, market structure analysis,
+        and smart money insights to help you trade with confidence.
+      </p>
+
+      <div class="hero-actions">
+        <button id="openAccessBtnHero" class="hero-primary">Start Trading Now →</button>
+        <button class="hero-secondary">View Features</button>
+      </div>
+
+      <div class="hero-badges">
+        <span>⚡ Real-time Alerts</span>
+        <span>◎ High Accuracy</span>
+        <span>🛡 Risk Managed</span>
+      </div>
+    </div>
+
+ <div class="hero-right">
+  <img src="dashboard-preview.png" class="hero-dashboard-img" alt="FlowSignal Dashboard">
+</div>
+
+</section>
+
+</section>
+
+  <section class="hero-stats">
+    <div><strong>15K+</strong><span>Active Traders</span></div>
+    <div><strong>98.6%</strong><span>Signal Accuracy</span></div>
+    <div><strong>24/7</strong><span>Real-time Alerts</span></div>
+    <div><strong>Risk</strong><span>Managed Signals</span></div>
+  </section>
+
+  <div class="trusted-text">
+  Built for real traders • No fake metrics • No hype
+</div>
+
+<div class="mobile-footer">
+  <a href="mailto:renathauxfx@outlook.com">Contact</a>
+  <a href="mailto:flowsignal.contact@gmail.com">Support</a>
+  <a href="https://www.facebook.com/profile.php?id=61569229928465" target="_blank">Facebook</a>
+</div>
+
+</div> <!-- landingPage END -->
+
+<div id="authScreen" class="auth-screen hidden">
+  <div class="auth-box">
+    <button id="closeLoginBtn" class="auth-close">×</button>
+
+    <h2>Login</h2>
+
+    <input type="email" placeholder="Email">
+    <input type="password" placeholder="Password">
+
+    <div class="auth-actions">
+      <button>Login</button>
+      <button id="cancelLoginBtn">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<div class="login-box hidden" id="accessBox">
+  <h2>FlowSignal Access</h2>
+
+  <input type="text" id="accessCode" placeholder="Enter access code" />
+
+  <div class="auth-actions">
+    <button id="accessBtn">Enter</button>
+    <button id="closeAccessBtn">Back</button>
+  </div>
+
+  <div id="authMsg" class="auth-msg"></div>
+</div>
+
+<div class="login-box hidden" id="adminLoginBox">
+  <h2>Admin Login</h2>
+
+  <input type="email" id="adminEmailInput" placeholder="Admin email" />
+  <input type="password" id="adminPasswordInput" placeholder="Password" />
+
+  <div class="auth-actions">
+    <button id="adminLoginBtn">Login</button>
+    <button id="closeAdminLoginBtn">Back</button>
+  </div>
+
+  <div id="adminLoginMsg" class="auth-msg"></div>
+</div>
+<!-- APP START -->
+<div class="app locked hidden" id="mainApp">
+   <div id="sideMenu" class="side-menu hidden">
+  <div class="side-menu-inner">
+    <button id="menuFeedbackBtn" class="menu-row" title="Feedback">
+      <span class="menu-row-icon">💬</span>
+      <span class="menu-row-text">Feedback</span>
+    </button>
+
+<button id="menuStatsBtn" class="menu-row hidden" title="Admin Stats">
+  <span class="menu-row-icon">📊</span>
+  <span class="menu-row-text">Admin Stats</span>
+</button>
+
+<button id="menuPaperBtn" class="menu-row hidden" title="Paper Auto Test">
+  <span class="menu-row-icon">🤖</span>
+  <span class="menu-row-text">Auto Trade</span>
+</button>
+
+<button id="logoutBtn" class="menu-row" title="Logout">
+  <span class="menu-row-icon">🚪</span>
+  <span class="menu-row-text">Logout</span>
+</button>
+  </div>
+</div>
+    <div class="header-frame">
+      <button id="menuToggleBtn" class="menu-toggle">☰</button>
+      <div class="brand-left">FlowSignal</div>
+      <div class="header">nathaux.Fx</div>
+
+      <div class="header-actions">
+        <select id="langSelect">
+          <option value="en">EN</option>
+          <option value="fr">FR</option>
+          <option value="es">ES</option>
+        </select>
+        <button id="adminUnlockBtn" style="display:none;">Admin Lock</button>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+    <div class="topbar">
+      <div id="status" class="status live">● LIVE • Loading...</div>
+
+      <div class="controls">
+  <label class="switch-wrap">
+    <input type="checkbox" id="alertsToggle" checked />
+    <span>Alerts</span>
+  </label>
+
+  <label class="switch-wrap">
+    <input type="checkbox" id="strongToggle" />
+    <span>Strong</span>
+  </label>
+</div>
+    </div>
+
+    <div class="dashboard-grid">
+      <!-- LEFT SIDE -->
+      <div class="signals-panel">
+        <div class="content-grid">
+          <!-- EURUSD -->
+          <section class="symbol-card eurusd-card" id="eurusd-card">
+            <div class="card-outer-glow"></div>
+            <div class="top-cap"></div>
+
+            <div class="card-header">
+              <div class="title-wrap">
+                <div class="card-title eurusd-title">EURUSD</div>
+                <img src="eurusd.png" alt="EURUSD" class="symbol-icon eurusd-icon" />
+              </div>
+            </div>
+
+            <div class="signal-shell signal-wait" id="eurusd-signal-shell">
+              <div class="signal-box signal-border-wait" id="eurusd-signal-box">
+                <div class="signal-text wait-text" id="eurusd-signal">WAIT</div>
+              </div>
+            </div>
+
+            <div class="metric-label" id="eurusd-buy-label">Buy: 0%</div>
+            <div class="bar-wrap">
+              <div class="glow-bar">
+                <div class="glow-fill buy-glow" id="eurusd-buy-fill-glow"></div>
+                <div class="main-fill buy-main" id="eurusd-buy-fill"></div>
+              </div>
+            </div>
+
+            <div class="metric-label" id="eurusd-sell-label">Sell: 0%</div>
+            <div class="bar-wrap">
+              <div class="glow-bar">
+                <div class="glow-fill sell-glow" id="eurusd-sell-fill-glow"></div>
+                <div class="main-fill sell-main" id="eurusd-sell-fill"></div>
+              </div>
+            </div>
+
+          <div class="metric-label conf-label" id="eurusd-conf-label">Confidence: 0%</div>
+            <div class="bar-wrap conf-wrap">
+              <div class="glow-bar conf-bar">
+                <div class="glow-fill conf-glow" id="eurusd-conf-fill-glow"></div>
+                <div class="main-fill conf-main" id="eurusd-conf-fill"></div>
+              </div>
+            </div>
+
+            <div class="tags-row">
+              <div class="glow-tag neutral" id="eurusd-market-tag">UNKNOWN</div>
+              <div class="glow-tag gray" id="eurusd-quality-tag">WEAK</div>
+               <div class="glow-tag gray" id="eurusd-timing-tag">NEUTRAL</div>
+            </div>
+          </section>
+
+          <!-- GOLD -->
+          <section class="symbol-card gold-card" id="gold-card">
+            <div class="card-outer-glow"></div>
+            <div class="top-cap"></div>
+
+            <div class="card-header">
+              <div class="title-wrap">
+               <div class="card-title gold-title" id="gold-title">GOLD</div>
+                <img src="gold.png" alt="GOLD" class="symbol-icon gold-icon" />
+              </div>
+            </div>
+
+            <div class="signal-shell signal-wait" id="gold-signal-shell">
+              <div class="signal-box signal-border-wait" id="gold-signal-box">
+                <div class="signal-text wait-text" id="gold-signal">WAIT</div>
+              </div>
+            </div>
+
+            <div class="metric-label" id="gold-buy-label">Buy: 0%</div>
+            <div class="bar-wrap">
+              <div class="glow-bar">
+                <div class="glow-fill buy-glow" id="gold-buy-fill-glow"></div>
+                <div class="main-fill buy-main" id="gold-buy-fill"></div>
+              </div>
+            </div>
+
+            <div class="metric-label" id="gold-sell-label">Sell: 0%</div>
+            <div class="bar-wrap">
+              <div class="glow-bar">
+                <div class="glow-fill sell-glow" id="gold-sell-fill-glow"></div>
+                <div class="main-fill sell-main" id="gold-sell-fill"></div>
+              </div>
+            </div>
+
+            <div class="metric-label conf-label" id="gold-conf-label">Confidence: 0%</div>
+            <div class="bar-wrap conf-wrap">
+              <div class="glow-bar conf-bar">
+                <div class="glow-fill conf-glow" id="gold-conf-fill-glow"></div>
+                <div class="main-fill conf-main" id="gold-conf-fill"></div>
+              </div>
+            </div>
+
+            <div class="tags-row">
+              <div class="glow-tag neutral" id="gold-market-tag">UNKNOWN</div>
+              <div class="glow-tag gray" id="gold-quality-tag">WEAK</div>
+              <div class="glow-tag gray" id="gold-timing-tag">NEUTRAL</div>
+            </div>
+            </section>
+        </div>
+      </div>
+
+      <!-- CENTER TRADE PANEL -->
+<div class="main-trade-panel">
+  <div class="main-trade-card">
+    <div class="main-trade-header">
+  <div>
+    <div class="main-symbol" id="main-symbol-title">EURUSD 🇪🇺🇺🇸</div>
+    <div id="main-live-price" class="main-live-price">--</div>
+
+    <div class="main-live">• LIVE</div>
+  </div>
+</div>
+
+    <div class="main-signal-box">
+      <span id="main-signal">WAIT</span>
+    </div>
+
+    <div class="main-metrics">
+      <div><span>Buy</span><strong id="main-buy">--%</strong></div>
+      <div><span>Sell</span><strong id="main-sell">--%</strong></div>
+      <div><span>Confidence</span><strong id="main-confidence">--%</strong></div>
+    </div>
+
+    <div class="smc-panel main-smc-panel">
+      <div class="smc-header">⚡ SMC PLAN</div>
+      <div class="smc-row"><span>Type</span><span id="main-plan-type">--</span></div>
+      <div class="smc-row"><span>Bias</span><span id="main-plan-bias">--</span></div>
+      <div class="smc-row"><span>Entry</span><span id="main-entry-price">--</span></div>
+      <div class="smc-row"><span>SL</span><span id="main-sl">--</span></div>
+      <div class="smc-row"><span>TP1</span><span id="main-tp1">--</span></div>
+      <div class="smc-row"><span>TP2</span><span id="main-tp2">--</span></div>
+      <div class="smc-row"><span>Risk/Reward</span><span id="main-rr">--</span></div>
+      <div class="smc-row"><span>Invalidation</span><span id="main-invalidation">--</span></div>
+      <div class="smc-row"><span>Reason</span><span id="main-reason">--</span></div>
+    </div>
+
+    <div class="buttons-row main-buttons-row">
+  <div class="button-shell buy-shell">
+    <button class="glow-button buy-button" onclick="confirmTrade(currentChartSymbol, 'BUY')">Buy</button>
+  </div>
+  <div class="button-shell sell-shell">
+    <button class="glow-button sell-button" onclick="confirmTrade(currentChartSymbol, 'SELL')">Sell</button>
+  </div>
+</div>
+
+<!-- ✅ MOVE INSIDE THE CARD -->
+<div class="main-bottom-row">
+  <span id="main-last-signal">Last Signal: WAIT</span>
+  <span id="main-local-time">--:--:--</span>
+</div>
+
+</div> <!-- main-trade-card -->
+</div> <!-- main-trade-panel -->
+
+<!-- RIGHT SIDE -->
+<div class="chart-panel">
+
+<!-- RIGHT SIDE -->
+<div class="chart-panel">
+        <div class="chart-wrap">
+          <div class="chart-section">
+
+  <div class="chart-controls">
+    <div class="chart-symbols">
+      <button onclick="switchChart('EURUSD', currentChartTimeframe)">EURUSD</button>
+      <button onclick="switchChart('GOLD', currentChartTimeframe)">GOLD</button>
+    </div>
+
+    <div class="chart-timeframes">
+      <button onclick="switchTimeframe('5m')">5m</button>
+      <button onclick="switchTimeframe('15m')">15m</button>
+      <button onclick="switchTimeframe('1h')">1h</button>
+    </div>
+  </div>
+
+  <div class="chart-box">
+  <div class="chart-overlay-header">
+    <div id="chartOverlayTitle">EURUSD · 5m</div>
+    <div id="chartOverlayOhlc">
+      O <span>--</span> H <span>--</span> L <span>--</span> C <span>--</span>
+    </div>
+  </div>
+
+  <div id="chartContainer"></div>
+</div>
+
+<div class="structure-panel">
+  <div class="structure-box structure-grid-clean">
+
+    <div class="structure-left">
+  <div class="structure-title">MARKET STRUCTURE (SMC)</div>
+
+  <svg viewBox="0 0 360 150" class="smc-svg-clean" id="smcLiveSvg">
+    <polyline id="smcLiveLine"
+      points="18,98 50,45 82,115 115,55 150,95 185,45 220,90"
+      fill="none" stroke="#22c55e" stroke-width="5"
+      stroke-linecap="round" stroke-linejoin="round" />
+
+    <line id="smcBosLine" x1="58" y1="42" x2="190" y2="42"
+      stroke="#3b82f6" stroke-width="3" stroke-dasharray="8 8" />
+    <text id="smcBosText" x="112" y="24" fill="#3b82f6" font-size="20" font-weight="800">BOS</text>
+
+    <line id="smcChochLine" x1="225" y1="80" x2="310" y2="80"
+      stroke="#ef4444" stroke-width="3" stroke-dasharray="8 8" />
+    <text id="smcChochText" x="238" y="58" fill="#ef4444" font-size="18" font-weight="800">CHOCH</text>
+
+    <g id="smcLiquidityLayer"></g>
+    
+    <polyline id="smcProjectionLine"
+      points="220,90 250,105 280,105 310,75 338,95"
+      fill="none" stroke="#6b7280" stroke-width="5"
+      stroke-linecap="round" stroke-linejoin="round" />
+
+    <text id="smcLowText" x="75" y="138" fill="#ffffff" font-size="16" font-weight="800">HL</text>
+    <text id="smcHighText" x="175" y="120" fill="#ffffff" font-size="16" font-weight="800">HH</text>
+  </svg>
+</div>
+
+<div class="structure-right">
+      <div class="structure-info-row">
+        <span>Trend:</span>
+        <strong id="structure-trend">SIDEWAYS</strong>
+      </div>
+
+      <div class="structure-info-row">
+        <span>Structure:</span>
+        <strong id="structure-type">NEUTRAL</strong>
+      </div>
+
+      <div class="structure-info-row">
+        <span>Next Step:</span>
+        <strong id="structure-next">Wait for BOS</strong>
+      </div>
+
+      <div class="structure-info-row">
+        <span>Key Level:</span>
+        <strong class="resistance-text" id="structure-resistance">--</strong>
+      </div>
+
+      <div class="structure-info-row">
+        <span>Key Level:</span>
+        <strong class="support-text" id="structure-support">--</strong>
+      </div>
+    </div>
+
+  </div>
+</div>
+<section class="history-section">
+    <div class="history-header">
+      <h2>Recent Signal History</h2>
+    </div>
+
+    <div class="history-table-wrap">
+      <table class="history-table">
+        <thead>
+          <tr>
+            <th>Time</th>
+            <th>Symbol</th>
+            <th>Signal</th>
+            <th>Confidence</th>
+            <th>Result</th>
+            <th>Pips</th>
+          </tr>
+        </thead>
+        <tbody id="historyBody">
+          <tr>
+            <td colspan="6">No history yet</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+</div> <!-- END .chart-section -->
+        </div> <!-- END .chart-wrap -->
+      </div> <!-- END .chart-panel -->
+    </div> <!-- END .dashboard-grid -->
+
+    <div class="footer">
+      <div id="utcLabel" class="utc-label">UTC --:--:--</div>
+    </div>
+  </div>
+
+  <div id="tradeModal" class="trade-modal hidden">
+  <div class="trade-modal-box">
+    <div class="trade-modal-title" id="tradeModalTitle">Confirm Trade</div>
+    <div class="trade-modal-text" id="tradeModalText">Confirm BUY on EURUSD?</div>
+
+    <div class="trade-modal-actions">
+      <button id="tradeCancelBtn" class="trade-modal-btn cancel-btn">Cancel</button>
+      <button id="tradeConfirmBtn" class="trade-modal-btn confirm-btn">Confirm</button>
+    </div>
+  </div>
+</div>
+
+<div id="adminModal" class="trade-modal hidden">
+  <div class="trade-modal-box admin-modal-box">
+    <div class="trade-modal-title" id="adminModalTitle">Admin Access</div>
+    <div class="trade-modal-text">Enter admin code to unlock BUY / SELL.</div>
+
+    <input
+      type="password"
+      id="adminCodeInput"
+      class="admin-code-input"
+      placeholder="Enter admin code"
+      autocomplete="off"
+    />
+
+    <div class="trade-modal-actions">
+      <button id="adminCancelBtn" class="trade-modal-btn cancel-btn">Cancel</button>
+      <button id="adminConfirmBtn" class="trade-modal-btn confirm-btn">Unlock</button>
+    </div>
+  </div>
+</div>
+
+<div id="feedbackModal" class="trade-modal hidden">
+  <div class="trade-modal-box feedback-modal-box">
+    <div class="trade-modal-title">Send Feedback</div>
+    <div class="trade-modal-text" id="feedbackHelpText">
+  Tell us what you want improved.
+</div>
+
+    <textarea
+      id="feedbackInput"
+      class="feedback-textarea"
+      placeholder="Type your feedback here..."
+    ></textarea>
+
+    <div class="trade-modal-actions">
+      <button id="feedbackCancelBtn" class="trade-modal-btn cancel-btn">Cancel</button>
+      <button id="feedbackSendBtn" class="trade-modal-btn confirm-btn">Send</button>
+    </div>
+  </div>
+</div>
+
+<div id="feedbackToast" class="feedback-toast hidden">
+  Thank you! for your feedback ✨
+</div>
+
+<div id="statsModal" class="trade-modal hidden">
+  <div class="trade-modal-box">
+    <div class="trade-modal-title">FlowSignal Admin Stats</div>
+
+    <div class="trade-modal-text">
+      Total Visits:
+      <strong id="totalVisitorsCount">0</strong>
+    </div>
+
+    <div class="trade-modal-text">
+      Unique Visitors:
+      <strong id="uniqueVisitorsCount">0</strong>
+    </div>
+
+    <div class="trade-modal-text">
+      Today Visits:
+      <strong id="todayVisitsCount">0</strong>
+    </div>
+
+    <div class="trade-modal-text">
+      Last Visit:
+      <strong id="lastVisitTime">--</strong>
+    </div>
+
+    <div class="trade-modal-text">
+    Countries:
+    <strong id="countryStats">--</strong>
+  </div>
+
+    <div class="trade-modal-actions">
+      <button id="closeStatsBtn" class="trade-modal-btn cancel-btn">
+        Close
+      </button>
+    </div>
+  </div>
+</div>
+
+<div id="paperModal" class="trade-modal hidden">
+  <div class="trade-modal-box">
+    <div class="trade-modal-title">Auto Trade</div>
+  
+    <div id="paperAutoSection" class="trade-modal-text">
+        Paper Auto:
+        <button id="paperAutoToggleBtn" class="trade-modal-btn confirm-btn">
+          OFF
+        </button>
+      </div>
+
+      <div id="liveAutoSection" class="trade-modal-text hidden">
+        Live Auto:
+        <button id="liveAutoToggleBtn" class="trade-modal-btn confirm-btn">
+          OFF
+        </button>
+      </div>
+    
+    <div class="live-connection-actions">
+
+      <button
+        id="connectDemoBtn"
+        class="live-connect-btn demo"
+      >
+        Connect Sim
+      </button>
+
+      <button
+        id="connectLiveBtn"
+        class="live-connect-btn live"
+      >
+        Connect Live
+      </button>
+
+      <button
+        id="disconnectLiveBtn"
+        class="live-connect-btn disconnect"
+      >
+        Disconnect
+      </button>
+
+      <button
+        id="testLiveOrderBtn"
+        class="live-connect-btn dev-live-test-btn"
+      >
+        Test Live Order
+      </button>
+
+      <button
+        id="mockBrokerPositionBtn"
+        class="live-connect-btn dev-live-test-btn"
+      >
+        Mock Broker Position
+      </button>
+
+      <button
+        id="clearBrokerPositionBtn"
+        class="live-connect-btn dev-live-test-btn"
+      >
+        Clear Broker Position
+      </button>
+
+    </div>
+
+<div class="execution-page-tabs">
+
+  <button
+    id="paperPageBtn"
+    class="execution-page-btn active"
+  >
+    PAPER TRADES
+  </button>
+
+  <button
+    id="livePageBtn"
+    class="execution-page-btn"
+  >
+    LIVE TRADES
+  </button>
+
+</div>
+
+<div id="liveActiveOrders" class="live-active-orders">
+
+        <div class="live-active-title">
+          ACTIVE LIVE STRATEGIES
+        </div>
+
+        <div
+          id="liveActiveList"
+          class="live-active-list"
+        >
+          No active live trades
+        </div>
+
+      </div>
+
+      <div
+      id="paperHistoryList"
+      class="trade-modal-text"
+      style="
+        margin-top: 8px;
+        padding-right: 4px;
+      "
+    >
+      No paper history yet
+    </div>
+
+<div
+  id="liveHistoryList"
+  class="trade-modal-text hidden"
+  style="
+    margin-top: 8px;
+    padding-right: 4px;
+  "
+>
+  No live trades yet
+</div>
+
+  </div>
+</div>
+<script src="https://unpkg.com/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
+<script src="script.js?v=2"></script>
+</body>
+</html>
+  
