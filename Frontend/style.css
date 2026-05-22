@@ -4595,3 +4595,31 @@ body.paper-open .dashboard-grid {
   background: linear-gradient(135deg, rgba(37, 99, 235, 0.95), rgba(124, 58, 237, 0.9));
   box-shadow: 0 0 18px rgba(59, 130, 246, 0.35);
 }
+
+@media (max-width: 600px) {
+  .auto-trade-panel,
+  .auto-trade-modal,
+  .trade-panel {
+    width: calc(100vw - 28px) !important;
+    max-width: calc(100vw - 28px) !important;
+    left: 14px !important;
+    right: 14px !important;
+    transform: none !important;
+    overflow-x: hidden !important;
+  }
+
+  .auto-stats,
+  .paper-stats,
+  .live-stats {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 10px !important;
+  }
+
+  .trade-card,
+  .paper-trade-card,
+  .live-trade-card {
+    max-width: 100% !important;
+    overflow: hidden !important;
+  }
+}
