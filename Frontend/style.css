@@ -4596,29 +4596,40 @@ body.paper-open .dashboard-grid {
   box-shadow: 0 0 18px rgba(59, 130, 246, 0.35);
 }
 
-@media (max-width: 600px) {
-  .auto-trade-panel,
-  .auto-trade-modal,
-  .trade-panel {
-    width: calc(100vw - 28px) !important;
-    max-width: calc(100vw - 28px) !important;
-    left: 14px !important;
-    right: 14px !important;
-    transform: none !important;
-    overflow-x: hidden !important;
+@media (max-width: 700px) {
+
+  #paperModal {
+    padding: 70px 8px 14px !important;
+    align-items: flex-start !important;
   }
 
-  .auto-stats,
-  .paper-stats,
-  .live-stats {
+  #paperModal .trade-modal-box {
+    width: calc(100vw - 16px) !important;
+    max-width: calc(100vw - 16px) !important;
+
+    max-height: calc(100dvh - 90px) !important;
+
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+
+    border-radius: 18px !important;
+
+    padding: 16px !important;
+  }
+
+  #paperModal .paper-stats-grid,
+  #paperModal .auto-stats,
+  #paperModal .paper-stats,
+  #paperModal .live-stats {
     display: grid !important;
-    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    grid-template-columns: 1fr 1fr !important;
     gap: 10px !important;
   }
 
-  .trade-card,
-  .paper-trade-card,
-  .live-trade-card {
+  #paperModal .paper-trade-card,
+  #paperModal .live-trade-card,
+  #paperModal .trade-card {
+    width: 100% !important;
     max-width: 100% !important;
     overflow: hidden !important;
   }
