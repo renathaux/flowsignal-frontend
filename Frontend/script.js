@@ -2099,12 +2099,13 @@ function setAutoTradeFilter(filter) {
 
   if (latestRawPanelData) {
     updatePaperPanel(
-      latestRawPanelData.paper_trades || {},
-      latestRawPanelData.paper_trade_history || []
+      rawData?.paper_trades || {},
+      rawData?.paper_trade_history || [],
+      rawData?.paper_trade_stats || {}
     );
   }
 }
-function updatePaperPanel(paperTrades, paperHistory = []) {
+function updatePaperPanel(paperTrades, paperHistory = [], backendStats = {}) {
   if (executionPage === "live") {
 
     if (paperHistoryList) {
@@ -2202,10 +2203,10 @@ function getPaperResult(t) {
   return "RUNNING";
 }
 
-const wins = allPaperTrades.filter(t => getPaperResult(t) === "WIN").length;
-const losses = allPaperTrades.filter(t => getPaperResult(t) === "LOSS").length;
-const running = allPaperTrades.filter(t => getPaperResult(t) === "RUNNING").length;
-const total = wins + losses + running;
+const wins = backendStats.wins ?? allPaperTrades.filter(t => getPaperResult(t) === "WIN").length;
+const losses = backendStats.losses ?? allPaperTrades.filter(t => getPaperResult(t) === "LOSS").length;
+const running = backendStats.running ?? allPaperTrades.filter(t => getPaperResult(t) === "RUNNING").length;
+const total = backendStats.total ?? (wins + losses + running);
 
 const filteredHistory =
   autoTradeFilter === "ALL"
