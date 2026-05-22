@@ -4634,3 +4634,24 @@ body.paper-open .dashboard-grid {
     overflow: hidden !important;
   }
 }
+
+@media (max-width: 700px) {
+  #paperModal .active-strategies,
+  #paperModal .paper-active-box,
+  #paperModal .active-strategy-box {
+    max-height: 310px !important;
+    overflow-y: auto !important;
+  }
+
+  #paperModal .recent-trades,
+  #paperModal .recent-trades-box,
+  #paperModal .paper-history-box {
+    min-height: 230px !important;
+    max-height: 260px !important;
+    overflow-y: auto !important;
+  }
+
+  #paperModal .paper-stats-grid {
+    margin: 14px 0 !important;
+  }
+}
