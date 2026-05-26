@@ -2,8 +2,8 @@ const BASE_URL =
   window.location.hostname === "127.0.0.1" ||
   window.location.hostname === "localhost"
     ? "http://127.0.0.1:8001"
-    : "https://flowsignal-backend-3.onrender.com";
-
+    : "http://51.222.107.9:8001";
+    
 const DISPLAY_NAMES = {
   EURUSD: "EURUSD",
   GOLD: "XAUUSD"
