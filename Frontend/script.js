@@ -4,7 +4,12 @@ const BASE_URL =
     ? "http://127.0.0.1:8001"
     : "https://flowsignalfx.com";
 
-const API_URL = `${BASE_URL}/panel-data`;;
+const DISPLAY_NAMES = {
+  EURUSD: "EURUSD",
+  GOLD: "XAUUSD"
+};
+
+const API_URL = `${BASE_URL}/panel-data`;
 // ==============================
 // 🌍 LANGUAGE SYSTEM
 // ==============================
