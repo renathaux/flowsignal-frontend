@@ -144,7 +144,7 @@
   <span class="menu-row-text">Admin Stats</span>
 </button>
 
-<button id="menuPaperBtn" class="menu-row hidden" title="Paper Auto Test">
+<button id="menuPaperBtn" class="menu-row hidden" title="Auto Trade">
   <span class="menu-row-icon">🤖</span>
   <span class="menu-row-text">Auto Trade</span>
 </button>
@@ -324,6 +324,8 @@
       <div class="smc-row"><span>Risk/Reward</span><span id="main-rr">--</span></div>
       <div class="smc-row"><span>Invalidation</span><span id="main-invalidation">--</span></div>
       <div class="smc-row"><span>Reason</span><span id="main-reason">--</span></div>
+      <div class="smc-row signal-blocker-row hidden" id="main-blocked-by-row"><span>Blocked By</span><span id="main-blocked-by">--</span></div>
+      <div class="smc-row signal-blocker-row hidden" id="main-blocked-reason-row"><span>Blocked Reason</span><span id="main-blocked-reason">--</span></div>
     </div>
 
     <div class="buttons-row main-buttons-row">
@@ -410,17 +412,17 @@
 
 <div class="structure-right">
       <div class="structure-info-row">
-        <span>Trend:</span>
+        <span>Trend: 1h</span>
         <strong id="structure-trend">SIDEWAYS</strong>
       </div>
 
       <div class="structure-info-row">
-        <span>Structure:</span>
+        <span>Entry: 15m</span>
         <strong id="structure-type">NEUTRAL</strong>
       </div>
 
       <div class="structure-info-row">
-        <span>Next Step:</span>
+        <span>5m:</span>
         <strong id="structure-next">Wait for BOS</strong>
       </div>
 
@@ -571,65 +573,19 @@
     <div class="trade-modal-title">Auto Trade</div>
   
     <div id="paperAutoSection" class="trade-modal-text">
-        Paper Auto:
-        <button id="paperAutoToggleBtn" class="trade-modal-btn confirm-btn">
-          OFF
-        </button>
-      </div>
-
-      <div id="liveAutoSection" class="trade-modal-text hidden">
-        Live Auto:
-        <button id="liveAutoToggleBtn" class="trade-modal-btn confirm-btn">
-          OFF
-        </button>
-      </div>
-    
-    <div class="live-connection-actions">
-
-      <button
-        id="connectDemoBtn"
-        class="live-connect-btn demo"
-      >
-        Connect Sim
+      <button id="paperAutoToggleBtn" class="trade-modal-btn confirm-btn">
+        Paper Auto: OFF
       </button>
-
-      <button
-        id="connectLiveBtn"
-        class="live-connect-btn live"
-      >
-        Connect Live
-      </button>
-
-      <button
-        id="disconnectLiveBtn"
-        class="live-connect-btn disconnect"
-      >
-        Disconnect
-      </button>
-
-      <button
-        id="testLiveOrderBtn"
-        class="live-connect-btn dev-live-test-btn"
-      >
-        Test Live Order
-      </button>
-
-      <button
-        id="mockBrokerPositionBtn"
-        class="live-connect-btn dev-live-test-btn"
-      >
-        Mock Broker Position
-      </button>
-
-      <button
-        id="clearBrokerPositionBtn"
-        class="live-connect-btn dev-live-test-btn"
-      >
-        Clear Broker Position
-      </button>
-
     </div>
 
+      <div id="liveAutoSection" class="trade-modal-text">
+        <button id="liveAutoToggleBtn" class="trade-modal-btn confirm-btn">
+          Live Auto: OFF
+        </button>
+      </div>
+      <div id="brokerConnectionStatus" class="broker-connection-status">
+        Live Broker: Disconnected
+      </div>
 <div class="execution-page-tabs">
 
   <button
@@ -651,7 +607,7 @@
 <div id="liveActiveOrders" class="live-active-orders">
 
         <div class="live-active-title">
-          ACTIVE LIVE STRATEGIES
+          ✦ ACTIVE STRATEGIES
         </div>
 
         <div
@@ -684,6 +640,26 @@
 >
   No live trades yet
 </div>
+
+    <div id="liveAutoConfirmOverlay" class="live-auto-confirm-overlay hidden">
+      <div class="live-auto-confirm-card" role="dialog" aria-modal="true" aria-labelledby="liveAutoConfirmTitle">
+        <div id="liveAutoConfirmTitle" class="live-auto-confirm-title">
+          Live Auto Confirmation
+        </div>
+        <div id="liveAutoConfirmMessage" class="live-auto-confirm-message">
+          FlowSignal will place trades on your connected broker account.
+          Continue?
+        </div>
+        <div class="live-auto-confirm-actions">
+          <button id="liveAutoConfirmCancel" class="live-auto-confirm-btn cancel" type="button">
+            Cancel
+          </button>
+          <button id="liveAutoConfirmOk" class="live-auto-confirm-btn confirm confirm-on" type="button">
+            Confirm
+          </button>
+        </div>
+      </div>
+    </div>
 
   </div>
 </div>

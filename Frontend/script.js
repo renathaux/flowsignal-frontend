@@ -6,6 +6,7 @@ const BASE_URL =
 
 const DISPLAY_NAMES = {
   EURUSD: "EURUSD",
+  XAUUSD: "XAUUSD",
   GOLD: "XAUUSD"
 };
 
@@ -110,9 +111,9 @@ const LANG = {
 
     // Structure panel
     marketStructure: "MARKET STRUCTURE (SMC)",
-    trend: "Trend:",
-    structure: "Structure:",
-    nextStep: "Next Step:",
+    trend: "Trend: 1h",
+    structure: "Entry: 15m",
+    nextStep: "5m:",
     keyLevel: "Key Level:",
     sideways: "SIDEWAYS",
     bullish: "BULLISH",
@@ -240,9 +241,9 @@ const LANG = {
 
     // Structure panel
     marketStructure: "STRUCTURE DU MARCHÉ (SMC)",
-    trend: "Tendance:",
-    structure: "Structure:",
-    nextStep: "Prochaine étape:",
+    trend: "Tendance: 1h",
+    structure: "Entrée: 15m",
+    nextStep: "5m:",
     keyLevel: "Niveau clé:",
     sideways: "LATÉRAL",
     bullish: "HAUSSIER",
@@ -370,9 +371,9 @@ const LANG = {
 
     // Structure panel
     marketStructure: "ESTRUCTURA DEL MERCADO (SMC)",
-    trend: "Tendencia:",
-    structure: "Estructura:",
-    nextStep: "Siguiente paso:",
+    trend: "Tendencia: 1h",
+    structure: "Entrada: 15m",
+    nextStep: "5m:",
     keyLevel: "Nivel clave:",
     sideways: "LATERAL",
     bullish: "ALCISTA",
@@ -482,36 +483,11 @@ const paperAutoToggleBtn = document.getElementById("paperAutoToggleBtn");
 const paperAutoSection = document.getElementById("paperAutoSection");
 const liveAutoSection = document.getElementById("liveAutoSection");
 const liveAutoToggleBtn = document.getElementById("liveAutoToggleBtn");
-
-const connectDemoBtn =
-  document.getElementById(
-    "connectDemoBtn"
-  );
-
-const connectLiveBtn =
-  document.getElementById(
-    "connectLiveBtn"
-  );
-
-const disconnectLiveBtn =
-  document.getElementById(
-    "disconnectLiveBtn"
-  );
-
-const testLiveOrderBtn =
-  document.getElementById(
-    "testLiveOrderBtn"
-  );
-
-const mockBrokerPositionBtn =
-  document.getElementById(
-    "mockBrokerPositionBtn"
-  );
-
-const clearBrokerPositionBtn =
-  document.getElementById(
-    "clearBrokerPositionBtn"
-  );
+const brokerConnectionStatus = document.getElementById("brokerConnectionStatus");
+const liveAutoConfirmOverlay = document.getElementById("liveAutoConfirmOverlay");
+const liveAutoConfirmMessage = document.getElementById("liveAutoConfirmMessage");
+const liveAutoConfirmCancel = document.getElementById("liveAutoConfirmCancel");
+const liveAutoConfirmOk = document.getElementById("liveAutoConfirmOk");
 
 const liveActiveList =
   document.getElementById(
@@ -522,12 +498,6 @@ const liveHistoryList =
   document.getElementById(
     "liveHistoryList"
   );
-
-const paperModeBtn =
-  document.getElementById("paperModeBtn");
-
-const liveModeBtn =
-  document.getElementById("liveModeBtn");
 
 const paperPageBtn =
   document.getElementById("paperPageBtn");
@@ -542,11 +512,14 @@ let paperAutoEnabled =
 let liveAutoEnabled =
   false;
 
-let executionMode = "paper";
+let marketDataSourceStatus = null;
+let livePrices = {};
+let autoTradeStatus = null;
+let liveAutoStatusBySymbol = {};
 
 let liveConnectionState = {
   connected: false,
-  mode: "demo"
+  mode: "broker"
 };
 
 function getLastSaturday5pmMs() {
@@ -884,6 +857,18 @@ let activeLiveOrders = {
   GOLD: null
 };
 let liveTradeHistory = [];
+let liveTradeStats = {
+  total_today: 0,
+  wins: 0,
+  losses: 0,
+  running: 0,
+  closed: 0,
+  total_pl: 0,
+  total_pnl: 0,
+  weekly_realized_pl: 0,
+  floating_live_pl: 0,
+  weekly_total_pl: 0
+};
 
 function setAuthMessage(text, isError = false) {
   if (!authMsg) return;
@@ -1312,6 +1297,17 @@ function getDataSymbol(symbol) {
   return symbol === "XAUUSD" ? "GOLD" : symbol;
 }
 
+function getExecutionSymbol(symbol) {
+  return symbol === "GOLD" ? "XAUUSD" : symbol;
+}
+
+function getLiveTickMid(symbol) {
+  const tick = livePrices?.[getExecutionSymbol(symbol)];
+  const mid = Number(tick?.mid);
+
+  return Number.isFinite(mid) && mid > 0 ? mid : null;
+}
+
 function updateCard(symbol, data) {
   let signal = String(data.signal || "WAIT").trim().toUpperCase();
   const buyPct = clampPct(data.buy_pct ?? data.buy_percent ?? 0);
@@ -1612,7 +1608,7 @@ function updateMainPanel(symbol) {
 const lastCandle = liveCandles[liveCandles.length - 1];
 
 const fixedPrice =
-  lastCandle?.close || data.entry_price || data.price;
+  getLiveTickMid(symbol) || lastCandle?.close || data.entry_price || data.price;
 
 const priceEl = document.getElementById("main-live-price");
 
@@ -1723,6 +1719,31 @@ if (priceEl) {
     <span style="color:#60a5fa;">${tMarketText("DISPLACEMENT")}:</span> ${tMarketText(displacement)} (${displacementScore})<br>
     <span style="color:#fb7185;">${tMarketText("FAKE BREAKOUT")}:</span> ${tMarketText(fakeBreakout)}
     `;
+  }
+
+  const showSignalBlocker =
+    signal === "WAIT" &&
+    buyPct !== sellPct &&
+    Boolean(data.blocked_by || data.blocked_reason);
+  const blockedByRow = document.getElementById("main-blocked-by-row");
+  const blockedReasonRow = document.getElementById("main-blocked-reason-row");
+  const blockedByEl = document.getElementById("main-blocked-by");
+  const blockedReasonEl = document.getElementById("main-blocked-reason");
+
+  [blockedByRow, blockedReasonRow].forEach((row) => {
+    if (row) row.classList.toggle("hidden", !showSignalBlocker);
+  });
+
+  if (blockedByEl) {
+    blockedByEl.textContent = showSignalBlocker
+      ? tMarketText(String(data.blocked_by || "--"))
+      : "--";
+  }
+
+  if (blockedReasonEl) {
+    blockedReasonEl.textContent = showSignalBlocker
+      ? tMarketText(String(data.blocked_reason || "--"))
+      : "--";
   }
 
   document.getElementById("structure-trend").textContent = tMarketText(smcData.structure_trend || "--");
@@ -2055,6 +2076,9 @@ function renderHistory(history) {
       let resultClass = "history-result-running";
       if (result === "WIN") resultClass = "history-result-win";
       if (result === "LOSS") resultClass = "history-result-loss";
+      if (["BROKER_CLOSED", "CLOSED", "STALE_CLOSED"].includes(result)) {
+        resultClass = "history-result-closed";
+      }
 
       let rowClass = "history-row-neutral";
       if (signal === "BUY") rowClass = "history-row-buy";
@@ -2099,15 +2123,56 @@ function setAutoTradeFilter(filter) {
 
   if (latestRawPanelData) {
     updatePaperPanel(
-      rawData?.paper_trades || {},
-      rawData?.paper_trade_history || [],
-      rawData?.paper_trade_stats || {}
+      latestRawPanelData?.paper_trades || {},
+      latestRawPanelData?.paper_trade_history || [],
+      latestRawPanelData?.paper_trade_stats || {}
     );
   }
 }
+
+function isLiveBrokerTrade(trade) {
+  const source = String(trade?.source || "").toLowerCase();
+
+  return source === "broker"
+    || !!trade?.broker_position_id
+    || !!trade?.broker_order_id
+    || !!trade?.broker_result;
+}
+
+function hasConfirmedProfitProtection(trade) {
+  if (!trade?.profit_protected) return false;
+
+  if (!isLiveBrokerTrade(trade)) return true;
+
+  return trade?.sl_protection_broker_result?.ok === true;
+}
+
+function getProfitProtectionLabel(trade) {
+  return hasConfirmedProfitProtection(trade)
+    ? "Profit Protected (+40% TP2 locked)"
+    : "";
+}
+
+function getSlProtectionWarning(trade) {
+  return trade?.sl_protection_failed || trade?.sl_protection_warning
+    ? "TP1 hit, but broker SL protection failed"
+    : "";
+}
+
+function getTradeDisplayResult(trade) {
+  if (!trade) return "--";
+  if (hasConfirmedProfitProtection(trade)) return "TP1 HIT";
+  if (trade?.hit_tp1) return "TP1 HIT";
+
+  return trade.result || trade.status || "RUNNING";
+}
+
+function getTradeProtectedText(trade) {
+  return hasConfirmedProfitProtection(trade) ? "YES" : "NO";
+}
+
 function updatePaperPanel(paperTrades, paperHistory = [], backendStats = {}) {
   if (executionPage === "live") {
-
     if (paperHistoryList) {
       paperHistoryList.classList.add("hidden");
       paperHistoryList.style.setProperty(
@@ -2115,19 +2180,6 @@ function updatePaperPanel(paperTrades, paperHistory = [], backendStats = {}) {
         "none",
         "important"
       );
-    }
-
-    if (liveHistoryList) {
-      liveHistoryList.classList.remove("hidden");
-
-      liveHistoryList.style.setProperty(
-        "display",
-        "block",
-        "important"
-      );
-
-      liveHistoryList.innerHTML =
-        "No live trades yet";
     }
 
     return;
@@ -2158,13 +2210,13 @@ function updatePaperPanel(paperTrades, paperHistory = [], backendStats = {}) {
 
   if (paperEurusdStatus) {
     paperEurusdStatus.textContent = eurusd
-      ? `${eurusd.side} • ${eurusd.result} • Entry ${eurusd.entry} • SL ${eurusd.sl} • TP2 ${eurusd.tp2}`
+      ? `${eurusd.side} • ${getTradeDisplayResult(eurusd)} • Entry ${eurusd.entry} • SL ${eurusd.sl} • TP1 ${eurusd.tp1} • TP2 ${eurusd.tp2}`
       : "No paper trade";
   }
 
   if (paperGoldStatus) {
     paperGoldStatus.textContent = gold
-      ? `${gold.side} • ${gold.result} • Entry ${gold.entry} • SL ${gold.sl} • TP2 ${gold.tp2}`
+      ? `${gold.side} • ${getTradeDisplayResult(gold)} • Entry ${gold.entry} • SL ${gold.sl} • TP1 ${gold.tp1} • TP2 ${gold.tp2}`
       : "No paper trade";
   }
 
@@ -2194,6 +2246,7 @@ function getPaperResult(t) {
   const r = String(t?.result || t?.status || "RUNNING").toUpperCase();
   const s = String(t?.status || "").toUpperCase();
 
+  if (t?.profit_protected && s === "CLOSED") return "WIN";
   if (r.includes("STALE") || r.includes("RESET") || r.includes("CLOSED")) return "CLOSED";
   if (s === "CLOSED" && (r.includes("WIN") || r.includes("TP") || r.includes("PROFIT"))) return "WIN";
   if (s === "CLOSED" && (r.includes("LOSS") || r.includes("SL") || r.includes("STOP"))) return "LOSS";
@@ -2242,6 +2295,13 @@ paperHistoryList.innerHTML = `
         const source = (t.source || "paper").toUpperCase();
         const display = DISPLAY_NAMES[sym] || sym;
         const sideColor = side === "SELL" ? "#ef4444" : "#22c55e";
+        const protectionLabel = getProfitProtectionLabel(t);
+        const originalSl = t.original_sl ?? t.initial_sl ?? t.sl ?? "--";
+        const currentSl = t.sl ?? "--";
+        const tp1 = t.tp1 ?? "--";
+        const tp2 = t.tp2 ?? t.tp ?? "--";
+        const displayResult = getTradeDisplayResult(t);
+        const protectedText = getTradeProtectedText(t);
 
         return `
           <div style="margin-bottom:5px;padding:7px 9px;border-radius:12px;background:rgba(30,41,59,.70);border:1px solid rgba(148,163,184,.16);">
@@ -2259,10 +2319,12 @@ paperHistoryList.innerHTML = `
                 ${source}
               </span>
               <span style="color:${sideColor};background:${sideColor}22;padding:2px 6px;border-radius:7px;font-size:9px;font-weight:900;">${side}</span>
-              <span style="color:#60a5fa;background:#60a5fa22;padding:2px 6px;border-radius:7px;font-size:9px;font-weight:900;">${result}</span>
+              <span style="color:#60a5fa;background:#60a5fa22;padding:2px 6px;border-radius:7px;font-size:9px;font-weight:900;">${displayResult}</span>
             </div>
             <div style="margin-top:4px;font-size:10px;color:#cbd5e1;font-weight:700;line-height:1.25;">
-              Entry ${t.entry ?? "--"} • SL ${t.sl ?? "--"} • TP1 ${t.tp1 ?? "--"}
+              Entry ${t.entry ?? "--"} • Original SL ${originalSl} • Current SL ${currentSl}<br>
+              TP1 ${tp1} • TP2 ${tp2} • Protected ${protectedText} • Result ${displayResult}
+              ${protectionLabel ? `<br><span style="color:#86efac;">${protectionLabel}</span>` : ""}
             </div>
           </div>
         `;
@@ -2306,6 +2368,12 @@ paperHistoryList.innerHTML = `
           const sideColor = side === "SELL" ? "#ef4444" : "#22c55e";
           const normalizedResult = getPaperResult(t);
           const badgeColor = normalizedResult === "WIN" ? "#22c55e" : normalizedResult === "LOSS" ? "#ef4444" : normalizedResult === "CLOSED" ? "#94a3b8" : "#60a5fa";
+          const protectionLabel = getProfitProtectionLabel(t);
+          const originalSl = t.original_sl ?? t.initial_sl ?? t.sl ?? "--";
+          const currentSl = t.sl ?? "--";
+          const tp1 = t.tp1 ?? "--";
+          const tp2 = t.tp2 ?? t.tp ?? "--";
+          const protectedText = getTradeProtectedText(t);
 
           return `
             <details style="margin-bottom:4px;border-radius:11px;background:rgba(30,41,59,.70);border:1px solid rgba(148,163,184,.16);overflow:hidden;">
@@ -2316,7 +2384,9 @@ paperHistoryList.innerHTML = `
               </summary>
               <div style="padding:0 8px 7px;color:#cbd5e1;font-size:10px;line-height:1.35;">
                 Entry: <b>${t.entry ?? "--"}</b><br>
-                SL: <b>${t.sl ?? "--"}</b> • TP1: <b>${t.tp1 ?? "--"}</b> • TP2: <b>${t.tp2 ?? "--"}</b><br>
+                Original SL: <b>${originalSl}</b> • Current SL: <b>${currentSl}</b><br>
+                TP1: <b>${tp1}</b> • TP2: <b>${tp2}</b> • Protected: <b>${protectedText}</b><br>
+                ${protectionLabel ? `<span style="color:#86efac;font-weight:900;">${protectionLabel}</span><br>` : ""}
                 Pips: <b>${t.pips ?? 0}</b>
               </div>
             </details>
@@ -2331,21 +2401,679 @@ paperHistoryList.innerHTML = `
 
   }
 
-function updateLivePanel(liveTrades, liveHistory = []) {
+function updateLivePanel(liveTrades, liveHistory = [], stats = null) {
   activeLiveOrders =
-    liveTrades || {
-      EURUSD: null,
-      GOLD: null
-    };
+    liveConnectionState.connected
+      ? (liveTrades || {
+          EURUSD: null,
+          XAUUSD: null
+        })
+      : {
+          EURUSD: null,
+          XAUUSD: null
+        };
 
   liveTradeHistory =
     Array.isArray(liveHistory)
       ? liveHistory
       : [];
 
+  if (stats && typeof stats === "object") {
+    liveTradeStats = {
+      ...liveTradeStats,
+      ...stats
+    };
+  }
+
+  clearTradeLines("EURUSD");
+  clearTradeLines("XAUUSD");
+
+  ["EURUSD", "XAUUSD"].forEach((symbol) => {
+    const trade = activeLiveOrders?.[symbol] || null;
+
+    if (!trade || !isLiveTradeActiveForDisplay(trade)) {
+      clearTradeLines(symbol);
+    }
+  });
+
+  renderLiveTotalTradesCard();
   renderLiveActiveOrders();
   renderLiveHistory();
+  drawTradeVisualLevels();
 
+}
+
+function formatMarketSource(value) {
+  const text = String(value || "--").toLowerCase();
+
+  if (text === "ctrader") return "cTrader";
+  if (text === "twelvedata") return "Twelve Data";
+  if (text === "hybrid") return "hybrid";
+
+  return value || "--";
+}
+
+function ensureMarketDataStatusEl() {
+  if (!paperModal) return null;
+
+  let el = document.getElementById("marketDataSourceStatus");
+
+  if (el) return el;
+
+  const anchor = document.querySelector(".execution-page-tabs");
+  const box = paperModal.querySelector(".trade-modal-box");
+
+  if (!box) return null;
+
+  el = document.createElement("div");
+  el.id = "marketDataSourceStatus";
+  el.className = "market-data-source-status";
+  el.textContent = "Data Health: --";
+
+  if (anchor && anchor.parentNode) {
+    anchor.parentNode.insertBefore(el, anchor);
+  } else {
+    box.appendChild(el);
+  }
+
+  return el;
+}
+
+function renderMarketDataSourceStatus() {
+  const el = ensureMarketDataStatusEl();
+
+  if (!el) return;
+
+  if (executionPage !== "live") {
+    el.classList.add("hidden");
+    el.style.setProperty("display", "none", "important");
+    return;
+  }
+
+  el.classList.remove("hidden");
+  el.style.removeProperty("display");
+
+  const status = marketDataSourceStatus || {};
+  const staleKeys = Array.isArray(status.stale_keys)
+    ? status.stale_keys
+    : [];
+  const rawHealth = String(status.data_health || "").toUpperCase();
+  const dataHealth =
+    rawHealth === "OK" && staleKeys.length === 0
+      ? "OK"
+      : (rawHealth || staleKeys.length)
+        ? "STALE"
+        : "--";
+
+  el.replaceChildren();
+
+  [
+    `Data Health: ${dataHealth}`,
+    `Live Price: ${String(status.live_price_health || "--").toUpperCase()}`,
+    staleKeys.length ? `Stale: ${staleKeys.join(", ")}` : null
+  ]
+    .filter(Boolean)
+    .forEach((text) => {
+      const item = document.createElement("span");
+      item.textContent = text;
+
+      if (
+        text.includes("Data Health: STALE") ||
+        text.includes("Live Price: STALE") ||
+        text.startsWith("Stale:")
+      ) {
+        item.classList.add("warning");
+      }
+
+      el.appendChild(item);
+    });
+}
+
+function ensureAutoTradeStatusEl() {
+  if (!paperModal) return null;
+
+  let el = document.getElementById("autoTradeStatus");
+
+  if (el) return el;
+
+  const anchor = document.querySelector(".execution-page-tabs");
+  const marketEl = document.getElementById("marketDataSourceStatus");
+  const box = paperModal.querySelector(".trade-modal-box");
+
+  if (!box) return null;
+
+  el = document.createElement("div");
+  el.id = "autoTradeStatus";
+  el.className = "auto-trade-status";
+  el.textContent = "Auto Trade: Waiting";
+
+  if (marketEl && marketEl.parentNode) {
+    marketEl.parentNode.insertBefore(el, marketEl.nextSibling);
+  } else if (anchor && anchor.parentNode) {
+    anchor.parentNode.insertBefore(el, anchor);
+  } else {
+    box.appendChild(el);
+  }
+
+  return el;
+}
+
+function ensureLiveAutoSymbolStatusEl() {
+  if (!paperModal) return null;
+
+  let el = document.getElementById("liveAutoSymbolStatus");
+
+  if (el) return el;
+
+  const anchor = ensureAutoTradeStatusEl();
+  const box = paperModal.querySelector(".trade-modal-box");
+
+  if (!box) return null;
+
+  el = document.createElement("div");
+  el.id = "liveAutoSymbolStatus";
+  el.className = "auto-trade-status live-auto-symbol-status";
+
+  if (anchor && anchor.parentNode) {
+    anchor.parentNode.insertBefore(el, anchor.nextSibling);
+  } else {
+    box.appendChild(el);
+  }
+
+  return el;
+}
+
+function ensureLiveTotalTradesCard() {
+  if (!liveAutoSection) return null;
+
+  const oldTotalCard = document.getElementById("liveTotalTradesCard");
+  const existingRow = document.getElementById("livePnlCardRow");
+
+  if (oldTotalCard) {
+    oldTotalCard.remove();
+  }
+
+  if (existingRow) return existingRow;
+
+  const oldWeeklyCard = document.getElementById("liveWeeklyPnlCard");
+  const oldFloatingCard = document.getElementById("liveFloatingPnlCard");
+
+  if (oldWeeklyCard) oldWeeklyCard.remove();
+  if (oldFloatingCard) oldFloatingCard.remove();
+
+  let el = document.createElement("div");
+  el.id = "livePnlCardRow";
+  el.className = "live-pnl-card-row";
+  el.innerHTML = `
+    <div id="liveWeeklyPnlCard" class="live-pnl-card">
+      <small>Weekly P/L</small>
+      <strong>$0.00</strong>
+    </div>
+    <div id="liveFloatingPnlCard" class="live-pnl-card">
+      <small>Floating P/L</small>
+      <strong>$0.00</strong>
+    </div>
+  `;
+  liveAutoSection.appendChild(el);
+
+  return el;
+}
+
+function renderLiveTotalTradesCard() {
+  ensureLiveTotalTradesCard();
+
+  const weeklyEl = document.getElementById("liveWeeklyPnlCard");
+  const floatingEl = document.getElementById("liveFloatingPnlCard");
+
+  if (!weeklyEl || !floatingEl) return;
+
+  const floatingPnl = Number.isFinite(Number(liveTradeStats.floating_live_pl))
+    ? Number(liveTradeStats.floating_live_pl)
+    : Object.values(activeLiveOrders || {})
+      .filter((trade) => trade && isLiveTradeActiveForDisplay(trade))
+      .reduce((sum, trade) => {
+        const pnl = getLiveTradePnl(trade);
+
+        return sum + (Number.isFinite(pnl) ? pnl : 0);
+      }, 0);
+  const realizedPnl = Number.isFinite(Number(liveTradeStats.weekly_realized_pl))
+    ? Number(liveTradeStats.weekly_realized_pl)
+    : 0;
+  const weeklyPnl = Number.isFinite(Number(liveTradeStats.weekly_total_pl))
+    ? Number(liveTradeStats.weekly_total_pl)
+    : realizedPnl + floatingPnl;
+
+  [
+    [weeklyEl, "Weekly P/L", weeklyPnl],
+    [floatingEl, "Floating P/L", floatingPnl]
+  ].forEach(([card, label, value]) => {
+    const pnlClass = value > 0 ? "positive" : value < 0 ? "negative" : "";
+
+    card.classList.toggle("positive", value > 0);
+    card.classList.toggle("negative", value < 0);
+    card.innerHTML = `<small>${label}</small><strong class="${pnlClass}">${formatLiveMoney(value)}</strong>`;
+  });
+}
+
+function formatAutoTradeStatusText(status) {
+  const item = status || {};
+  const state = String(item.status || "WAITING").toUpperCase();
+  const symbol = item.symbol || "";
+  const action = item.action || item.signal || "";
+  const reason = getShortAutoTradeReason(item);
+
+  if (state === "ORDER_SENT" || state === "EXECUTED") {
+    if (reason && reason !== "Order sent") {
+      return `Auto Trade: ${reason} - ${symbol} ${action}`.trim();
+    }
+
+    return `Auto Trade: Order sent - ${symbol} ${action}`.trim();
+  }
+
+  if (state === "ORDER_REJECTED") {
+    return `Auto Trade: Rejected - ${reason || "order rejected"}`;
+  }
+
+  if (state === "BLOCKED") {
+    return `Auto Trade: Blocked - ${reason || "safety check"}`;
+  }
+
+  if (state === "WAIT") {
+    return `Auto Trade: ${reason || "Waiting"}`;
+  }
+
+  return `Auto Trade: ${reason || "Waiting"}`;
+}
+
+function stringifyAutoTradeValue(value) {
+  if (value === null || value === undefined) return "";
+
+  if (typeof value === "string") return value;
+
+  try {
+    return JSON.stringify(value);
+  } catch (err) {
+    return String(value);
+  }
+}
+
+function formatRiskPercent(value) {
+  const number = Number(value);
+
+  if (!Number.isFinite(number)) return null;
+
+  return `${number.toFixed(2)}%`;
+}
+
+function getAutoTradeDetails(item) {
+  const details = item?.details && typeof item.details === "object"
+    ? item.details
+    : {};
+
+  return {
+    ...details,
+    ...(item && typeof item.reason === "object" ? item.reason : {})
+  };
+}
+
+function getShortAutoTradeReason(item) {
+  const reasonText = stringifyAutoTradeValue(item?.reason);
+  const details = getAutoTradeDetails(item);
+  const finalRisk =
+    details.final_risk_percent ??
+    details.risk_percent_if_minimum ??
+    details.minimum_volume_risk_percent;
+  const requiredRisk = details.risk_percent ?? details.required_risk_percent ?? 0.5;
+
+  if (
+    reasonText.includes("Calculated risk is not close")
+    || reasonText.includes("Calculated volume is below broker minimum")
+    || reasonText.includes("minimum broker volume")
+    || Number.isFinite(Number(finalRisk))
+  ) {
+    const finalRiskText = formatRiskPercent(finalRisk);
+    const requiredRiskText = formatRiskPercent(requiredRisk) || "0.50%";
+
+    return [
+      finalRiskText
+        ? `Minimum broker volume would risk ${finalRiskText}.`
+        : "Minimum broker volume would exceed the allowed risk.",
+      `Required risk: ${requiredRiskText}.`,
+      "Trade not sent."
+    ].join(" ");
+  }
+
+  if (typeof item?.reason === "object" || reasonText.trim().startsWith("{") || reasonText.trim().startsWith("[")) {
+    return "Safety check blocked trade. Trade not sent.";
+  }
+
+  if (reasonText.length > 140) {
+    return `${reasonText.slice(0, 137).trim()}...`;
+  }
+
+  return reasonText || "Waiting";
+}
+
+function formatAutoTradeDetailsPreview(item) {
+  const details = getAutoTradeDetails(item);
+  const lines = [];
+
+  if (details.entry_price ?? details.entry) {
+    lines.push(`Entry ${details.entry_price ?? details.entry}`);
+  }
+
+  if (details.sl_price ?? details.sl) {
+    lines.push(`SL ${details.sl_price ?? details.sl}`);
+  }
+
+  if (details.tp1 ?? details.tp_price) {
+    lines.push(`TP1 ${details.tp1 ?? details.tp_price}`);
+  }
+
+  if (details.tp2) {
+    lines.push(`TP2 ${details.tp2}`);
+  }
+
+  if (details.sl_distance_pips) {
+    lines.push(`SL distance ${details.sl_distance_pips} pips`);
+  }
+
+  if (details.broker_minimum_distance_pips) {
+    lines.push(`Broker min ${details.broker_minimum_distance_pips} pips`);
+  }
+
+  if (details.final_risk_percent) {
+    lines.push(`Rounded risk ${formatRiskPercent(details.final_risk_percent)}`);
+  }
+
+  return lines.slice(0, 6);
+}
+
+function formatBrokerMinDistanceDetails(item) {
+  const details = getAutoTradeDetails(item);
+  const lines = [];
+  const minDistance = details.broker_minimum_distance_pips;
+  const slDistance = details.sl_distance_pips;
+  const tp1Distance = details.tp1_distance_pips ?? details.tp_distance_pips;
+  const tp2Distance = details.tp2_distance_pips;
+  const failed = Array.isArray(details.failed_distance_fields)
+    ? details.failed_distance_fields.filter(Boolean).join(", ")
+    : details.failed_distance;
+
+  if (minDistance !== undefined && minDistance !== null) {
+    lines.push(`Minimum required: ${minDistance} pips`);
+  }
+
+  if (slDistance !== undefined && slDistance !== null) {
+    lines.push(`Current SL distance: ${slDistance} pips`);
+  }
+
+  if (tp1Distance !== undefined && tp1Distance !== null) {
+    lines.push(`Current TP1 distance: ${tp1Distance} pips`);
+  }
+
+  if (tp2Distance !== undefined && tp2Distance !== null) {
+    lines.push(`Current TP2 distance: ${tp2Distance} pips`);
+  }
+
+  if (failed) {
+    lines.push(`Failed: ${failed}`);
+  }
+
+  return lines.slice(0, 5);
+}
+
+function formatVolumeSafetyDetails(item) {
+  const details = getAutoTradeDetails(item);
+  const lines = [];
+
+  if (details.risk_percent !== undefined && details.risk_percent !== null) {
+    lines.push(`Risk: ${details.risk_percent}%`);
+  }
+
+  if (details.stop_loss_pips ?? details.sl_pips) {
+    lines.push(`SL pips: ${details.stop_loss_pips ?? details.sl_pips}`);
+  }
+
+  if (details.stop_loss_price_distance !== undefined && details.stop_loss_price_distance !== null) {
+    lines.push(`SL price distance: ${details.stop_loss_price_distance}`);
+  }
+
+  if (details.lot_size_before_rounding ?? details.calculated_lots ?? details.raw_lots) {
+    lines.push(`Lot before rounding: ${details.lot_size_before_rounding ?? details.calculated_lots ?? details.raw_lots}`);
+  }
+
+  if (details.lot_size_after_rounding ?? details.lot_size ?? details.rounded_lots) {
+    lines.push(`Lot after rounding: ${details.lot_size_after_rounding ?? details.lot_size ?? details.rounded_lots}`);
+  }
+
+  if (details.broker_min_volume ?? details.min_volume_units ?? details.minVolume) {
+    lines.push(`Broker min volume: ${details.broker_min_volume ?? details.min_volume_units ?? details.minVolume}`);
+  }
+
+  if (details.broker_max_volume ?? details.max_volume_units ?? details.maxVolume) {
+    lines.push(`Broker max volume: ${details.broker_max_volume ?? details.max_volume_units ?? details.maxVolume}`);
+  }
+
+  if (details.broker_volume_step ?? details.volume_step_units ?? details.stepVolume) {
+    lines.push(`Broker step: ${details.broker_volume_step ?? details.volume_step_units ?? details.stepVolume}`);
+  }
+
+  if (details.final_volume ?? details.volume_in_payload ?? details.volume_units) {
+    lines.push(`Final volume: ${details.final_volume ?? details.volume_in_payload ?? details.volume_units}`);
+  }
+
+  if (details.blocked_reason || details.broker_rejection_reason) {
+    lines.push(`Blocked: ${details.blocked_reason || details.broker_rejection_reason}`);
+  }
+
+  return lines.slice(0, 10);
+}
+
+function escapeLiveAutoStatusText(value) {
+  return String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
+function formatLiveAutoSymbolReason(symbol, status) {
+  const item = status || {};
+  const state = String(item.status || "WAIT").toUpperCase();
+  const signal = String(item.signal || item.action || "--").toUpperCase();
+  const rawReason = stringifyAutoTradeValue(item.reason);
+  const activeSide =
+    item.active_trade?.side ||
+    item.active_trade?.action ||
+    null;
+
+  if (state === "BLOCKED" || state === "ORDER_REJECTED") {
+    const lowerReason = rawReason.toLowerCase();
+    let blockedLabel = "safety check";
+
+    if (activeSide || lowerReason.includes("already running")) {
+      blockedLabel = "trade already running";
+    } else if (lowerReason.includes("volume") || lowerReason.includes("risk")) {
+      blockedLabel = "volume safety";
+    } else if (lowerReason.includes("minimum") || lowerReason.includes("distance")) {
+      blockedLabel = "broker min distance";
+    } else if (lowerReason.includes("stale") || lowerReason.includes("market data")) {
+      blockedLabel = "stale market data";
+    } else if (lowerReason.includes("cooldown")) {
+      blockedLabel = "cooldown active";
+    } else if (lowerReason.includes("broker") || lowerReason.includes("disconnect")) {
+      blockedLabel = "broker disconnected";
+    }
+
+    return escapeLiveAutoStatusText(
+      `${symbol}: NOT EXECUTED • ${blockedLabel}`
+    );
+  }
+
+  if (state === "WAIT" || state === "WAITING") {
+    if (signal === "BUY" || signal === "SELL") {
+      const shortWaitReason = rawReason
+        ? rawReason.replace(/^Blocked:\s*/i, "").slice(0, 80)
+        : "strategy not complete";
+
+      return escapeLiveAutoStatusText(
+        `${symbol}: NOT EXECUTED • ${shortWaitReason}`
+      );
+    }
+
+    return escapeLiveAutoStatusText(
+      `${symbol}: WAIT • No valid entry`
+    );
+  }
+
+  return escapeLiveAutoStatusText(
+    `${symbol}: ${state} • ${signal}`
+  );
+}
+
+function renderLiveAutoSymbolStatus() {
+  const el = ensureLiveAutoSymbolStatusEl();
+
+  if (!el) return;
+
+  el.classList.add("hidden");
+  el.style.setProperty("display", "none", "important");
+  el.innerHTML = "";
+}
+
+function renderAutoTradeStatus() {
+  const el = ensureAutoTradeStatusEl();
+
+  if (!el) return;
+
+  el.classList.remove("hidden");
+  el.classList.add("hidden");
+  el.style.setProperty("display", "none", "important");
+  el.textContent = "";
+  el.classList.remove("blocked", "sent");
+  renderLiveAutoSymbolStatus();
+}
+
+async function fetchAutoTradeStatus() {
+  try {
+    const res = await fetch(`${BASE_URL}/auto-trade-status`);
+
+    if (!res.ok) {
+      throw new Error(`HTTP ${res.status}`);
+    }
+
+    const status = await res.json();
+    autoTradeStatus = status;
+    liveAutoStatusBySymbol =
+      status?.live_auto_status_by_symbol || liveAutoStatusBySymbol || {};
+    renderAutoTradeStatus();
+  } catch (err) {
+    console.warn("AUTO TRADE STATUS ERROR:", err);
+  }
+}
+
+async function fetchMarketDataSourceStatus() {
+  try {
+    const res = await fetch(`${BASE_URL}/market-data-source`);
+
+    if (!res.ok) {
+      throw new Error(`HTTP ${res.status}`);
+    }
+
+    marketDataSourceStatus = await res.json();
+    renderMarketDataSourceStatus();
+  } catch (err) {
+    console.warn("MARKET DATA SOURCE STATUS ERROR:", err);
+  }
+}
+
+function applyCtraderStatus(status) {
+  if (!status || typeof status !== "object") return;
+
+  liveConnectionState.connected = Boolean(status.connected);
+  liveConnectionState.reason = status.reason || "";
+  liveConnectionState.account_id = status.account_id || null;
+  liveConnectionState.live_positions_count =
+    Number(status.live_positions_count || 0);
+  liveConnectionState.last_success = status.last_success || null;
+  liveConnectionState.last_error = status.last_error || null;
+
+  if (!liveConnectionState.connected) {
+    liveAutoEnabled = false;
+    activeLiveOrders = {
+      EURUSD: null,
+      XAUUSD: null
+    };
+    clearTradeLines("EURUSD");
+    clearTradeLines("XAUUSD");
+  }
+
+  updateLiveToggleUI();
+  renderAutoTradeStatus();
+}
+
+async function fetchCtraderStatus() {
+  try {
+    const res = await fetch(`${BASE_URL}/ctrader-status`, {
+      method: "GET",
+      cache: "no-store"
+    });
+
+    if (res.status === 404) {
+      return null;
+    }
+
+    if (!res.ok) {
+      throw new Error(`HTTP ${res.status}`);
+    }
+
+    const status = await res.json();
+    applyCtraderStatus(status);
+    return status;
+  } catch (err) {
+    console.warn("CTRADER STATUS ERROR:", err);
+    return null;
+  }
+}
+
+async function closeLiveTrade(symbol) {
+  try {
+    const res = await fetch(
+      `${BASE_URL}/close-live-trade`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ symbol })
+      }
+    );
+
+    const result = await res.json();
+
+    if (!result.ok) {
+      setStatus(
+        `● CLOSE BLOCKED • ${result.reason || result.message || "no active trade"}`,
+        "error"
+      );
+      return;
+    }
+
+    setStatus(
+      `● LIVE CLOSED • ${result.symbol || symbol}`,
+      "live"
+    );
+
+    await refreshPanel();
+  } catch (err) {
+    console.error("CLOSE LIVE TRADE ERROR:", err);
+    setStatus(
+      `● CLOSE ERROR • ${err.message}`,
+      "error"
+    );
+  }
 }
 
 async function refreshPanel() {
@@ -2412,8 +3140,13 @@ latestPanelData = data;
 
 const meta = rawData?._meta || {};
 
-if (meta.execution_mode) {
-  executionMode = meta.execution_mode;
+if (typeof meta.paper_auto_enabled === "boolean") {
+  paperAutoEnabled = meta.paper_auto_enabled;
+  localStorage.setItem(
+    "paper_auto_enabled",
+    paperAutoEnabled ? "true" : "false"
+  );
+  updatePaperToggleUI();
 }
 
 if (typeof meta.live_auto_enabled === "boolean") {
@@ -2426,7 +3159,7 @@ if (meta.live_account) {
     Boolean(meta.live_account.connected);
 
   liveConnectionState.mode =
-    meta.live_account.mode || "demo";
+    meta.live_account.mode || "broker";
 
   activeLiveOrders =
   meta.live_active_orders || {
@@ -2439,28 +3172,73 @@ if (meta.live_account) {
       ? meta.live_trade_history
       : [];
 
+  if (meta.live_trade_stats) {
+    liveTradeStats = {
+      ...liveTradeStats,
+      ...meta.live_trade_stats
+    };
+  }
+
+  if (meta.auto_trade_status) {
+    autoTradeStatus = meta.auto_trade_status;
+    liveAutoStatusBySymbol =
+      meta.live_auto_status_by_symbol || liveAutoStatusBySymbol || {};
+    renderAutoTradeStatus();
+  }
+
+  if (meta.live_prices) {
+    livePrices = meta.live_prices;
+  }
+
+  if (meta.live_price_health) {
+    marketDataSourceStatus = {
+      ...(marketDataSourceStatus || {}),
+      live_price_health: meta.live_price_health,
+      live_price_last_update: meta.live_price_last_update
+    };
+    renderMarketDataSourceStatus();
+  }
+
   renderLiveHistory();
   renderLiveActiveOrders(); 
 
   updateLiveToggleUI();
 }
 
+const ctraderStatus = await fetchCtraderStatus();
+
+if (ctraderStatus && !ctraderStatus.connected) {
+  liveAutoEnabled = false;
+}
+
+if (paperModal && !paperModal.classList.contains("hidden")) {
+  fetchMarketDataSourceStatus();
+  fetchAutoTradeStatus();
+}
+
 updateCard("EURUSD", data.EURUSD);
 updateCard("GOLD", data.GOLD);
-maybeExecuteLiveOrder("EURUSD", data.EURUSD);
-maybeExecuteLiveOrder("GOLD", data.GOLD);
 
 updateMainPanel(currentChartSymbol);
    renderHistory(rawData?.history || []);
-  updatePaperPanel(
+updatePaperPanel(
   rawData?.paper_trades || {},
-  rawData?.paper_trade_history || []
+  rawData?.paper_trade_history || [],
+  rawData?.paper_trade_stats || {}
 );
 
 updateLivePanel(
   meta.live_active_orders || {},
-  meta.live_trade_history || []
+  meta.live_trade_history || [],
+  meta.live_trade_stats || null
 );
+
+if (meta.auto_trade_status) {
+  autoTradeStatus = meta.auto_trade_status;
+  liveAutoStatusBySymbol =
+    meta.live_auto_status_by_symbol || liveAutoStatusBySymbol || {};
+  renderAutoTradeStatus();
+}
 
 const chartCandles =
   rawData?.candles?.[currentChartSymbol]?.[currentChartTimeframe] || [];
@@ -2534,6 +3312,9 @@ function openPaperPanel() {
 
   paperModal.classList.remove("hidden");
   updateExecutionPageUI();
+  fetchCtraderStatus();
+  fetchMarketDataSourceStatus();
+  fetchAutoTradeStatus();
 
   document.documentElement.classList.add("paper-open");
   document.body.classList.add("paper-open");
@@ -2596,7 +3377,10 @@ if (paperBox) {
 function updatePaperToggleUI() {
   if (!paperAutoToggleBtn) return;
 
-  paperAutoToggleBtn.textContent = paperAutoEnabled ? "ON" : "OFF";
+  paperAutoToggleBtn.textContent =
+    paperAutoEnabled
+      ? "Paper Auto: ON"
+      : "Paper Auto: OFF";
 
   paperAutoToggleBtn.style.background =
   paperAutoEnabled
@@ -2654,381 +3438,131 @@ if (paperAutoToggleBtn) {
   });
 }
 
+let pendingLiveAutoState = null;
+
+function hideLiveAutoConfirm() {
+  pendingLiveAutoState = null;
+
+  if (!liveAutoConfirmOverlay) return;
+
+  liveAutoConfirmOverlay.classList.add("hidden");
+}
+
+function showLiveAutoConfirm(nextEnabled) {
+  pendingLiveAutoState = Boolean(nextEnabled);
+
+  if (!liveAutoConfirmOverlay || !liveAutoConfirmMessage || !liveAutoConfirmOk) {
+    applyLiveAutoToggle(pendingLiveAutoState);
+    return;
+  }
+
+  liveAutoConfirmMessage.textContent = pendingLiveAutoState
+    ? "FlowSignal will place trades on your connected broker account. Continue?"
+    : "Turn Live Auto OFF?";
+
+  liveAutoConfirmOk.classList.toggle("confirm-on", pendingLiveAutoState);
+  liveAutoConfirmOk.classList.toggle("confirm-off", !pendingLiveAutoState);
+  liveAutoConfirmOverlay.classList.remove("hidden");
+  liveAutoConfirmOk.focus();
+}
+
+async function applyLiveAutoToggle(nextEnabled) {
+  liveAutoEnabled = Boolean(nextEnabled);
+
+  try {
+    const response = await fetch(
+      `${BASE_URL}/live-auto-toggle`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type":
+            "application/json"
+        },
+        body: JSON.stringify({
+          enabled: liveAutoEnabled
+        })
+      }
+    );
+
+    const result = await response.json();
+    liveAutoEnabled = Boolean(result.enabled);
+
+    if (!result.enabled && result.message) {
+      setStatus(
+        `● LIVE AUTO BLOCKED • ${result.message}`,
+        "error"
+      );
+    }
+
+  } catch (err) {
+
+    liveAutoEnabled = false;
+
+    console.error(
+      "LIVE toggle error:",
+      err
+    );
+  }
+
+  updateLiveToggleUI();
+  refreshPanel();
+}
+
 if (liveAutoToggleBtn) {
 
   liveAutoToggleBtn.addEventListener(
     "click",
-    async () => {
+    () => {
 
-      // BLOCK if not connected
       if (!liveConnectionState.connected) {
         liveAutoEnabled = false;
         updateLiveToggleUI();
         setStatus(
-          "● LIVE AUTO BLOCKED • connect sim or live first",
+          "● LIVE AUTO BLOCKED • broker disconnected",
           "error"
         );
         return;
       }
 
-      liveAutoEnabled =
-        !liveAutoEnabled;
-
-      try {
-
-        const response = await fetch(
-          `${BASE_URL}/live-auto-toggle`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type":
-                "application/json"
-            },
-            body: JSON.stringify({
-              enabled: liveAutoEnabled
-            })
-          }
-        );
-
-        const result = await response.json();
-        liveAutoEnabled = Boolean(result.enabled);
-
-        if (!result.enabled && result.message) {
-          setStatus(
-            `● LIVE AUTO BLOCKED • ${result.message}`,
-            "error"
-          );
-        }
-
-      } catch (err) {
-
-        liveAutoEnabled = false;
-
-        console.error(
-          "LIVE toggle error:",
-          err
-        );
-      }
-
-      updateLiveToggleUI();
-      refreshPanel();
+      const nextEnabled = !liveAutoEnabled;
+      showLiveAutoConfirm(nextEnabled);
     }
   );
 
 }
 
-connectDemoBtn?.addEventListener(
-  "click",
-  async () => {
+if (liveAutoConfirmCancel) {
+  liveAutoConfirmCancel.addEventListener("click", hideLiveAutoConfirm);
+}
 
-    try {
+if (liveAutoConfirmOk) {
+  liveAutoConfirmOk.addEventListener("click", async () => {
+    const nextEnabled = pendingLiveAutoState;
+    hideLiveAutoConfirm();
 
-      const res = await fetch(
-        `${BASE_URL}/connect-ctrader`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type":
-              "application/json"
-          },
-          body: JSON.stringify({
-            mode: "demo"
-          })
-        }
-      );
+    if (nextEnabled === null) return;
 
-      const result = await res.json();
+    await applyLiveAutoToggle(nextEnabled);
+  });
+}
 
-      if (result.ok) {
-
-        liveConnectionState.connected =
-          true;
-
-        liveConnectionState.mode =
-          "demo";
-
-        updateLiveToggleUI();
-
-        refreshPanel();
-      }
-
-    } catch (err) {
-
-      console.error(
-        "DEMO CONNECT ERROR:",
-        err
-      );
+if (liveAutoConfirmOverlay) {
+  liveAutoConfirmOverlay.addEventListener("click", (event) => {
+    if (event.target === liveAutoConfirmOverlay) {
+      hideLiveAutoConfirm();
     }
-  }
-);
+  });
+}
 
-connectLiveBtn?.addEventListener(
-  "click",
-  async () => {
-
-    const confirmLive = confirm(
-      "Connect REAL LIVE account?"
-    );
-
-    if (!confirmLive) return;
-
-    try {
-
-      const res = await fetch(
-        `${BASE_URL}/connect-ctrader`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type":
-              "application/json"
-          },
-          body: JSON.stringify({
-            mode: "live"
-          })
-        }
-      );
-
-      const result = await res.json();
-
-      if (result.ok) {
-
-        liveConnectionState.connected =
-          true;
-
-        liveConnectionState.mode =
-          "live";
-
-        updateLiveToggleUI();
-
-        refreshPanel();
-      }
-
-    } catch (err) {
-
-      console.error(
-        "LIVE CONNECT ERROR:",
-        err
-      );
-    }
-  }
-);
-
-disconnectLiveBtn?.addEventListener(
-  "click",
-  async () => {
-
-    try {
-
-      await fetch(
-        `${BASE_URL}/disconnect-ctrader`,
-        {
-          method: "POST"
-        }
-      );
-
-      liveAutoEnabled = false;
-      activeLiveOrders = {
-        EURUSD: null,
-        GOLD: null
-      };
-
-      liveConnectionState.connected =
-        false;
-
-      liveConnectionState.mode =
-        "demo";
-
-      updateLiveToggleUI();
-
-      refreshPanel();
-
-    } catch (err) {
-
-      console.error(
-        "DISCONNECT ERROR:",
-        err
-      );
-    }
-  }
-);
-
-const isDevHost =
-  ["localhost", "127.0.0.1"].includes(
-    window.location.hostname
-  );
-
-[
-  testLiveOrderBtn,
-  mockBrokerPositionBtn,
-  clearBrokerPositionBtn
-].forEach((btn) => {
-  if (btn && isDevHost) {
-    btn.style.display = "inline-flex";
+document.addEventListener("keydown", (event) => {
+  if (
+    event.key === "Escape" &&
+    liveAutoConfirmOverlay &&
+    !liveAutoConfirmOverlay.classList.contains("hidden")
+  ) {
+    hideLiveAutoConfirm();
   }
 });
-
-if (testLiveOrderBtn) {
-
-  testLiveOrderBtn.addEventListener(
-    "click",
-    async () => {
-      if (!isDevHost) return;
-
-      try {
-        if (!liveConnectionState.connected) {
-          setStatus(
-            "● TEST LIVE ORDER BLOCKED • connect sim or live first",
-            "error"
-          );
-          return;
-        }
-
-        if (!liveAutoEnabled) {
-          const toggleRes = await fetch(
-            `${BASE_URL}/live-auto-toggle`,
-            {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json"
-              },
-              body: JSON.stringify({
-                enabled: true
-              })
-            }
-          );
-
-          const toggleResult =
-            await toggleRes.json();
-
-          liveAutoEnabled =
-            Boolean(toggleResult.enabled);
-
-          if (!liveAutoEnabled) {
-            setStatus(
-              `● TEST LIVE ORDER BLOCKED • ${toggleResult.message || "live auto unavailable"}`,
-              "error"
-            );
-            updateLiveToggleUI();
-            return;
-          }
-
-          updateLiveToggleUI();
-        }
-
-        const res = await fetch(
-          `${BASE_URL}/execute-live-order`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json"
-            },
-            body: JSON.stringify({
-              symbol: "EURUSD",
-              side: "BUY"
-            })
-          }
-        );
-
-        const result = await res.json();
-
-        if (!result.ok) {
-          setStatus(
-            `● TEST LIVE ORDER BLOCKED • ${result.message || "check live mode"}`,
-            "error"
-          );
-        }
-
-        await refreshPanel();
-      } catch (err) {
-        console.error(
-          "TEST LIVE ORDER ERROR:",
-          err
-        );
-
-        setStatus(
-          `● TEST LIVE ORDER ERROR • ${err.message}`,
-          "error"
-        );
-      }
-    }
-  );
-}
-
-async function setDebugBrokerPositions(positions) {
-  const payload = {
-    positions
-  };
-
-  console.log(
-    "DEBUG BROKER POSITIONS PAYLOAD:",
-    payload
-  );
-
-  const res = await fetch(
-    `${BASE_URL}/debug/set-broker-positions`,
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify(payload)
-    }
-  );
-
-  const result = await res.json();
-
-  if (!result.ok) {
-    setStatus(
-      `● BROKER MOCK ERROR • ${result.message || "debug endpoint blocked"}`,
-      "error"
-    );
-    return;
-  }
-
-  await refreshPanel();
-}
-
-mockBrokerPositionBtn?.addEventListener(
-  "click",
-  async () => {
-    if (!isDevHost) return;
-
-    try {
-      await setDebugBrokerPositions([
-        {
-          position_id: "mock-eurusd-001",
-          symbol: "EURUSD",
-          side: "BUY",
-          volume: 1000,
-          entry: 1.16191
-        }
-      ]);
-    } catch (err) {
-      console.error("MOCK BROKER POSITION ERROR:", err);
-      setStatus(
-        `● BROKER MOCK ERROR • ${err.message}`,
-        "error"
-      );
-    }
-  }
-);
-
-clearBrokerPositionBtn?.addEventListener(
-  "click",
-  async () => {
-    if (!isDevHost) return;
-
-    try {
-      await setDebugBrokerPositions([]);
-    } catch (err) {
-      console.error("CLEAR BROKER POSITION ERROR:", err);
-      setStatus(
-        `● BROKER CLEAR ERROR • ${err.message}`,
-        "error"
-      );
-    }
-  }
-);
 
 updatePaperToggleUI();
 updateLiveToggleUI();
@@ -3056,72 +3590,6 @@ if (tradeModal) {
   });
 }
 
-async function setExecutionMode(mode) {
-
-  try {
-
-    const response = await fetch(
-      `${BASE_URL}/execution-mode`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          mode
-        })
-      }
-    );
-
-    const result = await response.json();
-
-    if (!result.ok) {
-      console.error("Execution mode failed");
-      return;
-    }
-
-    executionMode = result.mode;
-
-    updateExecutionModeUI();
-
-    console.log(
-      "Execution mode:",
-      executionMode
-    );
-
-  } catch (err) {
-
-    console.error(
-      "Execution mode error:",
-      err
-    );
-
-  }
-
-}
-
-function updateExecutionModeUI() {
-
-  if (!paperModeBtn || !liveModeBtn) {
-    return;
-  }
-
-  paperModeBtn.classList.remove("active");
-  liveModeBtn.classList.remove("active");
-
-  if (executionMode === "paper") {
-
-    paperModeBtn.classList.add("active");
-
-  } else if (
-    executionMode === "live"
-  ) {
-
-    liveModeBtn.classList.add("active");
-  }
-
-}
-
 function getLiveSourceBadge(trade) {
   const source =
     String(trade?.source || "").toLowerCase();
@@ -3133,58 +3601,416 @@ function getLiveSourceBadge(trade) {
   return "LIVE";
 }
 
+function formatLiveNumber(value, digits = 2) {
+  const number = Number(value);
+
+  if (!Number.isFinite(number)) return "--";
+
+  const displayNumber = number >= 1000
+    ? number / (100000 * 100)
+    : number;
+
+  return displayNumber.toFixed(digits);
+}
+
+function formatLiveMoney(value) {
+  const number = Number(value);
+
+  if (!Number.isFinite(number)) return "--";
+
+  if (number > 0) return `+$${number.toFixed(2)}`;
+  if (number < 0) return `-$${Math.abs(number).toFixed(2)}`;
+
+  return "$0.00";
+}
+
+function getLiveTradePnl(trade) {
+  const candidates = [
+    trade?.floating_pl,
+    trade?.floating_pnl,
+    trade?.broker_pnl,
+    trade?.pnl,
+    trade?.profit,
+    trade?.floatingProfit,
+    trade?.floatingPnl,
+    trade?.result?.pnl,
+    trade?.result?.profit,
+    trade?.result?.netProfit
+  ];
+
+  for (const value of candidates) {
+    const number = Number(value);
+
+    if (Number.isFinite(number)) return number;
+  }
+
+  return null;
+}
+
+function getLiveTradeId(trade) {
+  return (
+    trade?.trade_id ||
+    trade?.broker_position_id ||
+    trade?.position_id ||
+    trade?.broker_order_id ||
+    trade?.order_id ||
+    "--"
+  );
+}
+
+function getLiveTradeMatchId(trade) {
+  const positionId = trade?.broker_position_id || trade?.position_id;
+
+  if (positionId) return `position:${positionId}`;
+
+  const orderId = trade?.broker_order_id || trade?.order_id;
+
+  if (orderId) return `order:${orderId}`;
+
+  if (trade?.trade_id) return `trade:${trade.trade_id}`;
+
+  return "";
+}
+
+function getLiveTradeResult(trade) {
+  if (hasConfirmedProfitProtection(trade) && String(trade?.status || "").toUpperCase() === "CLOSED") {
+    return "WIN";
+  }
+
+  const result =
+    typeof trade?.result === "string"
+      ? trade.result
+      : trade?.result?.result || trade?.result?.status;
+
+  return String(result || trade?.status || "TRACKED").toUpperCase();
+}
+
+function formatLiveTime(value) {
+  const time = value || Date.now();
+  return new Date(time * (time < 10000000000 ? 1000 : 1)).toLocaleTimeString();
+}
+
+function renderLiveStatsRow() {
+  const stats = calculateLiveDisplayStats();
+
+  return `
+    <div class="live-stats-row live-paper-match-stats">
+      <span class="live-win-stat"><strong>${stats.wins ?? 0}</strong><small>Wins</small></span>
+      <span class="live-loss-stat"><strong>${stats.losses ?? 0}</strong><small>Losses</small></span>
+      <span class="live-running-stat"><strong>${stats.running ?? 0}</strong><small>Running</small></span>
+      <span class="live-total-stat"><strong>${stats.total ?? 0}</strong><small>Total</small></span>
+    </div>
+  `;
+}
+
+function getLiveSymbolCardStatus(symbol, trade) {
+  if (trade) {
+    const result = getTradeDisplayResult(trade);
+    const side = trade.side || trade.action || "";
+
+    return {
+      signal: side || "--",
+      liveAuto: result === "TP1 HIT" ? "EXECUTED • TP1 HIT" : "EXECUTED",
+      reason: "live trade open"
+    };
+  }
+
+  return null;
+}
+
+function getLiveSymbolCardStatusClass(statusInfo) {
+  const value = String(statusInfo?.liveAuto || statusInfo || "").toUpperCase();
+
+  if (value.includes("BLOCKED")) return "blocked";
+  if (value.includes("BROKER CLOSED")) return "closed";
+  if (value.includes("EXECUTED") || value.includes("TP1")) return "running";
+
+  return "";
+}
+
+function getLiveSymbolSignal(item) {
+  const signal = String(item?.signal || item?.action || "WAIT").toUpperCase();
+
+  return ["BUY", "SELL"].includes(signal) ? signal : "WAIT";
+}
+
+function getShortMissedTradeReason(item) {
+  const signal = getLiveSymbolSignal(item);
+  const reason = stringifyAutoTradeValue(item?.reason).toLowerCase();
+  const details = getAutoTradeDetails(item);
+  const failedDistanceFields = Array.isArray(details.failed_distance_fields)
+    ? details.failed_distance_fields.filter(Boolean)
+    : [];
+  const distanceDebug = details.broker_min_distance_debug || {};
+  const distanceActuallyFailed =
+    Boolean(details.should_block_for_distance) ||
+    Boolean(distanceDebug.blocked) ||
+    failedDistanceFields.length > 0 ||
+    Boolean(details.failed_distance) ||
+    reason.includes("minimum distance") ||
+    reason.includes("min distance") ||
+    reason.includes("adjusted broker distances would make trade invalid");
+
+  if (signal === "WAIT") return "no BUY/SELL signal";
+
+  if (reason.includes("already running") || reason.includes("already active")) {
+    return "trade already running";
+  }
+
+  if (
+    reason.includes("stale")
+    || reason.includes("market data")
+    || reason.includes("data unhealthy")
+  ) {
+    return "stale data";
+  }
+
+  if (distanceActuallyFailed) {
+    return "broker min distance";
+  }
+
+  if (
+    reason.includes("volume")
+    || reason.includes("risk sizing")
+    || reason.includes("broker minimum")
+    || details.final_risk_percent
+  ) {
+    return "volume safety";
+  }
+
+  if (reason.includes("cooldown")) return "cooldown";
+  if (reason.includes("disconnected")) return "broker disconnected";
+  if (reason.includes("off")) return "live auto off";
+
+  return "no valid entry";
+}
+
+function getRecentClosedLiveStatusForSymbol(symbol) {
+  const executionSymbol = String(symbol || "").toUpperCase();
+  const trade = (liveTradeHistory || []).find((item) => {
+    const itemSymbol = String(item?.symbol || "").toUpperCase();
+
+    return itemSymbol === executionSymbol && !isLiveTradeActiveForDisplay(item);
+  });
+
+  if (!trade) return "";
+
+  const result = getLiveTradeResult(trade);
+
+  if (result === "BROKER_CLOSED") return "BROKER CLOSED";
+  if (result === "STALE_CLOSED") return "STALE CLOSED";
+  if (result === "PROTECTED_WIN") return "PROTECTED WIN";
+  if (result === "MANUAL_CLOSE") return "MANUAL CLOSE";
+  if (["WIN", "LOSS", "BE", "CLOSED"].includes(result)) return result;
+
+  return "";
+}
+
+function isLiveTradeActiveForDisplay(trade) {
+  const status = getLiveTradeResult(trade);
+  const closedStatuses = [
+    "WIN",
+    "LOSS",
+    "BE",
+    "PROTECTED_WIN",
+    "BROKER_CLOSED",
+    "CLOSED",
+    "STALE_CLOSED",
+    "DISCONNECTED",
+    "MANUAL_CLOSE"
+  ];
+
+  if (closedStatuses.includes(status)) return false;
+
+  return ["RUNNING", "OPEN", "TP1 HIT"].includes(status);
+}
+
+function hasRealLiveBrokerId(trade) {
+  return Boolean(
+    trade?.position_id ||
+    trade?.broker_position_id ||
+    trade?.broker_order_id ||
+    trade?.order_id
+  );
+}
+
+function getLiveTradeAcceptedStatus(trade) {
+  const status = getLiveTradeResult(trade);
+
+  if (["RUNNING", "OPEN", "TP1 HIT"].includes(status)) return "RUNNING";
+  if (["WIN", "LOSS", "PROTECTED_WIN", "BROKER_CLOSED", "DISCONNECTED"].includes(status)) return status;
+
+  return "";
+}
+
+function getTradeTimestampMs(trade) {
+  const raw =
+    trade?.closed_at ||
+    trade?.opened_at ||
+    trade?.time ||
+    trade?.timestamp;
+  const value = Number(raw);
+
+  if (!Number.isFinite(value) || value <= 0) return 0;
+
+  return value < 10000000000 ? value * 1000 : value;
+}
+
+function isCurrentWeekTrade(trade) {
+  const now = new Date();
+  const start = new Date(now);
+  const day = start.getDay();
+  const mondayOffset = day === 0 ? -6 : 1 - day;
+
+  start.setDate(start.getDate() + mondayOffset);
+  start.setHours(0, 0, 0, 0);
+
+  return getTradeTimestampMs(trade) >= start.getTime();
+}
+
+function calculateLiveDisplayStats() {
+  const activeTrades = Object.values(activeLiveOrders || {})
+    .filter((trade) => (
+      trade &&
+      String(trade.source || "broker").toLowerCase() === "broker" &&
+      hasRealLiveBrokerId(trade) &&
+      getLiveTradeAcceptedStatus(trade) === "RUNNING"
+    ));
+  const activeIds = new Set(
+    activeTrades.map((trade) => String(getLiveTradeMatchId(trade))).filter(Boolean)
+  );
+  const closedTrades = Array.isArray(liveTradeHistory)
+    ? liveTradeHistory.filter((trade) => (
+        trade &&
+        String(trade.source || "broker").toLowerCase() === "broker" &&
+        hasRealLiveBrokerId(trade) &&
+        isCurrentWeekTrade(trade) &&
+        !activeIds.has(String(getLiveTradeMatchId(trade))) &&
+        ["WIN", "LOSS", "PROTECTED_WIN", "BROKER_CLOSED", "DISCONNECTED"].includes(getLiveTradeAcceptedStatus(trade))
+      ))
+    : [];
+  const unique = new Map();
+
+  activeTrades.filter(isCurrentWeekTrade).forEach((trade) => {
+    const key = trade.position_id || trade.broker_position_id || trade.broker_order_id || trade.order_id;
+    unique.set(String(key), trade);
+  });
+
+  closedTrades.forEach((trade) => {
+    const status = getLiveTradeResult(trade);
+
+    if (["WIN", "LOSS", "PROTECTED_WIN", "BROKER_CLOSED", "DISCONNECTED"].includes(status)) {
+      const key = trade.position_id || trade.broker_position_id || trade.broker_order_id || trade.order_id;
+      unique.set(String(key), trade);
+    }
+  });
+
+  return {
+    wins: closedTrades.filter((trade) => {
+      const status = getLiveTradeAcceptedStatus(trade);
+      const pnl = getLiveTradePnl(trade);
+
+      return ["WIN", "PROTECTED_WIN"].includes(status) || (["BROKER_CLOSED", "DISCONNECTED"].includes(status) && pnl > 0);
+    }).length,
+    losses: closedTrades.filter((trade) => {
+      const status = getLiveTradeAcceptedStatus(trade);
+      const pnl = getLiveTradePnl(trade);
+
+      return status === "LOSS" || (["BROKER_CLOSED", "DISCONNECTED"].includes(status) && pnl < 0);
+    }).length,
+    running: activeTrades.length,
+    total: unique.size,
+  };
+}
+
 function renderLiveHistory() {
 
   if (!liveHistoryList) return;
+  const activeIds = new Set(
+    Object.values(activeLiveOrders || {})
+      .filter((trade) => trade && isLiveTradeActiveForDisplay(trade))
+      .map((trade) => String(getLiveTradeMatchId(trade)))
+  );
 
   const history =
     Array.isArray(liveTradeHistory)
-      ? liveTradeHistory
+      ? liveTradeHistory.filter((trade) => {
+          const source = String(trade?.source || "broker").toLowerCase();
+          return (
+            source === "broker" &&
+            !isLiveTradeActiveForDisplay(trade) &&
+            !activeIds.has(String(getLiveTradeMatchId(trade)))
+          );
+        })
       : [];
 
   if (!history.length) {
     liveHistoryList.innerHTML =
-      `<div class="live-empty">
-        <div class="live-empty-title">No recent live trades</div>
-        <div class="live-empty-subtitle">
-          Connect broker mode and enable LIVE auto when ready.
+      `<div class="live-paper-section">
+        <div class="live-active-title">RECENT LIVE TRADES</div>
+        <div class="live-empty">
+          <div class="live-empty-title">No recent live trades</div>
+          <div class="live-empty-subtitle">
+            Closed live trades will appear here.
+          </div>
         </div>
       </div>`;
     return;
   }
 
   liveHistoryList.innerHTML =
-    history.map((trade) => {
-      const result =
-        typeof trade.result === "string"
-          ? trade.result
-          : trade.result?.status || "TRACKED";
-
+    `<div class="live-paper-section">
+      <div class="live-active-title">RECENT LIVE TRADES</div>
+      <div class="live-recent-scroll">
+        ${history.map((trade) => {
       const time =
         trade.closed_at ||
         trade.opened_at ||
         trade.time ||
         Date.now();
-      const sourceBadge = getLiveSourceBadge(trade);
+      const result = getLiveTradeResult(trade);
+      const pnl = getLiveTradePnl(trade);
+      const pnlClass = pnl > 0 ? "positive" : pnl < 0 ? "negative" : "";
+      const protectionLabel = getProfitProtectionLabel(trade);
+      const protectionWarning = getSlProtectionWarning(trade);
+      const originalSl = trade.original_sl ?? trade.initial_sl ?? trade.sl ?? "--";
+      const currentSl = trade.sl ?? "--";
+      const tp1 = trade.tp1 ?? "--";
+      const tp2 = trade.tp2 ?? trade.tp ?? "--";
+      const entry = trade.entry ?? "--";
+      const tradeId = getLiveTradeId(trade);
+      const brokerOrderId = trade.broker_order_id || trade.position_id || "--";
+      const currentPrice = trade.current_price ?? trade.currentPrice ?? "--";
+      const pips = trade.pips ?? "--";
+      const reason = trade.exit_reason || trade.note || trade.reason || "--";
+      const sideColor = String(trade.side || "").toUpperCase() === "SELL" ? "#ef4444" : "#22c55e";
+      const badgeColor = result === "WIN" || result === "PROTECTED_WIN" ? "#22c55e" : result === "LOSS" ? "#ef4444" : result === "BROKER_CLOSED" ? "#94a3b8" : "#60a5fa";
 
       return `
-        <div class="trade-history-item">
-          <div>
-            <strong>${DISPLAY_NAMES[trade.symbol] || trade.symbol}</strong>
-            <div style="font-size:11px;color:#7f8faa;">
-              ${trade.side || "-"} • ${result}
-            </div>
-          </div>
+        <details style="margin-bottom:4px;border-radius:11px;background:rgba(30,41,59,.70);border:1px solid rgba(148,163,184,.16);overflow:hidden;">
+          <summary style="list-style:none;cursor:pointer;padding:5px 8px;display:grid;grid-template-columns:1fr auto auto auto;gap:5px;align-items:center;font-weight:900;color:#f8fafc;">
+            <span style="font-size:12px;">${DISPLAY_NAMES[trade.symbol] || trade.symbol}</span>
+            <span style="color:${sideColor};background:${sideColor}22;padding:2px 6px;border-radius:7px;font-size:9px;">${trade.side || "-"}</span>
+            <span style="color:${badgeColor};background:${badgeColor}22;padding:2px 6px;border-radius:7px;font-size:9px;">${result}</span>
+            <span class="live-pnl ${pnlClass}" style="font-size:10px;">${pnl === null ? "$0.00" : formatLiveMoney(pnl)}</span>
+          </summary>
 
-          <div class="live-meta-stack">
-            <span class="live-source-badge">${sourceBadge}</span>
-            <span>
-              ${new Date(time * (time < 10000000000 ? 1000 : 1)).toLocaleTimeString()}
-            </span>
+          <div style="padding:0 8px 7px;color:#cbd5e1;font-size:10px;line-height:1.35;">
+            ${protectionLabel ? `<div class="live-side" style="color:#86efac;">${protectionLabel}</div>` : ""}
+            ${protectionWarning ? `<div class="live-side" style="color:#fbbf24;">${protectionWarning}</div>` : ""}
+            Trade ID: <b>${tradeId}</b><br>
+            Entry: <b>${entry}</b><br>
+            Current: <b>${currentPrice}</b> • Pips: <b>${pips}</b> • P/L: <b>${pnl === null ? "$0.00" : formatLiveMoney(pnl)}</b><br>
+            Original SL: <b>${originalSl}</b> • Current SL: <b>${currentSl}</b><br>
+            TP1: <b>${tp1}</b> • TP2: <b>${tp2}</b> • Result: <b>${result}</b><br>
+            Reason: <b>${reason}</b><br>
+            Order: <b>${brokerOrderId}</b> • Time: <b>${formatLiveTime(time)}</b>
           </div>
-        </div>
+        </details>
       `;
-    }).join("");
+    }).join("")}
+      </div>
+    </div>`;
 }
 
 function renderLiveActiveOrders() {
@@ -3194,45 +4020,168 @@ function renderLiveActiveOrders() {
   liveActiveList.innerHTML = "";
 
   const entries = Object.entries(activeLiveOrders || {})
-    .filter(([_, trade]) => trade);
+    .filter(([_, trade]) => {
+      const source = String(trade?.source || "broker").toLowerCase();
+      return trade && source === "broker" && isLiveTradeActiveForDisplay(trade);
+    });
+  const tradesBySymbol = Object.fromEntries(entries);
+  const symbols = ["EURUSD", "XAUUSD"];
 
-  if (!entries.length) {
-    liveActiveList.innerHTML =
-      `<div class="live-empty">
-        <div class="live-empty-title">No active live trades</div>
-        <div class="live-empty-subtitle">
-          FlowSignal will track one live order per symbol.
-        </div>
-      </div>`;
-    return;
+  function getLatestSignalForLiveSymbol(symbol) {
+    if (!latestPanelData) return null;
+
+    return symbol === "XAUUSD"
+      ? latestPanelData.GOLD
+      : latestPanelData[symbol];
   }
 
-  entries.forEach(([symbol, trade]) => {
+  function hasCurrentBlockedLiveSignal(symbol, autoStatus) {
+    const signalData = getLatestSignalForLiveSymbol(symbol) || {};
+    const finalSignal = String(signalData.signal || "").toUpperCase();
+    const signalBeforeFilters = String(signalData.signal_before_filters || "").toUpperCase();
+    const blockedBy = String(signalData.blocked_by || "").toUpperCase();
+    const statusSignal = String(autoStatus?.signal || autoStatus?.action || "").toUpperCase();
+    const reasonText = String(autoStatus?.reason || signalData.blocked_reason || "").toLowerCase();
+    const isSameSymbolDuplicateBlock =
+      reasonText.includes("already running") ||
+      reasonText.includes("already active") ||
+      reasonText.includes("active trade already exists") ||
+      reasonText.includes("broker already has open position") ||
+      reasonText.includes("broker position already exists") ||
+      reasonText.includes("order already being sent") ||
+      blockedBy.includes("DUPLICATE");
+    const hasCurrentBlocker =
+      isSameSymbolDuplicateBlock &&
+      blockedBy &&
+      blockedBy !== "MISSING_15M_SETUP" &&
+      blockedBy !== "STRUCTURE_WAIT";
+
+    return (
+      (
+        (signalBeforeFilters === "BUY" || signalBeforeFilters === "SELL") &&
+        hasCurrentBlocker
+      ) ||
+      (
+        statusSignal === "BUY" &&
+        isSameSymbolDuplicateBlock
+      ) ||
+      (
+        statusSignal === "SELL" &&
+        isSameSymbolDuplicateBlock
+      )
+    );
+  }
+
+  symbols.forEach((symbol) => {
+    const trade = tradesBySymbol[symbol] || null;
+    const autoStatus = liveAutoStatusBySymbol?.[symbol] || null;
+    const autoState = String(autoStatus?.status || "").toUpperCase();
+    const autoSignal = String(autoStatus?.signal || autoStatus?.action || "").toUpperCase();
+    const showBlockedCard =
+      !trade &&
+      autoStatus &&
+      hasCurrentBlockedLiveSignal(symbol, autoStatus) &&
+      (
+        autoState === "BLOCKED" ||
+        autoState === "ORDER_REJECTED" ||
+        ((autoSignal === "BUY" || autoSignal === "SELL") && (autoState === "WAIT" || autoState === "WAITING"))
+      );
+
+    if (showBlockedCard) {
+      const reason = getShortAutoTradeReason(autoStatus);
+      const sideColor = autoSignal === "SELL" ? "#ef4444" : autoSignal === "BUY" ? "#22c55e" : "#facc15";
+      const div = document.createElement("div");
+
+      div.className = `live-active-item blocked ${autoSignal.toLowerCase()}`;
+      div.innerHTML = `
+        <details class="live-active-details">
+          <summary class="live-active-summary">
+            <div class="live-active-main">
+              <strong class="live-symbol">${symbol}</strong>
+              <span class="live-side" style="color:${sideColor};">${autoSignal || "SIGNAL"} • BLOCKED</span>
+              <span class="live-blocked-reason-inline">Reason: ${escapeLiveAutoStatusText(reason || "safety check")}</span>
+            </div>
+            <div class="live-compact-meta">
+              <span class="live-blocked-pill">NOT EXECUTED</span>
+              <span class="live-expand-arrow">⌄</span>
+            </div>
+          </summary>
+          <div class="live-expanded-body">
+            <div class="live-status-reason">Reason ${escapeLiveAutoStatusText(reason || "safety check")}</div>
+          </div>
+        </details>
+      `;
+
+      liveActiveList.appendChild(div);
+      return;
+    }
+
+    const cardStatus = getLiveSymbolCardStatus(symbol, trade);
+
+    if (!cardStatus) return;
+
+    const statusClass = getLiveSymbolCardStatusClass(cardStatus);
 
     const div = document.createElement("div");
-    const sourceBadge = getLiveSourceBadge(trade);
+    const lotSize = trade.lot_size ?? trade.volume;
+    const originalSl = trade.original_sl ?? trade.initial_sl ?? trade.sl ?? "--";
+    const currentSl = trade.sl ?? "--";
+    const tp1 = trade.tp1 ?? "--";
+    const tp2 = trade.tp2 ?? trade.tp ?? "--";
+    const pnl = getLiveTradePnl(trade);
+    const pnlClass = pnl > 0 ? "positive" : pnl < 0 ? "negative" : "";
+    const currentPrice = trade.current_price ?? trade.currentPrice ?? "--";
+    const tradeId = getLiveTradeId(trade);
+    const pips = trade.pips ?? "--";
+    const status = trade.status || "--";
+    const reason = trade.exit_reason || trade.note || trade.reason || "--";
+    const protectionLabel = getProfitProtectionLabel(trade);
+    const displayResult = getTradeDisplayResult(trade);
+    const protectedText = getTradeProtectedText(trade);
+    const cardSignalText = cardStatus.signal || trade.side || "--";
+    const cardLiveAutoText = getTradeDisplayResult(trade);
+    const sideColor = cardSignalText === "SELL" ? "#ef4444" : "#22c55e";
 
     div.className =
-      `live-active-item ${String(trade.side || "").toLowerCase()}`;
+      `live-active-item ${String(trade.side || "").toLowerCase()} ${statusClass}`;
 
     div.innerHTML = `
-      <div>
-        <div class="live-symbol">${symbol}</div>
-        <div class="live-side">
-          ${trade.side || "-"} • RUNNING
+      <details class="live-active-details">
+        <summary class="live-active-summary">
+          <div class="live-active-main">
+            <strong class="live-symbol">${symbol}</strong>
+            <span class="live-side" style="color:${sideColor};">${cardSignalText} • ${displayResult}</span>
+          </div>
+          <div class="live-compact-meta">
+            <span class="live-pnl ${pnlClass}">${pnl === null ? "$0.00" : formatLiveMoney(pnl)}</span>
+            <span>Lot ${formatLiveNumber(lotSize, 2)}</span>
+            <span class="live-expand-arrow">⌄</span>
+          </div>
+        </summary>
+        <div class="live-expanded-body">
+          <div class="live-detail-grid">
+            <span>Trade ID <b>${tradeId}</b></span>
+            <span>Status <b>${status}</b></span>
+            <span>Pips <b>${pips}</b></span>
+            <span>Entry <b>${trade.entry ?? "--"}</b></span>
+            <span>Current <b>${currentPrice}</b></span>
+            <span>Original SL <b>${originalSl}</b></span>
+            <span>Current SL <b>${currentSl}</b></span>
+            <span>TP1 <b>${tp1}</b></span>
+            <span>TP2 <b>${tp2}</b></span>
+            <span>Protected <b>${protectedText}</b></span>
+            <span>Result <b>${displayResult}</b></span>
+          </div>
+          <div class="live-status-reason">Reason ${reason}</div>
+          ${protectionLabel ? `<div class="live-side" style="color:#86efac;">${protectionLabel}</div>` : ""}
         </div>
-      </div>
-
-      <div class="live-meta-stack">
-        <span class="live-source-badge">${sourceBadge}</span>
-        <span class="live-status">
-          ${(trade.mode || "LIVE").toUpperCase()}
-        </span>
-      </div>
+      </details>
     `;
 
     liveActiveList.appendChild(div);
   });
+
+  liveActiveList.insertAdjacentHTML("beforeend", renderLiveStatsRow());
 }
 
 function updateLiveToggleUI() {
@@ -3241,60 +4190,47 @@ function updateLiveToggleUI() {
 
   liveAutoToggleBtn.classList.remove(
     "toggle-on",
-    "toggle-demo",
+    "toggle-off",
     "toggle-live"
   );
 
-  // OFFLINE
   if (!liveConnectionState.connected) {
 
     liveAutoEnabled = false;
 
     liveAutoToggleBtn.classList.remove(
       "toggle-on",
-      "toggle-demo",
+      "toggle-off",
       "toggle-live"
     );
 
-    liveAutoToggleBtn.textContent =
-      "OFFLINE";
-
-    return;
-  }
-  
-
-  // DEMO
-  if (
-    liveConnectionState.connected &&
-    liveConnectionState.mode === "demo"
-  ) {
-
-    liveAutoToggleBtn.classList.add(
-      "toggle-demo"
-    );
+    liveAutoToggleBtn.classList.add("toggle-off");
 
     liveAutoToggleBtn.textContent =
-      liveAutoEnabled
-        ? "LIVE CONNECTED • ON"
-        : "SIM CONNECTED";
+      "Live Auto paused — broker disconnected";
+
+    if (brokerConnectionStatus) {
+      brokerConnectionStatus.textContent =
+        "Live Auto paused — broker disconnected";
+      brokerConnectionStatus.classList.remove("connected", "live");
+    }
 
     return;
   }
 
-  // LIVE
-  if (
-    liveConnectionState.connected &&
-    liveConnectionState.mode === "live"
-  ) {
+  liveAutoToggleBtn.classList.add(
+    liveAutoEnabled ? "toggle-live" : "toggle-off"
+  );
 
-    liveAutoToggleBtn.classList.add(
-      "toggle-live"
-    );
+  liveAutoToggleBtn.textContent =
+    liveAutoEnabled
+      ? "Live Auto: ON"
+      : "Live Auto: OFF";
 
-    liveAutoToggleBtn.textContent =
-      liveAutoEnabled
-        ? "LIVE CONNECTED • ON"
-        : "LIVE CONNECTED";
+  if (brokerConnectionStatus) {
+    brokerConnectionStatus.textContent = "Live Broker: Connected";
+    brokerConnectionStatus.classList.add("connected");
+    brokerConnectionStatus.classList.remove("live");
   }
 }
 
@@ -3312,6 +4248,9 @@ function updateExecutionPageUI() {
     el.classList.add("hidden");
     el.style.setProperty("display", "none", "important");
   };
+  const marketStatusEl = document.getElementById("marketDataSourceStatus");
+  const autoStatusEl = document.getElementById("autoTradeStatus");
+  const liveAutoSymbolStatusEl = document.getElementById("liveAutoSymbolStatus");
 
   paperPageBtn.classList.remove("active");
   livePageBtn.classList.remove("active");
@@ -3321,8 +4260,10 @@ function updateExecutionPageUI() {
 
     show(paperAutoSection);
     hide(liveAutoSection);
-
-    hide(document.querySelector(".live-connection-actions"));
+    hide(brokerConnectionStatus);
+    hide(marketStatusEl);
+    hide(autoStatusEl);
+    hide(liveAutoSymbolStatusEl);
 
     show(paperHistoryList);
     hide(liveHistoryList);
@@ -3334,8 +4275,11 @@ function updateExecutionPageUI() {
     livePageBtn.classList.add("active");
 
     show(liveAutoSection);
-
-    show(document.querySelector(".live-connection-actions"));
+    renderLiveTotalTradesCard();
+    show(brokerConnectionStatus);
+    show(marketStatusEl);
+    show(autoStatusEl);
+    hide(liveAutoSymbolStatusEl);
 
     hide(paperAutoSection);
 
@@ -3345,6 +4289,11 @@ function updateExecutionPageUI() {
 
     show(document.getElementById("liveActiveOrders"));
     
+  }
+
+  if (executionPage === "live") {
+    renderMarketDataSourceStatus();
+    renderAutoTradeStatus();
   }
 }
 
@@ -3358,26 +4307,14 @@ livePageBtn?.addEventListener("click", () => {
   updateExecutionPageUI();
 });
 
-paperModeBtn?.addEventListener(
-  "click",
-  () => {
-    setExecutionMode("paper");
-  }
-);
-
-liveModeBtn?.addEventListener(
-  "click",
-  () => {
-    setExecutionMode("live");
-  }
-);
-
 if (adminUnlockBtn) {
   adminUnlockBtn.addEventListener("click", () => {
     if (isAdminUnlocked) {
       isAdminUnlocked = false;
       updateTradeButtonsLock();
-      setStatus("● ADMIN LOCK • trading locked", "live");
+      if (!latestPanelData) {
+      setStatus("● LOADING PANEL...", "live");
+    }
       return;
     }
 
@@ -3415,6 +4352,7 @@ if (adminModal) {
 let chart = null;
 let candleSeries = null;
 let structureLine = null;
+let tradeVisualPriceLines = {};
 let currentChartSymbol = "EURUSD";
 let currentChartTimeframe = "5m";
 let chartRefreshInProgress = false;
@@ -3427,6 +4365,23 @@ let _CHART_IDLE_ENABLED = false;
 let MARKET_IS_CLOSED = false;
 let frozenChart = {};
 let frozenCandlesCache = null;
+
+function normalizeTradeChartSymbol(symbol) {
+  const value = String(symbol || "").toUpperCase();
+
+  if (value === "GOLD") return "XAUUSD";
+  if (value === "XAUUSD") return "GOLD";
+
+  return value;
+}
+
+function normalizeTradeExecutionSymbol(symbol) {
+  const value = String(symbol || "").toUpperCase();
+
+  if (value === "GOLD") return "XAUUSD";
+
+  return value;
+}
 
 function initChart() {
   const container = document.getElementById("chartContainer");
@@ -3445,6 +4400,7 @@ function initChart() {
     chart.remove();
     chart = null;
     candleSeries = null;
+    tradeVisualPriceLines = {};
   }
 
   chart = LightweightCharts.createChart(container, {
@@ -3579,6 +4535,123 @@ function updateChartOverlay(symbol, timeframe, candles) {
 }
 let structureLineSeries = null;
 
+function getActiveTradeForChartSymbol(symbol = currentChartSymbol) {
+  const tradeSymbol = normalizeTradeChartSymbol(symbol);
+  const trade = activeLiveOrders?.[tradeSymbol] || null;
+
+  return trade && isLiveTradeActiveForDisplay(trade) ? trade : null;
+}
+
+function clearTradeLines(symbol = currentChartSymbol) {
+  const executionSymbol = normalizeTradeExecutionSymbol(symbol);
+  const lines = tradeVisualPriceLines[executionSymbol] || [];
+
+  if (!candleSeries || !lines.length) {
+    tradeVisualPriceLines[executionSymbol] = [];
+    return;
+  }
+
+  lines.forEach((line) => {
+    try {
+      candleSeries.removePriceLine(line);
+    } catch (err) {
+      console.warn("Trade level line cleanup skipped");
+    }
+  });
+
+  tradeVisualPriceLines[executionSymbol] = [];
+}
+
+function clearTradeVisualLevels() {
+  clearTradeLines(currentChartSymbol);
+}
+
+function addTradeVisualLine(price, title, color, options = {}) {
+  const numericPrice = Number(price);
+
+  if (!candleSeries || !Number.isFinite(numericPrice)) return;
+
+  const executionSymbol = normalizeTradeExecutionSymbol(currentChartSymbol);
+  const line = candleSeries.createPriceLine({
+    price: numericPrice,
+    color,
+    lineWidth: options.lineWidth || 2,
+    lineStyle: options.lineStyle ?? LightweightCharts.LineStyle.Dashed,
+    axisLabelVisible: true,
+    title,
+  });
+
+  if (!tradeVisualPriceLines[executionSymbol]) {
+    tradeVisualPriceLines[executionSymbol] = [];
+  }
+
+  tradeVisualPriceLines[executionSymbol].push(line);
+}
+
+function drawTradeVisualLevels() {
+  clearTradeVisualLevels();
+
+  if (!chart || !candleSeries) return;
+
+  const trade = getActiveTradeForChartSymbol(currentChartSymbol);
+
+  if (!trade) return;
+  if (!isLiveTradeActiveForDisplay(trade)) {
+    clearTradeLines(currentChartSymbol);
+    return;
+  }
+
+  const symbol = normalizeTradeChartSymbol(currentChartSymbol);
+  const levels = {
+    symbol,
+    entry: trade.entry,
+    original_sl: trade.original_sl ?? trade.initial_sl ?? trade.sl,
+    current_sl: trade.sl,
+    tp1: trade.tp1,
+    tp2: trade.tp2 ?? trade.tp,
+    hit_tp1: Boolean(trade.hit_tp1),
+    profit_protected: hasConfirmedProfitProtection(trade),
+    protected_sl_price: trade.protected_sl_price,
+  };
+
+  console.log("TRADE_VISUAL_LEVELS =", levels);
+
+  addTradeVisualLine(levels.entry, "Entry", "#f8fafc", {
+    lineStyle: LightweightCharts.LineStyle.Solid,
+  });
+
+  if (levels.hit_tp1 && levels.profit_protected) {
+    addTradeVisualLine(levels.original_sl, "Original SL inactive", "rgba(239, 68, 68, 0.45)", {
+      lineStyle: LightweightCharts.LineStyle.Dotted,
+      lineWidth: 1,
+    });
+    addTradeVisualLine(
+      levels.protected_sl_price ?? levels.current_sl,
+      "Protected SL",
+      "#facc15",
+      {
+        lineStyle: LightweightCharts.LineStyle.Solid,
+        lineWidth: 3,
+      }
+    );
+  } else {
+    addTradeVisualLine(levels.current_sl ?? levels.original_sl, "SL", "#ef4444", {
+      lineStyle: LightweightCharts.LineStyle.Solid,
+    });
+  }
+
+  addTradeVisualLine(levels.tp1, "TP1", "#facc15", {
+    lineStyle: levels.hit_tp1
+      ? LightweightCharts.LineStyle.Solid
+      : LightweightCharts.LineStyle.Dashed,
+    lineWidth: levels.hit_tp1 ? 3 : 2,
+  });
+
+  addTradeVisualLine(levels.tp2, "TP2", "#22c55e", {
+    lineStyle: LightweightCharts.LineStyle.Solid,
+  });
+}
+
 function drawStructureLine(data) {
   if (!chart || !data) return;
 
@@ -3695,6 +4768,7 @@ function renderChartFromPanel(rawData, symbol = currentChartSymbol, timeframe = 
 
 if (MARKET_IS_CLOSED && alreadyHasChart) {
   console.log("🧊 HARD FREEZE (chart already loaded)");
+  drawTradeVisualLevels();
   return;
 }
 
@@ -3706,6 +4780,7 @@ if (MARKET_IS_CLOSED && alreadyHasChart) {
   if (!previous.length) {
   candleSeries.setData(candles);
   lastChartData[symbol][timeframe] = [...candles];
+  drawTradeVisualLevels();
   return;
 }
 
@@ -3717,6 +4792,7 @@ if (MARKET_IS_CLOSED && alreadyHasChart) {
     lastChartData[symbol][timeframe] = [...candles];
     chart.timeScale().scrollToPosition(0, false);
     console.log("🧊 Chart locked");
+    drawTradeVisualLevels();
     return;
   }
 
@@ -3727,6 +4803,7 @@ if (MARKET_IS_CLOSED && alreadyHasChart) {
   }
 
   lastChartData[symbol][timeframe] = [...candles];
+  drawTradeVisualLevels();
 }
 
 function applyIdleMotionToLastCandle(symbol = currentChartSymbol, timeframe = currentChartTimeframe) {
@@ -3789,8 +4866,9 @@ function forceChartRenderFromLatest(symbol = currentChartSymbol, timeframe = cur
 
   if (!chart || !candleSeries) return;
 
-  lastChartData[symbol][timeframe] = [];
+ lastChartData[symbol][timeframe] = [];
   candleSeries.setData(candles);
+  drawTradeVisualLevels();
 }
 
 async function quickRefreshChart() {
