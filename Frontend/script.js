@@ -2,12 +2,11 @@ const BASE_URL =
   window.location.hostname === "127.0.0.1" ||
   window.location.hostname === "localhost"
     ? "http://127.0.0.1:8001"
-    : "https://flowsignalfx.com";
+    : "https://api.flowsignalfx.com";
 
 const DISPLAY_NAMES = {
   EURUSD: "EURUSD",
-  XAUUSD: "XAUUSD",
-  GOLD: "XAUUSD"
+  XAUUSD: "XAUUSD"
 };
 
 const API_URL = `${BASE_URL}/panel-data`;
@@ -839,7 +838,7 @@ function setSmoothBar(symbol, type, pct, immediate = false) {
 
 const lastSignals = {
   EURUSD: null,
-  GOLD: null
+  XAUUSD: null
 };
 
 let pendingTrade = null;
@@ -854,7 +853,7 @@ let latestPanelData = null;
 let lastLiveOrderKey = null;
 let activeLiveOrders = {
   EURUSD: null,
-  GOLD: null
+  XAUUSD: null
 };
 let liveTradeHistory = [];
 let liveTradeStats = {
@@ -1293,25 +1292,26 @@ if (currentLang === "es") {
 // ==============================
 // CARD UPDATE
 // ==============================
-function getDataSymbol(symbol) {
-  return symbol === "XAUUSD" ? "GOLD" : symbol;
-}
-
-function getExecutionSymbol(symbol) {
-  return symbol === "GOLD" ? "XAUUSD" : symbol;
+function getCardPrefix(symbol) {
+  return symbol === "XAUUSD" ? "gold" : symbol.toLowerCase();
 }
 
 function getLiveTickMid(symbol) {
-  const tick = livePrices?.[getExecutionSymbol(symbol)];
+  const tick = livePrices?.[symbol];
   const mid = Number(tick?.mid);
+  const timestamp = Number(tick?.timestamp);
+  const ageSeconds = Number.isFinite(timestamp)
+    ? (Date.now() / 1000) - timestamp
+    : Infinity;
 
-  return Number.isFinite(mid) && mid > 0 ? mid : null;
+  return Number.isFinite(mid) && mid > 0 && ageSeconds <= 20 ? mid : null;
 }
 
 function updateCard(symbol, data) {
+  const cardPrefix = getCardPrefix(symbol);
   let signal = String(data.signal || "WAIT").trim().toUpperCase();
-  const buyPct = clampPct(data.buy_pct ?? data.buy_percent ?? 0);
-  const sellPct = clampPct(data.sell_pct ?? data.sell_percent ?? 0);
+  const buyPct = clampPct(data.buy_pct ?? data.buy_percentage ?? data.buy_percent ?? 0);
+  const sellPct = clampPct(data.sell_pct ?? data.sell_percentage ?? data.sell_percent ?? 0);
   const confidence = clampPct(data.confidence ?? 0);
   const marketCondition = String(data.market_condition || "UNKNOWN").trim().toUpperCase();
   const entryQuality = String(data.entry_quality || "WEAK").trim().toUpperCase();
@@ -1325,30 +1325,30 @@ function updateCard(symbol, data) {
   } else if (noData) {
     signal = "NO DATA";
   }
-  applySignalStyle(symbol, signal);
+  applySignalStyle(cardPrefix, signal);
 
-  const buyLabel = document.getElementById(`${symbol.toLowerCase()}-buy-label`);
-  const sellLabel = document.getElementById(`${symbol.toLowerCase()}-sell-label`);
-  const confLabel = document.getElementById(`${symbol.toLowerCase()}-conf-label`);
+  const buyLabel = document.getElementById(`${cardPrefix}-buy-label`);
+  const sellLabel = document.getElementById(`${cardPrefix}-sell-label`);
+  const confLabel = document.getElementById(`${cardPrefix}-conf-label`);
 
   if (buyLabel) buyLabel.textContent = `${LANG[currentLang].buy}: ${buyPct}%`;
 if (sellLabel) sellLabel.textContent = `${LANG[currentLang].sell}: ${sellPct}%`;
 if (confLabel) confLabel.textContent = `${LANG[currentLang].confidence}: ${confidence}%`;
 
   if (!data._barsInit) {
-  setBar(symbol, "buy", buyPct, true);
-  setBar(symbol, "sell", sellPct, true);
-  setBar(symbol, "conf", confidence, true);
+  setBar(cardPrefix, "buy", buyPct, true);
+  setBar(cardPrefix, "sell", sellPct, true);
+  setBar(cardPrefix, "conf", confidence, true);
   data._barsInit = true;
 } else {
-  setBar(symbol, "buy", buyPct);
-  setBar(symbol, "sell", sellPct);
-  setBar(symbol, "conf", confidence);
+  setBar(cardPrefix, "buy", buyPct);
+  setBar(cardPrefix, "sell", sellPct);
+  setBar(cardPrefix, "conf", confidence);
 }
 
-  const marketTag = document.getElementById(`${symbol.toLowerCase()}-market-tag`);
-  const qualityTag = document.getElementById(`${symbol.toLowerCase()}-quality-tag`);
-  const timingTag = document.getElementById(`${symbol.toLowerCase()}-timing-tag`);
+  const marketTag = document.getElementById(`${cardPrefix}-market-tag`);
+  const qualityTag = document.getElementById(`${cardPrefix}-quality-tag`);
+  const timingTag = document.getElementById(`${cardPrefix}-timing-tag`);
 
   const rawMarketText = marketCondition.replaceAll("_", " ");
   const rawQualityText = entryQuality.replaceAll("_", " ");
@@ -1404,7 +1404,7 @@ if (confLabel) confLabel.textContent = `${LANG[currentLang].confidence}: ${confi
   }
 }
         // SMC PLAN PANEL DATA
-    const smcSymbol = symbol.toLowerCase();
+    const smcSymbol = cardPrefix;
 
     const typeEl = document.getElementById(`${smcSymbol}-plan-type`);
     const biasEl = document.getElementById(`${smcSymbol}-plan-bias`);
@@ -1577,11 +1577,11 @@ function updateSmcVisual(data) {
 }
 
 function updateMainPanel(symbol) {
-  const dataSymbol = getDataSymbol(symbol);
+  if (!latestPanelData) return;
 
-  if (!latestPanelData || !latestPanelData[dataSymbol]) return;
+  const data = latestPanelData[symbol];
 
-  const data = latestPanelData[dataSymbol];
+  if (!data) return;
 
  const smcData = data;
  updateSmcVisual(data);
@@ -1597,13 +1597,13 @@ function updateMainPanel(symbol) {
 
   let signal = String(data.signal || "WAIT").trim().toUpperCase();
 
-  const buyPct = clampPct(data.buy_pct ?? data.buy_percent ?? 0);
-  const sellPct = clampPct(data.sell_pct ?? data.sell_percent ?? 0);
+  const buyPct = clampPct(data.buy_pct ?? data.buy_percentage ?? data.buy_percent ?? 0);
+  const sellPct = clampPct(data.sell_pct ?? data.sell_percentage ?? data.sell_percent ?? 0);
   const confidence = clampPct(data.confidence ?? 0);
 
 
   const liveCandles =
-  latestRawPanelData?.candles?.[dataSymbol]?.[currentChartTimeframe] || [];
+  latestRawPanelData?.candles?.[symbol]?.[currentChartTimeframe] || [];
 
 const lastCandle = liveCandles[liveCandles.length - 1];
 
@@ -1615,7 +1615,7 @@ const priceEl = document.getElementById("main-live-price");
 if (priceEl) {
   if (fixedPrice) {
     priceEl.textContent =
-      dataSymbol === "GOLD"
+      symbol === "XAUUSD"
         ? Number(fixedPrice).toFixed(2)
         : Number(fixedPrice).toFixed(5);
   } else {
@@ -1623,7 +1623,7 @@ if (priceEl) {
   }
 }
   const displayName =
-  DISPLAY_NAMES[getDataSymbol(symbol)] || getDataSymbol(symbol);
+  DISPLAY_NAMES[symbol] || symbol;
   document.getElementById("main-symbol-title").innerHTML =
     symbol === "EURUSD"
       ? `${displayName} <img src="eurusd.png" class="main-symbol-icon">`
@@ -1755,7 +1755,7 @@ if (priceEl) {
 
   if (structureTitle) {
     const displayName =
-      DISPLAY_NAMES[getDataSymbol(symbol)] || getDataSymbol(symbol);
+      DISPLAY_NAMES[symbol] || symbol;
 
     structureTitle.textContent =
       `${LANG[currentLang].marketStructure} • ${displayName} • ${currentChartTimeframe}`;
@@ -2034,16 +2034,16 @@ window.confirmTrade = confirmTrade;
 // DATA NORMALIZATION
 // ==============================
 function normalizePanelData(data) {
-  if (data && (data.EURUSD || data.GOLD || data.XAUUSD)) {
+  if (data && (data.EURUSD || data.XAUUSD)) {
     return {
       EURUSD: data.EURUSD || {},
-      GOLD: data.GOLD || data.XAUUSD || {}
+      XAUUSD: data.XAUUSD || {}
     };
   }
 
   return {
     EURUSD: {},
-    GOLD: {}
+    XAUUSD: {}
   };
 }
 function renderHistory(history) {
@@ -2206,7 +2206,7 @@ function updatePaperPanel(paperTrades, paperHistory = [], backendStats = {}) {
   }
 
   const eurusd = paperTrades.EURUSD;
-  const gold = paperTrades.GOLD;
+  const gold = paperTrades.XAUUSD;
 
   if (paperEurusdStatus) {
     paperEurusdStatus.textContent = eurusd
@@ -2286,7 +2286,7 @@ paperHistoryList.innerHTML = `
             Paper auto will track one setup per symbol when conditions align.
           </div>
         </div>
-      ` : ["EURUSD", "GOLD"].map((sym) => {
+      ` : ["EURUSD", "XAUUSD"].map((sym) => {
         const t = paperTrades?.[sym];
         if (!t) return "";
 
@@ -3164,7 +3164,7 @@ if (meta.live_account) {
   activeLiveOrders =
   meta.live_active_orders || {
     EURUSD: null,
-    GOLD: null
+    XAUUSD: null
   };
 
   liveTradeHistory =
@@ -3217,7 +3217,7 @@ if (paperModal && !paperModal.classList.contains("hidden")) {
 }
 
 updateCard("EURUSD", data.EURUSD);
-updateCard("GOLD", data.GOLD);
+updateCard("XAUUSD", data.XAUUSD);
 
 updateMainPanel(currentChartSymbol);
    renderHistory(rawData?.history || []);
@@ -3282,7 +3282,7 @@ updateUTC();
     const cachedData = normalizePanelData(lastGoodPanelData);
 
     updateCard("EURUSD", cachedData.EURUSD);
-    updateCard("GOLD", cachedData.GOLD);
+    updateCard("XAUUSD", cachedData.XAUUSD);
 
     if (lastGoodPanelData?.candles?.[currentChartSymbol]?.[currentChartTimeframe]?.length) {
   latestRawPanelData = lastGoodPanelData;
@@ -3923,6 +3923,33 @@ function calculateLiveDisplayStats() {
   };
 }
 
+function getLiveTradeTarget(trade, targetNumber) {
+  if (!trade) return "--";
+
+  const value = targetNumber === 1
+    ? (
+        trade.tp1 ??
+        trade.tp_price ??
+        trade.take_profit ??
+        trade.takeProfit ??
+        trade.original_tp_price ??
+        trade.raw?.tp1 ??
+        trade.raw?.takeProfit ??
+        trade.raw?.closePositionDetail?.tp1 ??
+        trade.raw?.closePositionDetail?.takeProfit
+      )
+    : (
+        trade.tp2 ??
+        trade.tp2_price ??
+        trade.tp ??
+        trade.original_tp2_price ??
+        trade.raw?.tp2 ??
+        trade.raw?.closePositionDetail?.tp2
+      );
+
+  return value ?? "--";
+}
+
 function renderLiveHistory() {
 
   if (!liveHistoryList) return;
@@ -3973,14 +4000,16 @@ function renderLiveHistory() {
       const pnlClass = pnl > 0 ? "positive" : pnl < 0 ? "negative" : "";
       const protectionLabel = getProfitProtectionLabel(trade);
       const protectionWarning = getSlProtectionWarning(trade);
-      const originalSl = trade.original_sl ?? trade.initial_sl ?? trade.sl ?? "--";
-      const currentSl = trade.sl ?? "--";
-      const tp1 = trade.tp1 ?? "--";
-      const tp2 = trade.tp2 ?? trade.tp ?? "--";
-      const entry = trade.entry ?? "--";
+      const entry = trade.entry || trade.entry_price || "--";
+      const originalSl = trade.original_sl || trade.initial_sl || trade.sl || "--";
+      const currentSl = trade.sl || trade.current_sl || trade.stop_loss || "--";
+      const tp1 = trade.tp1 || trade.take_profit_1 || "--";
+      const tp2 = trade.tp2 || trade.take_profit_2 || "--";
+      const protectedSl = trade.protected_sl_price || "--";
+      const tp1Hit = trade.hit_tp1 ? "Yes" : "No";
+      const profitProtected = trade.profit_protected ? "Yes" : "No";
       const tradeId = getLiveTradeId(trade);
       const brokerOrderId = trade.broker_order_id || trade.position_id || "--";
-      const currentPrice = trade.current_price ?? trade.currentPrice ?? "--";
       const pips = trade.pips ?? "--";
       const reason = trade.exit_reason || trade.note || trade.reason || "--";
       const sideColor = String(trade.side || "").toUpperCase() === "SELL" ? "#ef4444" : "#22c55e";
@@ -4000,9 +4029,11 @@ function renderLiveHistory() {
             ${protectionWarning ? `<div class="live-side" style="color:#fbbf24;">${protectionWarning}</div>` : ""}
             Trade ID: <b>${tradeId}</b><br>
             Entry: <b>${entry}</b><br>
-            Current: <b>${currentPrice}</b> • Pips: <b>${pips}</b> • P/L: <b>${pnl === null ? "$0.00" : formatLiveMoney(pnl)}</b><br>
             Original SL: <b>${originalSl}</b> • Current SL: <b>${currentSl}</b><br>
-            TP1: <b>${tp1}</b> • TP2: <b>${tp2}</b> • Result: <b>${result}</b><br>
+            <span class="live-target-prices">TP1: <b>${tp1}</b> • TP2: <b>${tp2}</b></span><br>
+            Protected SL: <b>${protectedSl}</b><br>
+            TP1 Hit: <b>${tp1Hit}</b> • Profit Protected: <b>${profitProtected}</b><br>
+            Pips: <b>${pips}</b> • Result: <b>${result}</b><br>
             Reason: <b>${reason}</b><br>
             Order: <b>${brokerOrderId}</b> • Time: <b>${formatLiveTime(time)}</b>
           </div>
@@ -4031,7 +4062,7 @@ function renderLiveActiveOrders() {
     if (!latestPanelData) return null;
 
     return symbol === "XAUUSD"
-      ? latestPanelData.GOLD
+      ? latestPanelData.XAUUSD
       : latestPanelData[symbol];
   }
 
@@ -4124,10 +4155,14 @@ function renderLiveActiveOrders() {
 
     const div = document.createElement("div");
     const lotSize = trade.lot_size ?? trade.volume;
-    const originalSl = trade.original_sl ?? trade.initial_sl ?? trade.sl ?? "--";
-    const currentSl = trade.sl ?? "--";
-    const tp1 = trade.tp1 ?? "--";
-    const tp2 = trade.tp2 ?? trade.tp ?? "--";
+    const entry = trade.entry || trade.entry_price || "--";
+    const originalSl = trade.original_sl || trade.initial_sl || trade.sl || "--";
+    const currentSl = trade.sl || trade.current_sl || trade.stop_loss || "--";
+    const tp1 = trade.tp1 || trade.take_profit_1 || "--";
+    const tp2 = trade.tp2 || trade.take_profit_2 || "--";
+    const protectedSl = trade.protected_sl_price || "--";
+    const tp1Hit = trade.hit_tp1 ? "Yes" : "No";
+    const profitProtected = trade.profit_protected ? "Yes" : "No";
     const pnl = getLiveTradePnl(trade);
     const pnlClass = pnl > 0 ? "positive" : pnl < 0 ? "negative" : "";
     const currentPrice = trade.current_price ?? trade.currentPrice ?? "--";
@@ -4137,7 +4172,6 @@ function renderLiveActiveOrders() {
     const reason = trade.exit_reason || trade.note || trade.reason || "--";
     const protectionLabel = getProfitProtectionLabel(trade);
     const displayResult = getTradeDisplayResult(trade);
-    const protectedText = getTradeProtectedText(trade);
     const cardSignalText = cardStatus.signal || trade.side || "--";
     const cardLiveAutoText = getTradeDisplayResult(trade);
     const sideColor = cardSignalText === "SELL" ? "#ef4444" : "#22c55e";
@@ -4163,13 +4197,15 @@ function renderLiveActiveOrders() {
             <span>Trade ID <b>${tradeId}</b></span>
             <span>Status <b>${status}</b></span>
             <span>Pips <b>${pips}</b></span>
-            <span>Entry <b>${trade.entry ?? "--"}</b></span>
+            <span>Entry <b>${entry}</b></span>
             <span>Current <b>${currentPrice}</b></span>
             <span>Original SL <b>${originalSl}</b></span>
             <span>Current SL <b>${currentSl}</b></span>
             <span>TP1 <b>${tp1}</b></span>
             <span>TP2 <b>${tp2}</b></span>
-            <span>Protected <b>${protectedText}</b></span>
+            <span>Protected SL <b>${protectedSl}</b></span>
+            <span>TP1 Hit <b>${tp1Hit}</b></span>
+            <span>Profit Protected <b>${profitProtected}</b></span>
             <span>Result <b>${displayResult}</b></span>
           </div>
           <div class="live-status-reason">Reason ${reason}</div>
@@ -4358,7 +4394,7 @@ let currentChartTimeframe = "5m";
 let chartRefreshInProgress = false;
 let lastChartData = {
   EURUSD: { "5m": [], "15m": [], "1h": [] },
-  GOLD: { "5m": [], "15m": [], "1h": [] }
+  XAUUSD: { "5m": [], "15m": [], "1h": [] }
 };
 let _CHART_IDLE_PHASE = 0;
 let _CHART_IDLE_ENABLED = false;
@@ -4367,20 +4403,11 @@ let frozenChart = {};
 let frozenCandlesCache = null;
 
 function normalizeTradeChartSymbol(symbol) {
-  const value = String(symbol || "").toUpperCase();
-
-  if (value === "GOLD") return "XAUUSD";
-  if (value === "XAUUSD") return "GOLD";
-
-  return value;
+  return String(symbol || "").toUpperCase();
 }
 
 function normalizeTradeExecutionSymbol(symbol) {
-  const value = String(symbol || "").toUpperCase();
-
-  if (value === "GOLD") return "XAUUSD";
-
-  return value;
+  return String(symbol || "").toUpperCase();
 }
 
 function initChart() {
@@ -4505,7 +4532,7 @@ function getChartCandles(rawData, symbol = currentChartSymbol, timeframe = curre
     const mid = (o + close) / 2;
     const range = h - l;
 
-    if (symbol === "GOLD" && range > mid * 0.03) return false;
+    if (symbol === "XAUUSD" && range > mid * 0.03) return false;
     if (symbol === "EURUSD" && range > mid * 0.01) return false;
 
     return true;
@@ -4524,7 +4551,7 @@ function updateChartOverlay(symbol, timeframe, candles) {
 
   title.textContent = `${DISPLAY_NAMES[symbol] || symbol} · ${timeframe}`;
 
-  const decimals = symbol === "GOLD" ? 2 : 5;
+  const decimals = symbol === "XAUUSD" ? 2 : 5;
 
   ohlc.innerHTML = `
     O <span>${Number(last.open).toFixed(decimals)}</span>
@@ -5225,7 +5252,7 @@ if (langSelect) {
 
     if (latestPanelData) {
       updateCard("EURUSD", latestPanelData.EURUSD);
-      updateCard("GOLD", latestPanelData.GOLD);
+      updateCard("XAUUSD", latestPanelData.XAUUSD);
       updateMainPanel(currentChartSymbol);
     }
   });
@@ -5243,8 +5270,8 @@ if (eurusdCard) {
 
 if (goldCard) {
   goldCard.addEventListener("click", () => {
-    switchChart("GOLD", currentChartTimeframe);
-    updateMainPanel("GOLD");
+    switchChart("XAUUSD", currentChartTimeframe);
+    updateMainPanel("XAUUSD");
   });
 }
 
