@@ -435,6 +435,16 @@ const accessCodeInput = document.getElementById("accessCode");
 const accessBtn = document.getElementById("accessBtn");
 const authMsg = document.getElementById("authMsg");
 const mainApp = document.getElementById("mainApp");
+const dashboardWeeklyPnl = document.getElementById("dashboardWeeklyPnl");
+const dashboardFloatingPnl = document.getElementById("dashboardFloatingPnl");
+const dashboardOpenTrades = document.getElementById("dashboardOpenTrades");
+const voiceToggleBtn = document.getElementById("voiceToggleBtn");
+const smartExplain = document.getElementById("smartExplain");
+const smartExplainTitle = document.getElementById("smartExplainTitle");
+const smartExplainText = document.getElementById("smartExplainText");
+const smartExplainDetails = document.getElementById("smartExplainDetails");
+const smartExplainState = document.getElementById("smartExplainState");
+const smartExplainClose = document.getElementById("smartExplainClose");
 
 const openAccessBtn = document.getElementById("openAccessBtn");
 const landingLang = document.getElementById("landingLang");
@@ -448,6 +458,15 @@ if (landingLang) {
     localStorage.setItem("flowsignal_lang", lang);
 
     applyLanguage(lang);
+    const languageName = {
+      en: "English",
+      fr: "French",
+      es: "Spanish"
+    }[lang] || lang;
+    showAssistantMessage(
+      `Language changed to ${languageName}.`,
+      "LANGUAGE"
+    );
   });
 }
 if (openAccessBtn) {
@@ -869,6 +888,639 @@ let liveTradeStats = {
   weekly_total_pl: 0
 };
 
+const VOICE_COOLDOWN_MS = 10000;
+const ASSISTANT_REPEAT_MS = 20000;
+const voiceState = {
+  enabled:
+    "speechSynthesis" in window &&
+    localStorage.getItem("flowsignal_voice_enabled") !== "false",
+  initialized: false,
+  snapshots: {},
+  spokenFingerprints: new Set(),
+  lastSpokenAt: {},
+  pendingBySymbol: {},
+  pendingTimers: {},
+  eventSequence: 0,
+  preferredVoice: null,
+  lastAssistantMessage: "",
+  lastAssistantSpokenAt: 0
+};
+
+function createVoiceFingerprint(base) {
+  voiceState.eventSequence += 1;
+  return `${base}:${voiceState.eventSequence}`;
+}
+
+function updateVoiceControls() {
+  const supported = "speechSynthesis" in window;
+
+  if (voiceToggleBtn) {
+    voiceToggleBtn.textContent = supported
+      ? (voiceState.enabled ? "Voice ON" : "Voice OFF")
+      : "Voice N/A";
+    voiceToggleBtn.classList.toggle("is-off", !voiceState.enabled);
+    voiceToggleBtn.setAttribute("aria-pressed", String(voiceState.enabled));
+    voiceToggleBtn.disabled = !supported;
+  }
+
+}
+
+function selectPreferredVoice() {
+  if (!("speechSynthesis" in window)) return null;
+
+  const voices = window.speechSynthesis.getVoices();
+  const preferredNames = [
+    "Google US English",
+    "Samantha",
+    "Victoria",
+    "Microsoft Aria",
+    "Microsoft Jenny"
+  ];
+
+  for (const preferredName of preferredNames) {
+    const exact = voices.find((voice) => (
+      voice.name.toLowerCase() === preferredName.toLowerCase()
+    ));
+    if (exact) return exact;
+
+    const partial = voices.find((voice) => (
+      voice.name.toLowerCase().includes(preferredName.toLowerCase())
+    ));
+    if (partial) return partial;
+  }
+
+  return null;
+}
+
+function refreshPreferredVoice() {
+  voiceState.preferredVoice = selectPreferredVoice();
+}
+
+if ("speechSynthesis" in window) {
+  refreshPreferredVoice();
+  window.speechSynthesis.addEventListener?.("voiceschanged", refreshPreferredVoice);
+}
+
+function configureAssistantUtterance(utterance) {
+  refreshPreferredVoice();
+
+  if (voiceState.preferredVoice) {
+    utterance.voice = voiceState.preferredVoice;
+  }
+
+  utterance.rate = 0.95;
+  utterance.pitch = 1.15;
+  utterance.volume = 1;
+}
+
+function clearPendingVoiceEvents() {
+  Object.values(voiceState.pendingTimers).forEach((timer) => {
+    window.clearTimeout(timer);
+  });
+
+  voiceState.pendingBySymbol = {};
+  voiceState.pendingTimers = {};
+}
+
+function speakVoiceEvent(event) {
+  if (
+    !voiceState.enabled ||
+    !event?.message ||
+    !("speechSynthesis" in window) ||
+    voiceState.spokenFingerprints.has(event.fingerprint)
+  ) {
+    return;
+  }
+
+  const symbol = event.symbol || "SYSTEM";
+  const now = Date.now();
+  const elapsed = now - (voiceState.lastSpokenAt[symbol] || 0);
+
+  if (elapsed < VOICE_COOLDOWN_MS) {
+    const currentPending = voiceState.pendingBySymbol[symbol];
+
+    if (
+      !currentPending ||
+      currentPending.fingerprint === event.fingerprint ||
+      event.priority >= currentPending.priority
+    ) {
+      voiceState.pendingBySymbol[symbol] = event;
+    }
+
+    window.clearTimeout(voiceState.pendingTimers[symbol]);
+    voiceState.pendingTimers[symbol] = window.setTimeout(() => {
+      const pending = voiceState.pendingBySymbol[symbol];
+
+      delete voiceState.pendingBySymbol[symbol];
+      delete voiceState.pendingTimers[symbol];
+
+      if (pending) speakVoiceEvent(pending);
+    }, VOICE_COOLDOWN_MS - elapsed + 50);
+    return;
+  }
+
+  const utterance = new SpeechSynthesisUtterance(event.message);
+  configureAssistantUtterance(utterance);
+
+  voiceState.spokenFingerprints.add(event.fingerprint);
+  voiceState.lastSpokenAt[symbol] = now;
+  window.speechSynthesis.speak(utterance);
+}
+
+function queueVoiceEvents(events) {
+  const bestBySymbol = new Map();
+
+  events.forEach((event) => {
+    if (!event || voiceState.spokenFingerprints.has(event.fingerprint)) return;
+
+    const current = bestBySymbol.get(event.symbol);
+
+    if (!current || event.priority > current.priority) {
+      bestBySymbol.set(event.symbol, event);
+    }
+  });
+
+  bestBySymbol.forEach(speakVoiceEvent);
+}
+
+function normalizeVoiceSignal(item) {
+  const signal = String(item?.signal || "WAIT").trim().toUpperCase();
+  return signal === "BUY" || signal === "SELL" ? signal : "WAIT";
+}
+
+function getVoiceBlockedReason(status) {
+  const reason = getShortAutoTradeReason(status)
+    .replace(/\bTrade not sent\.?/gi, "")
+    .trim();
+  const lower = reason.toLowerCase();
+
+  if (lower.includes("min") && lower.includes("distance")) {
+    return "minimum stop loss distance";
+  }
+
+  if (lower.includes("volume") || lower.includes("risk")) {
+    return "broker volume safety";
+  }
+
+  if (lower.includes("already running") || lower.includes("already active")) {
+    return "a trade is already running";
+  }
+
+  return (reason || "safety check")
+    .split(/[.!?]/)[0]
+    .trim()
+    .toLowerCase();
+}
+
+function getVoiceTradeKey(trade, fallback = "") {
+  return String(
+    getLiveTradeMatchId(trade) ||
+    trade?.trade_id ||
+    `${fallback}:${getTradeTimestampMs(trade) || "unknown"}`
+  );
+}
+
+function buildVoiceSnapshot(symbol, data, meta) {
+  const autoStatus = meta?.live_auto_status_by_symbol?.[symbol] || {};
+  const autoState = String(autoStatus.status || "").toUpperCase();
+  const activeTrade = meta?.live_active_orders?.[symbol] || null;
+  const activeTradeKey = activeTrade ? getVoiceTradeKey(activeTrade, symbol) : "";
+  const history = Array.isArray(meta?.live_trade_history)
+    ? meta.live_trade_history
+    : [];
+  const closedTrades = history
+    .filter((trade) => (
+      String(trade?.symbol || "").toUpperCase() === symbol &&
+      !isLiveTradeActiveForDisplay(trade)
+    ))
+    .map((trade) => {
+      const result = getLiveTradeResult(trade);
+      const pnl = getLiveTradePnl(trade);
+
+      return {
+        key: getVoiceTradeKey(trade, symbol),
+        result,
+        pnl
+      };
+    });
+
+  return {
+    signal: normalizeVoiceSignal(data?.[symbol]),
+    autoState,
+    autoReason: getVoiceBlockedReason(autoStatus),
+    autoFingerprint: [
+      autoState,
+      autoStatus.signal || autoStatus.action || "",
+      stringifyAutoTradeValue(autoStatus.reason)
+    ].join("|"),
+    activeTradeKey,
+    tp1Hit: Boolean(
+      activeTrade?.hit_tp1 ||
+      getLiveTradeResult(activeTrade) === "TP1 HIT" ||
+      hasConfirmedProfitProtection(activeTrade)
+    ),
+    protectedSl: hasConfirmedProfitProtection(activeTrade),
+    closedTrades
+  };
+}
+
+function processVoiceAnnouncements(data, meta) {
+  const symbols = ["EURUSD", "XAUUSD"];
+  const nextSnapshots = {};
+  const events = [];
+
+  symbols.forEach((symbol) => {
+    const next = buildVoiceSnapshot(symbol, data, meta);
+    const previous = voiceState.snapshots[symbol];
+    nextSnapshots[symbol] = next;
+
+    if (!voiceState.initialized || !previous) return;
+
+    next.closedTrades.forEach((trade) => {
+      const profitable =
+        ["WIN", "PROTECTED_WIN"].includes(trade.result) ||
+        (["BROKER_CLOSED", "DISCONNECTED", "CLOSED"].includes(trade.result) && trade.pnl > 0);
+      const losing =
+        trade.result === "LOSS" ||
+        (["BROKER_CLOSED", "DISCONNECTED", "CLOSED"].includes(trade.result) && trade.pnl < 0);
+      const previousTrade = previous.closedTrades.find((item) => item.key === trade.key);
+      const previousProfitable = previousTrade && (
+        ["WIN", "PROTECTED_WIN"].includes(previousTrade.result) ||
+        (["BROKER_CLOSED", "DISCONNECTED", "CLOSED"].includes(previousTrade.result) && previousTrade.pnl > 0)
+      );
+      const previousLosing = previousTrade && (
+        previousTrade.result === "LOSS" ||
+        (["BROKER_CLOSED", "DISCONNECTED", "CLOSED"].includes(previousTrade.result) && previousTrade.pnl < 0)
+      );
+      const sameKnownOutcome =
+        (profitable && previousProfitable) ||
+        (losing && previousLosing);
+
+      if (sameKnownOutcome) return;
+
+      if (profitable || losing) {
+        events.push({
+          symbol,
+          priority: 100,
+          fingerprint: `${symbol}:closed:${trade.key}:${profitable ? "WIN" : "LOSS"}`,
+          message: `${symbol} trade closed ${profitable ? "in profit" : "in loss"}.`
+        });
+      }
+    });
+
+    if (
+      next.activeTradeKey &&
+      next.activeTradeKey === previous.activeTradeKey &&
+      next.tp1Hit &&
+      !previous.tp1Hit
+    ) {
+      events.push({
+        symbol,
+        priority: 90,
+        fingerprint: `${symbol}:tp1:${next.activeTradeKey}`,
+        message: next.protectedSl
+          ? `TP1 hit on ${symbol} with stop loss protected.`
+          : `TP1 hit on ${symbol}.`
+      });
+    } else if (
+      next.activeTradeKey &&
+      next.activeTradeKey === previous.activeTradeKey &&
+      next.protectedSl &&
+      !previous.protectedSl
+    ) {
+      events.push({
+        symbol,
+        priority: 85,
+        fingerprint: `${symbol}:protected:${next.activeTradeKey}`,
+        message: `Protected stop loss is active on ${symbol}.`
+      });
+    }
+
+    if (
+      next.activeTradeKey &&
+      next.activeTradeKey !== previous.activeTradeKey
+    ) {
+      events.push({
+        symbol,
+        priority: 80,
+        fingerprint: `${symbol}:executed:${next.activeTradeKey}`,
+        message: `Live trade executed on ${symbol}.`
+      });
+    } else if (
+      ["EXECUTED", "ORDER_SENT"].includes(next.autoState) &&
+      next.autoFingerprint !== previous.autoFingerprint
+    ) {
+      events.push({
+        symbol,
+        priority: 80,
+        fingerprint: createVoiceFingerprint(`${symbol}:executed:${next.autoFingerprint}`),
+        message: `Live trade executed on ${symbol}.`
+      });
+    }
+
+    if (
+      ["BLOCKED", "ORDER_REJECTED"].includes(next.autoState) &&
+      next.autoFingerprint !== previous.autoFingerprint
+    ) {
+      events.push({
+        symbol,
+        priority: 70,
+        fingerprint: createVoiceFingerprint(`${symbol}:blocked:${next.autoFingerprint}`),
+        message: `${symbol} trade blocked because ${next.autoReason}.`
+      });
+    }
+
+    if (next.signal !== previous.signal) {
+      const message = next.signal === "BUY"
+        ? `Buy signal on ${symbol}.`
+        : next.signal === "SELL"
+          ? `Sell signal on ${symbol}.`
+          : `${symbol} waiting for confirmation.`;
+
+      events.push({
+        symbol,
+        priority: 50,
+        fingerprint: createVoiceFingerprint(`${symbol}:signal:${previous.signal}:${next.signal}`),
+        message
+      });
+    }
+  });
+
+  voiceState.snapshots = nextSnapshots;
+
+  if (!voiceState.initialized) {
+    voiceState.initialized = true;
+    return;
+  }
+
+  queueVoiceEvents(events);
+}
+
+if (voiceToggleBtn) {
+  voiceToggleBtn.addEventListener("click", () => {
+    const nextEnabled = !voiceState.enabled;
+
+    if (!nextEnabled) {
+      if ("speechSynthesis" in window) {
+        window.speechSynthesis.cancel();
+      }
+      clearPendingVoiceEvents();
+    }
+
+    voiceState.enabled = nextEnabled;
+    localStorage.setItem(
+      "flowsignal_voice_enabled",
+      voiceState.enabled ? "true" : "false"
+    );
+
+    updateVoiceControls();
+
+    if (!voiceState.enabled) {
+      showAssistantMessage("Voice is now off.", "VOICE OFF", {
+        forceSpeech: true
+      });
+    } else {
+      showAssistantMessage("Voice is now on.", "VOICE ON");
+    }
+  });
+}
+
+updateVoiceControls();
+
+function getSmartExplainBlockedStatus(symbol, data) {
+  const autoStatus = liveAutoStatusBySymbol?.[symbol] || {};
+  const autoState = String(autoStatus.status || "").toUpperCase();
+  const blockedBy = String(data?.blocked_by || "").toUpperCase();
+  const signalBeforeFilters = String(data?.signal_before_filters || "").toUpperCase();
+  const blockedReason =
+    autoStatus.reason ||
+    data?.blocked_reason ||
+    data?.blocked_by ||
+    "";
+  const strategyIsStillWaiting = [
+    "STRUCTURE_WAIT",
+    "MISSING_15M_SETUP",
+    "MISSING_RETEST"
+  ].includes(blockedBy);
+  const filteredTradeSignal =
+    ["BUY", "SELL"].includes(signalBeforeFilters) &&
+    blockedBy &&
+    !strategyIsStillWaiting;
+
+  if (
+    ["BLOCKED", "ORDER_REJECTED"].includes(autoState) ||
+    filteredTradeSignal
+  ) {
+    return {
+      blocked: true,
+      reason: getVoiceBlockedReason({
+        ...autoStatus,
+        reason: blockedReason
+      }),
+      status: autoStatus
+    };
+  }
+
+  return { blocked: false, reason: "", status: autoStatus };
+}
+
+function formatAssistantNumber(value, maximumFractionDigits = 4) {
+  const number = Number(value);
+
+  if (!Number.isFinite(number)) return null;
+
+  return number.toLocaleString(undefined, {
+    maximumFractionDigits
+  });
+}
+
+function buildVolumeSafetyAssistantDetails(status) {
+  const details = getAutoTradeDetails(status);
+  const requestedVolume =
+    details.broker_interpreted_volume ??
+    details.final_volume ??
+    details.volume_in_payload ??
+    details.volume_units ??
+    details.calculated_volume_units;
+  const brokerMinimum =
+    details.broker_min_volume ??
+    details.min_volume_units ??
+    details.minVolume;
+  const brokerStep =
+    details.broker_volume_step ??
+    details.volume_step_units ??
+    details.stepVolume;
+  const actualRisk =
+    details.final_risk_percent ??
+    details.risk_percent_if_minimum ??
+    details.minimum_volume_risk_percent;
+  const allowedRisk =
+    details.maximum_allowed_risk_percent ??
+    details.required_risk_percent ??
+    details.risk_percent;
+  const parts = [];
+  const requestedText = formatAssistantNumber(requestedVolume);
+  const minimumText = formatAssistantNumber(brokerMinimum);
+  const stepText = formatAssistantNumber(brokerStep);
+  const actualRiskText = formatRiskPercent(actualRisk);
+  const allowedRiskText = formatRiskPercent(allowedRisk);
+
+  if (requestedText !== null) parts.push(`Requested ${requestedText}`);
+  if (minimumText !== null) parts.push(`Broker min ${minimumText}`);
+  if (stepText !== null) parts.push(`Step ${stepText}`);
+
+  if (actualRiskText && allowedRiskText) {
+    parts.push(`Risk ${actualRiskText} / max ${allowedRiskText}`);
+  } else if (actualRiskText) {
+    parts.push(`Risk ${actualRiskText}`);
+  }
+
+  return parts.join(" • ");
+}
+
+function buildSmartExplanation(symbol) {
+  const data = latestPanelData?.[symbol] || {};
+  const rawSignal = String(data?.signal || "WAIT").trim().toUpperCase();
+  const signal = normalizeVoiceSignal(data);
+  const blocked = getSmartExplainBlockedStatus(symbol, data);
+  let message = "";
+  let state = signal;
+  let details = "";
+
+  if (!liveAutoEnabled) {
+    state = "BLOCKED";
+    message = `${symbol} is blocked because live auto is off.`;
+  } else if (blocked.blocked) {
+    state = "BLOCKED";
+    message = `${symbol} is blocked because ${blocked.reason}.`;
+    if (blocked.reason === "broker volume safety") {
+      details = buildVolumeSafetyAssistantDetails(blocked.status);
+    }
+  } else if (rawSignal === "HOLD BUY") {
+    state = "HOLD";
+    message = `${symbol} remains bullish, but there is no fresh buy entry.`;
+  } else if (rawSignal === "HOLD SELL") {
+    state = "HOLD";
+    message = `${symbol} remains bearish, but there is no fresh sell entry.`;
+  } else if (signal === "BUY") {
+    message = `${symbol} has a buy setup and is checking execution safety.`;
+  } else if (signal === "SELL") {
+    message = `${symbol} has a sell setup and is checking execution safety.`;
+  } else {
+    message = `${symbol} is waiting. No clean setup yet.`;
+  }
+
+  return {
+    symbol,
+    state,
+    message,
+    details
+  };
+}
+
+function speakAssistantMessage(message, force = false) {
+  if (
+    (!voiceState.enabled && !force) ||
+    !message ||
+    !("speechSynthesis" in window)
+  ) {
+    return;
+  }
+
+  const now = Date.now();
+  const repeatedTooSoon =
+    message === voiceState.lastAssistantMessage &&
+    now - voiceState.lastAssistantSpokenAt < ASSISTANT_REPEAT_MS;
+
+  if (repeatedTooSoon) return;
+
+  window.speechSynthesis.cancel();
+
+  const utterance = new SpeechSynthesisUtterance(message);
+  configureAssistantUtterance(utterance);
+  voiceState.lastAssistantMessage = message;
+  voiceState.lastAssistantSpokenAt = now;
+  window.speechSynthesis.speak(utterance);
+}
+
+function hideSmartExplanation() {
+  smartExplain?.classList.add("hidden");
+}
+
+function showAssistantMessage(message, state = "INFO", options = {}) {
+  if (!smartExplain || !smartExplainTitle || !smartExplainText || !smartExplainState) {
+    return;
+  }
+
+  smartExplainTitle.textContent = options.title || "Flow Assistant";
+  smartExplainText.textContent = message;
+  if (smartExplainDetails) {
+    smartExplainDetails.textContent = options.details || "";
+    smartExplainDetails.classList.toggle("hidden", !options.details);
+  }
+  smartExplainState.textContent = state;
+  smartExplainState.dataset.state = String(state).toLowerCase().split(" ")[0];
+  smartExplain.classList.remove("hidden");
+  speakAssistantMessage(message, Boolean(options.forceSpeech));
+}
+
+function showSmartExplanation(symbol) {
+  const result = buildSmartExplanation(symbol);
+  showAssistantMessage(result.message, result.state, {
+    title: `${symbol} Assistant`,
+    details: result.details
+  });
+}
+
+function makeSmartExplainTarget(element, symbol) {
+  if (!element) return;
+
+  element.classList.add("smart-explain-target");
+  element.setAttribute("role", "button");
+  element.setAttribute("tabindex", "0");
+  element.setAttribute("aria-label", `Explain ${symbol} signal`);
+
+  element.addEventListener("click", (event) => {
+    if (event.target.closest("button, input, select, a")) return;
+    showSmartExplanation(symbol);
+  });
+
+  element.addEventListener("keydown", (event) => {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      showSmartExplanation(symbol);
+    }
+  });
+}
+
+makeSmartExplainTarget(document.getElementById("eurusd-card"), "EURUSD");
+makeSmartExplainTarget(document.getElementById("gold-card"), "XAUUSD");
+
+const mainSmcPanel = document.querySelector(".main-smc-panel");
+
+if (mainSmcPanel) {
+  mainSmcPanel.classList.add("smart-explain-target");
+  mainSmcPanel.setAttribute("role", "button");
+  mainSmcPanel.setAttribute("tabindex", "0");
+  mainSmcPanel.setAttribute("aria-label", "Explain current SMC plan");
+  mainSmcPanel.addEventListener("click", (event) => {
+    if (event.target.closest("button, input, select, a")) return;
+    showSmartExplanation(currentChartSymbol);
+  });
+  mainSmcPanel.addEventListener("keydown", (event) => {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      showSmartExplanation(currentChartSymbol);
+    }
+  });
+}
+
+smartExplainClose?.addEventListener("click", hideSmartExplanation);
+
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape") hideSmartExplanation();
+});
+
 function setAuthMessage(text, isError = false) {
   if (!authMsg) return;
   authMsg.textContent = text;
@@ -1138,11 +1790,11 @@ function applySignalStyle(symbol, signal) {
   box.className = "signal-box";
   text.className = "signal-text";
 
-  if (signal === "BUY") {
+  if (signal === "BUY" || signal === "HOLD BUY") {
     shell.classList.add("signal-buy");
     box.classList.add("signal-border-buy");
     text.classList.add("buy-text");
-  } else if (signal === "SELL") {
+  } else if (signal === "SELL" || signal === "HOLD SELL") {
     shell.classList.add("signal-sell");
     box.classList.add("signal-border-sell");
     text.classList.add("sell-text");
@@ -1166,6 +1818,10 @@ function applySignalStyle(symbol, signal) {
     text.textContent = LANG[currentLang].buy.toUpperCase();
   } else if (signal === "SELL") {
     text.textContent = LANG[currentLang].sell.toUpperCase();
+  } else if (signal === "HOLD BUY") {
+    text.textContent = "HOLD BUY";
+  } else if (signal === "HOLD SELL") {
+    text.textContent = "HOLD SELL";
   } else {
     text.textContent = signal;
   }
@@ -1177,6 +1833,8 @@ function tSignal(signal) {
   if (s === "WAIT") return LANG[currentLang].wait;
   if (s === "BUY") return LANG[currentLang].buy.toUpperCase();
   if (s === "SELL") return LANG[currentLang].sell.toUpperCase();
+  if (s === "HOLD BUY") return "HOLD BUY";
+  if (s === "HOLD SELL") return "HOLD SELL";
 
   if (s === "EXIT SELL") return "EXIT SELL";
   if (s === "EXIT BUY") return "EXIT BUY";
@@ -1635,9 +2293,9 @@ if (priceEl) {
   if (mainSignal) {
     mainSignal.className = "main-signal-text";
 
-    if (signal === "BUY") {
+    if (signal === "BUY" || signal === "HOLD BUY") {
       mainSignal.classList.add("buy-text");
-    } else if (signal === "SELL" || signal.includes("EXIT")) {
+    } else if (signal === "SELL" || signal === "HOLD SELL" || signal.includes("EXIT")) {
       mainSignal.classList.add("sell-text");
     } else {
       mainSignal.classList.add("wait-text");
@@ -1792,11 +2450,6 @@ function playAlert(symbol, signal) {
     });
 }
     }
-
-    const utter = new SpeechSynthesisUtterance(`${symbol} ${signal}`);
-    utter.volume = 0.6;
-    speechSynthesis.cancel();
-    speechSynthesis.speak(utter);
 
   } catch (err) {
     console.log(err);
@@ -1998,6 +2651,11 @@ async function executeTrade(symbol, action) {
 }
 
 function confirmTrade(symbol, action) {
+  showAssistantMessage(
+    `${action === "BUY" ? "Buy" : "Sell"} button selected for ${symbol}.`,
+    `MANUAL ${action}`
+  );
+
   const role = localStorage.getItem("flowsignal_role");
 
   // PUBLIC USERS → blocked
@@ -2655,6 +3313,55 @@ function renderLiveTotalTradesCard() {
   });
 }
 
+function formatDashboardMoney(value) {
+  const amount = Number(value);
+  const safeAmount = Number.isFinite(amount) ? amount : 0;
+  const sign = safeAmount >= 0 ? "+" : "-";
+
+  return `${sign}$${Math.abs(safeAmount).toLocaleString("en-US", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  })}`;
+}
+
+function renderDashboardPerformance(meta = {}) {
+  const floating = Number(
+    meta.floating_live_pl ??
+    liveTradeStats.floating_live_pl ??
+    0
+  );
+  const weeklyPnl = Number(
+    meta.weekly_total_pl ??
+    liveTradeStats.weekly_total_pl ??
+    (
+      Number(
+        meta.weekly_realized_pl ??
+        liveTradeStats.weekly_realized_pl ??
+        0
+      ) + floating
+    )
+  );
+  const activeTrades = Object.values(
+    meta.live_active_orders || activeLiveOrders || {}
+  ).filter((trade) => trade && isLiveTradeActiveForDisplay(trade));
+
+  [
+    [dashboardWeeklyPnl, weeklyPnl],
+    [dashboardFloatingPnl, floating]
+  ].forEach(([element, value]) => {
+    if (!element) return;
+
+    const safeValue = Number.isFinite(value) ? value : 0;
+    element.textContent = formatDashboardMoney(safeValue);
+    element.classList.toggle("negative", safeValue < 0);
+    element.classList.toggle("neutral", safeValue === 0);
+  });
+
+  if (dashboardOpenTrades) {
+    dashboardOpenTrades.textContent = String(activeTrades.length);
+  }
+}
+
 function formatAutoTradeStatusText(status) {
   const item = status || {};
   const state = String(item.status || "WAITING").toUpperCase();
@@ -3179,6 +3886,8 @@ if (meta.live_account) {
     };
   }
 
+  renderDashboardPerformance(meta);
+
   if (meta.auto_trade_status) {
     autoTradeStatus = meta.auto_trade_status;
     liveAutoStatusBySymbol =
@@ -3232,6 +3941,8 @@ updateLivePanel(
   meta.live_trade_history || [],
   meta.live_trade_stats || null
 );
+
+processVoiceAnnouncements(data, meta);
 
 if (meta.auto_trade_status) {
   autoTradeStatus = meta.auto_trade_status;
@@ -3390,7 +4101,7 @@ function updatePaperToggleUI() {
 
 if (paperAutoToggleBtn) {
   paperAutoToggleBtn.addEventListener("click", async () => {
-
+    const previousPaperAutoEnabled = paperAutoEnabled;
     paperAutoEnabled = !paperAutoEnabled;
 
     localStorage.setItem(
@@ -3416,13 +4127,32 @@ if (paperAutoToggleBtn) {
         }
       );
 
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+
       const data = await response.json();
+      paperAutoEnabled =
+        typeof data.enabled === "boolean"
+          ? data.enabled
+          : paperAutoEnabled;
+      localStorage.setItem(
+        "paper_auto_enabled",
+        paperAutoEnabled ? "true" : "false"
+      );
+      updatePaperToggleUI();
+      showAssistantMessage(
+        `Paper auto is now ${paperAutoEnabled ? "on" : "off"}.`,
+        `PAPER AUTO ${paperAutoEnabled ? "ON" : "OFF"}`
+      );
 
       console.log("AUTO TRADE:", data);
 
       await refreshPanel();
 
     } catch (err) {
+      paperAutoEnabled = previousPaperAutoEnabled;
+      updatePaperToggleUI();
 
       console.error(
         "Auto trade toggle failed:",
@@ -3484,13 +4214,26 @@ async function applyLiveAutoToggle(nextEnabled) {
       }
     );
 
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+
     const result = await response.json();
     liveAutoEnabled = Boolean(result.enabled);
 
-    if (!result.enabled && result.message) {
+    if (nextEnabled && !result.enabled && result.message) {
       setStatus(
         `● LIVE AUTO BLOCKED • ${result.message}`,
         "error"
+      );
+      showAssistantMessage(
+        `Live auto is blocked because ${getVoiceBlockedReason({ reason: result.message })}.`,
+        "LIVE AUTO BLOCKED"
+      );
+    } else {
+      showAssistantMessage(
+        `Live auto is now ${liveAutoEnabled ? "on" : "off"}.`,
+        `LIVE AUTO ${liveAutoEnabled ? "ON" : "OFF"}`
       );
     }
 
@@ -3520,6 +4263,10 @@ if (liveAutoToggleBtn) {
         setStatus(
           "● LIVE AUTO BLOCKED • broker disconnected",
           "error"
+        );
+        showAssistantMessage(
+          "Live auto is blocked because the broker is disconnected.",
+          "LIVE AUTO BLOCKED"
         );
         return;
       }
@@ -4615,6 +5362,55 @@ function addTradeVisualLine(price, title, color, options = {}) {
   tradeVisualPriceLines[executionSymbol].push(line);
 }
 
+function getTradeChartLevels(trade, symbol = currentChartSymbol) {
+  const plan = latestPanelData?.[normalizeTradeChartSymbol(symbol)] || {};
+  const raw = trade?.raw && typeof trade.raw === "object" ? trade.raw : {};
+  const nestedRaw = raw?.raw && typeof raw.raw === "object" ? raw.raw : {};
+
+  return {
+    entry:
+      trade?.entry ??
+      trade?.entry_price ??
+      raw?.entry ??
+      nestedRaw?.price ??
+      plan.entry_price,
+    original_sl:
+      trade?.original_sl ??
+      trade?.initial_sl ??
+      trade?.sl ??
+      trade?.current_sl ??
+      trade?.stop_loss ??
+      trade?.stopLoss ??
+      raw?.stopLoss ??
+      nestedRaw?.stopLoss ??
+      plan.stop_loss,
+    current_sl:
+      trade?.sl ??
+      trade?.current_sl ??
+      trade?.stop_loss ??
+      trade?.stopLoss ??
+      raw?.stopLoss ??
+      nestedRaw?.stopLoss ??
+      plan.stop_loss,
+    tp1:
+      trade?.tp1 ??
+      trade?.take_profit_1 ??
+      trade?.take_profit ??
+      trade?.takeProfit ??
+      raw?.tp1 ??
+      raw?.takeProfit ??
+      nestedRaw?.takeProfit ??
+      plan.tp1,
+    tp2:
+      trade?.tp2 ??
+      trade?.take_profit_2 ??
+      trade?.tp2_price ??
+      raw?.tp2 ??
+      nestedRaw?.tp2 ??
+      plan.tp2,
+  };
+}
+
 function drawTradeVisualLevels() {
   clearTradeVisualLevels();
 
@@ -4629,13 +5425,10 @@ function drawTradeVisualLevels() {
   }
 
   const symbol = normalizeTradeChartSymbol(currentChartSymbol);
+  const chartLevels = getTradeChartLevels(trade, symbol);
   const levels = {
     symbol,
-    entry: trade.entry,
-    original_sl: trade.original_sl ?? trade.initial_sl ?? trade.sl,
-    current_sl: trade.sl,
-    tp1: trade.tp1,
-    tp2: trade.tp2 ?? trade.tp,
+    ...chartLevels,
     hit_tp1: Boolean(trade.hit_tp1),
     profit_protected: hasConfirmedProfitProtection(trade),
     protected_sl_price: trade.protected_sl_price,
@@ -5249,6 +6042,15 @@ if (langSelect) {
     localStorage.setItem("flowsignal_lang", currentLang);
 
     applyLanguage(currentLang);
+    const languageName = {
+      en: "English",
+      fr: "French",
+      es: "Spanish"
+    }[currentLang] || currentLang;
+    showAssistantMessage(
+      `Language changed to ${languageName}.`,
+      "LANGUAGE"
+    );
 
     if (latestPanelData) {
       updateCard("EURUSD", latestPanelData.EURUSD);
