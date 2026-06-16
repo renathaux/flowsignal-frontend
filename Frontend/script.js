@@ -4583,10 +4583,7 @@ paperHistoryList.innerHTML = `
 function updateLivePanel(liveTrades, liveHistory = [], stats = null) {
   activeLiveOrders =
     liveConnectionState.connected
-      ? (liveTrades || {
-          EURUSD: null,
-          XAUUSD: null
-        })
+      ? sanitizeActiveLiveOrders(liveTrades)
       : {
           EURUSD: null,
           XAUUSD: null
@@ -4827,6 +4824,20 @@ function renderLiveTotalTradesCard() {
   });
 }
 
+function sanitizeActiveLiveOrders(liveTrades = {}) {
+  const cleaned = {
+    EURUSD: null,
+    XAUUSD: null
+  };
+
+  ["EURUSD", "XAUUSD"].forEach((symbol) => {
+    const trade = liveTrades?.[symbol] || null;
+    cleaned[symbol] = isLiveTradeActiveForDisplay(trade) ? trade : null;
+  });
+
+  return cleaned;
+}
+
 function formatDashboardMoney(value) {
   const amount = Number(value);
   const safeAmount = Number.isFinite(amount) ? amount : 0;
@@ -4856,8 +4867,8 @@ function renderDashboardPerformance(meta = {}) {
     )
   );
   const activeTrades = Object.values(
-    meta.live_active_orders || activeLiveOrders || {}
-  ).filter((trade) => trade && isLiveTradeActiveForDisplay(trade));
+    sanitizeActiveLiveOrders(meta.live_active_orders || activeLiveOrders || {})
+  ).filter(Boolean);
 
   [
     [dashboardWeeklyPnl, weeklyPnl],
@@ -4873,6 +4884,11 @@ function renderDashboardPerformance(meta = {}) {
 
   if (dashboardOpenTrades) {
     dashboardOpenTrades.textContent = String(activeTrades.length);
+  }
+
+  if (!activeTrades.length) {
+    clearTradeLines("EURUSD");
+    clearTradeLines("XAUUSD");
   }
 }
 
@@ -5382,10 +5398,7 @@ if (meta.live_account) {
     meta.live_account.mode || "broker";
 
   activeLiveOrders =
-  meta.live_active_orders || {
-    EURUSD: null,
-    XAUUSD: null
-  };
+    sanitizeActiveLiveOrders(meta.live_active_orders || {});
 
   liveTradeHistory =
     Array.isArray(meta.live_trade_history)
@@ -6871,23 +6884,14 @@ function getActiveTradeForChartSymbol(symbol = currentChartSymbol) {
 
   if (liveTrade && isLiveTradeActiveForDisplay(liveTrade)) return liveTrade;
 
-  const paperTrade = latestRawPanelData?.paper_trades?.[tradeSymbol] || null;
-  if (isPaperTradeActiveForDisplay(paperTrade)) {
-    return paperTrade;
-  }
-
   return null;
 }
 
 function clearInactiveTradeVisualLines() {
   ["EURUSD", "XAUUSD"].forEach((symbol) => {
     const liveTrade = activeLiveOrders?.[symbol] || null;
-    const paperTrade = latestRawPanelData?.paper_trades?.[symbol] || null;
 
-    if (
-      !isLiveTradeActiveForDisplay(liveTrade) &&
-      !isPaperTradeActiveForDisplay(paperTrade)
-    ) {
+    if (!isLiveTradeActiveForDisplay(liveTrade)) {
       clearTradeLines(symbol);
     }
   });
