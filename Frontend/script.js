@@ -455,6 +455,7 @@ const assistantStyle = document.getElementById("assistantStyle");
 const streamerVoiceList = document.getElementById("streamerVoiceList");
 const streamerVoiceMenu = document.getElementById("streamerVoiceMenu");
 const streamerVoiceToggle = document.getElementById("streamerVoiceToggle");
+const streamerVoiceEditBtn = document.getElementById("streamerVoiceEditBtn");
 const smartExplain = document.getElementById("smartExplain");
 const smartExplainTitle = document.getElementById("smartExplainTitle");
 const smartExplainSubtitle = document.getElementById("smartExplainSubtitle");
@@ -1722,6 +1723,7 @@ function getStreamerVoiceMessage(key) {
 }
 
 let streamerSpacePressTimer = null;
+let streamerVoiceEditMode = false;
 
 function clearStreamerSpaceTimer() {
   if (!streamerSpacePressTimer) return;
@@ -1769,10 +1771,25 @@ function renderStreamerVoiceMenu() {
           value="${escapeHtml(getStreamerVoiceMessage(key))}"
           data-streamer-key="${key}"
           aria-label="Streamer voice ${streamerVoiceHotkeyLabels[key] || key}"
+          ${streamerVoiceEditMode ? "" : "readonly"}
         >
       </div>
     `)
     .join("");
+}
+
+function updateStreamerVoiceEditMode() {
+  streamerVoiceMenu?.classList.toggle("editing", streamerVoiceEditMode);
+  if (streamerVoiceEditBtn) {
+    streamerVoiceEditBtn.textContent = streamerVoiceEditMode ? "Done" : "Edit";
+    streamerVoiceEditBtn.classList.toggle("active", streamerVoiceEditMode);
+  }
+
+  streamerVoiceList
+    ?.querySelectorAll(".streamer-voice-input")
+    .forEach((input) => {
+      input.toggleAttribute("readonly", !streamerVoiceEditMode);
+    });
 }
 
 function setStreamerVoiceMenuOpen(open) {
@@ -1787,6 +1804,8 @@ function initializeStreamerVoiceMenu() {
   setStreamerVoiceMenuOpen(
     localStorage.getItem(VOICE_STORAGE.streamerOpen) === "true"
   );
+  streamerVoiceEditMode = false;
+  updateStreamerVoiceEditMode();
 }
 
 streamerVoiceToggle?.addEventListener("click", () => {
@@ -1794,9 +1813,16 @@ streamerVoiceToggle?.addEventListener("click", () => {
   setStreamerVoiceMenuOpen(!isOpen);
 });
 
+streamerVoiceEditBtn?.addEventListener("click", () => {
+  streamerVoiceEditMode = !streamerVoiceEditMode;
+  setStreamerVoiceMenuOpen(true);
+  updateStreamerVoiceEditMode();
+});
+
 streamerVoiceList?.addEventListener("input", (event) => {
   const input = event.target;
   if (!input?.matches?.(".streamer-voice-input")) return;
+  if (!streamerVoiceEditMode) return;
 
   setStreamerVoiceOverride(input.dataset.streamerKey, input.value);
 });
@@ -4580,14 +4606,7 @@ function updateLivePanel(liveTrades, liveHistory = [], stats = null) {
 
   clearTradeLines("EURUSD");
   clearTradeLines("XAUUSD");
-
-  ["EURUSD", "XAUUSD"].forEach((symbol) => {
-    const trade = activeLiveOrders?.[symbol] || null;
-
-    if (!trade || !isLiveTradeActiveForDisplay(trade)) {
-      clearTradeLines(symbol);
-    }
-  });
+  clearInactiveTradeVisualLines();
 
   renderLiveTotalTradesCard();
   renderLiveActiveOrders();
@@ -6086,6 +6105,29 @@ function isLiveTradeActiveForDisplay(trade) {
   return ["RUNNING", "OPEN", "TP1 HIT"].includes(status);
 }
 
+function isPaperTradeActiveForDisplay(trade) {
+  if (!trade) return false;
+
+  const status = String(trade.status || "").toUpperCase();
+  const result = String(trade.result || "").toUpperCase();
+  const closedStatuses = [
+    "WIN",
+    "LOSS",
+    "BE",
+    "PROTECTED_WIN",
+    "BROKER_CLOSED",
+    "CLOSED",
+    "STALE_CLOSED",
+    "MANUAL_CLOSE"
+  ];
+
+  if (closedStatuses.includes(status) || closedStatuses.includes(result)) {
+    return false;
+  }
+
+  return status === "OPEN" && ["RUNNING", "OPEN", "TP1 HIT"].includes(result || "RUNNING");
+}
+
 function hasRealLiveBrokerId(trade) {
   return Boolean(
     trade?.position_id ||
@@ -6830,11 +6872,25 @@ function getActiveTradeForChartSymbol(symbol = currentChartSymbol) {
   if (liveTrade && isLiveTradeActiveForDisplay(liveTrade)) return liveTrade;
 
   const paperTrade = latestRawPanelData?.paper_trades?.[tradeSymbol] || null;
-  if (paperTrade && String(paperTrade.status || "").toUpperCase() === "OPEN") {
+  if (isPaperTradeActiveForDisplay(paperTrade)) {
     return paperTrade;
   }
 
   return null;
+}
+
+function clearInactiveTradeVisualLines() {
+  ["EURUSD", "XAUUSD"].forEach((symbol) => {
+    const liveTrade = activeLiveOrders?.[symbol] || null;
+    const paperTrade = latestRawPanelData?.paper_trades?.[symbol] || null;
+
+    if (
+      !isLiveTradeActiveForDisplay(liveTrade) &&
+      !isPaperTradeActiveForDisplay(paperTrade)
+    ) {
+      clearTradeLines(symbol);
+    }
+  });
 }
 
 function clearTradeLines(symbol = currentChartSymbol) {
@@ -6943,18 +6999,15 @@ function hasCompleteTradeChartLevels(levels) {
 
 function drawTradeVisualLevels() {
   clearTradeVisualLevels();
+  clearInactiveTradeVisualLines();
 
   if (!chart || !candleSeries) return;
 
   const trade = getActiveTradeForChartSymbol(currentChartSymbol);
   const symbol = normalizeTradeChartSymbol(currentChartSymbol);
-  const hasActiveTrade = Boolean(trade && isLiveTradeActiveForDisplay(trade));
+  const hasActiveTrade = Boolean(trade);
 
   if (!hasActiveTrade) return;
-  if (trade && !isLiveTradeActiveForDisplay(trade)) {
-    clearTradeLines(currentChartSymbol);
-    return;
-  }
 
   const chartLevels = getTradeChartLevels(trade, symbol);
   if (!hasCompleteTradeChartLevels(chartLevels)) {
