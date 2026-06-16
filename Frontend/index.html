@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>nathaux.Fx</title>
-  <link rel="stylesheet" href="style.css?v=10" />
+  <link rel="stylesheet" href="style.css?v=13" />
 </head>
 <body class="fit-mode">
   <div id="landingPage" class="landing-page landing-pro">
@@ -785,17 +785,20 @@
     </section>
 
     <section id="streamerVoiceMenu" class="streamer-voice-menu collapsed" aria-labelledby="streamerVoiceTitle">
-      <button id="streamerVoiceToggle" class="assistant-settings-heading streamer-voice-toggle" type="button" aria-expanded="false">
-        <span>▶</span>
-        <strong id="streamerVoiceTitle">Streamer Voice</strong>
-      </button>
+      <div class="streamer-voice-header">
+        <button id="streamerVoiceToggle" class="assistant-settings-heading streamer-voice-toggle" type="button" aria-expanded="false">
+          <span>▶</span>
+          <strong id="streamerVoiceTitle">Streamer Voice</strong>
+        </button>
+      </div>
+      <button id="streamerVoiceEditBtn" class="streamer-voice-edit-btn" type="button">Edit text</button>
       <div id="streamerVoiceList" class="streamer-voice-list" aria-label="Streamer voice hotkeys"></div>
     </section>
 
   </div>
 </div>
 <script src="https://unpkg.com/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
-  <script src="script.js?v=17"></script>
+  <script src="script.js?v=20"></script>
 </body>
 </html>
   

@@ -1860,6 +1860,13 @@ body.fit-mode .dashboard-grid {
   gap: 0;
 }
 
+.streamer-voice-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
 .streamer-voice-toggle {
   width: 100%;
   min-height: 30px;
@@ -1867,6 +1874,28 @@ body.fit-mode .dashboard-grid {
   border: 0;
   background: transparent;
   cursor: pointer;
+}
+
+.streamer-voice-edit-btn {
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 31px;
+  margin-top: 7px;
+  border: 1px solid rgba(96, 165, 250, 0.36);
+  border-radius: 8px;
+  background: rgba(37, 99, 235, 0.16);
+  color: #bfdbfe;
+  font-size: 11px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.streamer-voice-edit-btn.active {
+  border-color: rgba(57, 212, 103, 0.42);
+  background: rgba(20, 83, 45, 0.28);
+  color: #70ec95;
 }
 
 .streamer-voice-menu.collapsed .streamer-voice-list {
@@ -1923,6 +1952,12 @@ body.fit-mode .dashboard-grid {
   font-size: 10px;
   font-weight: 700;
   outline: none;
+}
+
+.streamer-voice-input[readonly] {
+  cursor: default;
+  color: #aeb9c8;
+  background: rgba(8, 13, 24, 0.42);
 }
 
 .streamer-voice-input:focus {

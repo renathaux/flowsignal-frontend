@@ -1536,6 +1536,25 @@ function applyAssistantReplacements(value, replacements = {}) {
   return output;
 }
 
+function applyAssistantStyleText(message) {
+  const text = String(message || "").trim();
+  if (!text) return "";
+
+  if (voiceState.style === "confident") {
+    return text.startsWith("Confirmed:") ? text : `Confirmed: ${text}`;
+  }
+
+  if (voiceState.style === "hype") {
+    return text.startsWith("Let's go.") ? text : `Let's go. ${text}`;
+  }
+
+  if (voiceState.style === "professional") {
+    return text.startsWith("Market update:") ? text : `Market update: ${text}`;
+  }
+
+  return text;
+}
+
 function assistantLibraryLine(key, replacements = {}) {
   const library = VOICE_LIBRARY[currentLang] || VOICE_LIBRARY.en;
   const fallbackLibrary = VOICE_LIBRARY.en;
@@ -1556,7 +1575,7 @@ function assistantLibraryLine(key, replacements = {}) {
     prepared[0] ||
     "";
 
-  return selected;
+  return applyAssistantStyleText(selected);
 }
 
 function trimSentencePunctuation(value) {
@@ -1781,7 +1800,7 @@ function renderStreamerVoiceMenu() {
 function updateStreamerVoiceEditMode() {
   streamerVoiceMenu?.classList.toggle("editing", streamerVoiceEditMode);
   if (streamerVoiceEditBtn) {
-    streamerVoiceEditBtn.textContent = streamerVoiceEditMode ? "Done" : "Edit";
+    streamerVoiceEditBtn.textContent = streamerVoiceEditMode ? "Done" : "Edit text";
     streamerVoiceEditBtn.classList.toggle("active", streamerVoiceEditMode);
   }
 
@@ -2565,6 +2584,11 @@ voicePitch?.addEventListener("input", () => {
 assistantStyle?.addEventListener("change", () => {
   voiceState.style = assistantStyle.value;
   localStorage.setItem(VOICE_STORAGE.style, voiceState.style);
+  showAssistantMessage(
+    applyAssistantStyleText(assistantCopy("testMessage")),
+    "VOICE STYLE",
+    { forceSpeech: true }
+  );
 });
 
 assistantPopupToggle?.addEventListener("change", () => {
@@ -2581,7 +2605,7 @@ assistantPopupToggle?.addEventListener("change", () => {
 
 testVoiceBtn?.addEventListener("click", () => {
   showAssistantMessage(
-    assistantCopy("testMessage"),
+    applyAssistantStyleText(assistantCopy("testMessage")),
     "TEST VOICE",
     { forceSpeech: true }
   );
@@ -6921,6 +6945,11 @@ function clearTradeVisualLevels() {
   clearTradeLines(currentChartSymbol);
 }
 
+function getDisplayedOpenTradeCount() {
+  const value = Number(String(dashboardOpenTrades?.textContent || "").trim());
+  return Number.isFinite(value) ? value : null;
+}
+
 function addTradeVisualLine(price, title, color, options = {}) {
   const numericPrice = Number(price);
 
@@ -7006,6 +7035,12 @@ function drawTradeVisualLevels() {
   clearInactiveTradeVisualLines();
 
   if (!chart || !candleSeries) return;
+
+  if (getDisplayedOpenTradeCount() === 0) {
+    clearTradeLines("EURUSD");
+    clearTradeLines("XAUUSD");
+    return;
+  }
 
   const trade = getActiveTradeForChartSymbol(currentChartSymbol);
   const symbol = normalizeTradeChartSymbol(currentChartSymbol);
