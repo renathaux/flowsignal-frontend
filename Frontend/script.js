@@ -453,6 +453,8 @@ const voicePitch = document.getElementById("voicePitch");
 const voicePitchValue = document.getElementById("voicePitchValue");
 const assistantStyle = document.getElementById("assistantStyle");
 const streamerVoiceList = document.getElementById("streamerVoiceList");
+const streamerVoiceMenu = document.getElementById("streamerVoiceMenu");
+const streamerVoiceToggle = document.getElementById("streamerVoiceToggle");
 const smartExplain = document.getElementById("smartExplain");
 const smartExplainTitle = document.getElementById("smartExplainTitle");
 const smartExplainSubtitle = document.getElementById("smartExplainSubtitle");
@@ -909,7 +911,9 @@ const VOICE_STORAGE = {
   rate: "flowsignal_voice_speed",
   pitch: "flowsignal_voice_pitch",
   style: "flowsignal_assistant_style",
-  popup: "flowsignal_assistant_popup"
+  popup: "flowsignal_assistant_popup",
+  streamerMessages: "flowsignal_streamer_voice_messages",
+  streamerOpen: "flowsignal_streamer_voice_open"
 };
 const VOICE_DEFAULTS = {
   rate: 0.9,
@@ -1437,6 +1441,52 @@ const streamerVoiceMessagesByLang = {
   }
 };
 
+function loadStreamerVoiceOverrides() {
+  try {
+    const parsed = JSON.parse(
+      localStorage.getItem(VOICE_STORAGE.streamerMessages) || "{}"
+    );
+    return parsed && typeof parsed === "object" ? parsed : {};
+  } catch (err) {
+    return {};
+  }
+}
+
+function saveStreamerVoiceOverrides(overrides) {
+  localStorage.setItem(
+    VOICE_STORAGE.streamerMessages,
+    JSON.stringify(overrides || {})
+  );
+}
+
+function getStreamerVoiceOverridesForLang(lang = currentLang) {
+  const overrides = loadStreamerVoiceOverrides();
+  return overrides[lang] && typeof overrides[lang] === "object"
+    ? overrides[lang]
+    : {};
+}
+
+function setStreamerVoiceOverride(key, value) {
+  const overrides = loadStreamerVoiceOverrides();
+  const langOverrides = {
+    ...(overrides[currentLang] || {})
+  };
+  const defaultValue =
+    streamerVoiceMessagesByLang[currentLang]?.[key] ||
+    streamerVoiceMessagesByLang.en[key] ||
+    "";
+  const cleanValue = String(value || "").trim();
+
+  if (!cleanValue || cleanValue === defaultValue) {
+    delete langOverrides[key];
+  } else {
+    langOverrides[key] = cleanValue;
+  }
+
+  overrides[currentLang] = langOverrides;
+  saveStreamerVoiceOverrides(overrides);
+}
+
 const voiceState = {
   enabled:
     speechSynthesisSupported &&
@@ -1660,7 +1710,10 @@ function speakStreamerVoice(message) {
 }
 
 function getStreamerVoiceMessages() {
-  return streamerVoiceMessagesByLang[currentLang] || streamerVoiceMessagesByLang.en;
+  return {
+    ...(streamerVoiceMessagesByLang[currentLang] || streamerVoiceMessagesByLang.en),
+    ...getStreamerVoiceOverridesForLang(currentLang),
+  };
 }
 
 function getStreamerVoiceMessage(key) {
@@ -1690,6 +1743,14 @@ function handleStreamerSpaceHotkey() {
   }, 260);
 }
 
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;");
+}
+
 function renderStreamerVoiceMenu() {
   if (!streamerVoiceList) return;
 
@@ -1702,11 +1763,43 @@ function renderStreamerVoiceMenu() {
     .map((key) => `
       <div class="streamer-voice-row">
         <kbd>${streamerVoiceHotkeyLabels[key] || key}</kbd>
-        <span>${getStreamerVoiceMessage(key)}</span>
+        <input
+          class="streamer-voice-input"
+          type="text"
+          value="${escapeHtml(getStreamerVoiceMessage(key))}"
+          data-streamer-key="${key}"
+          aria-label="Streamer voice ${streamerVoiceHotkeyLabels[key] || key}"
+        >
       </div>
     `)
     .join("");
 }
+
+function setStreamerVoiceMenuOpen(open) {
+  if (!streamerVoiceMenu || !streamerVoiceToggle) return;
+
+  streamerVoiceMenu.classList.toggle("collapsed", !open);
+  streamerVoiceToggle.setAttribute("aria-expanded", String(open));
+  localStorage.setItem(VOICE_STORAGE.streamerOpen, open ? "true" : "false");
+}
+
+function initializeStreamerVoiceMenu() {
+  setStreamerVoiceMenuOpen(
+    localStorage.getItem(VOICE_STORAGE.streamerOpen) === "true"
+  );
+}
+
+streamerVoiceToggle?.addEventListener("click", () => {
+  const isOpen = !streamerVoiceMenu?.classList.contains("collapsed");
+  setStreamerVoiceMenuOpen(!isOpen);
+});
+
+streamerVoiceList?.addEventListener("input", (event) => {
+  const input = event.target;
+  if (!input?.matches?.(".streamer-voice-input")) return;
+
+  setStreamerVoiceOverride(input.dataset.streamerKey, input.value);
+});
 
 function isTypingInEditableField() {
   const active = document.activeElement;
@@ -1756,6 +1849,7 @@ function initializeVoiceSettings() {
   if (voicePitchValue) voicePitchValue.textContent = voiceState.pitch.toFixed(2);
 
   renderStreamerVoiceMenu();
+  initializeStreamerVoiceMenu();
   refreshAssistantVoices();
   window.speechSynthesis.addEventListener?.(
     "voiceschanged",
@@ -6731,9 +6825,16 @@ let structureLineSeries = null;
 
 function getActiveTradeForChartSymbol(symbol = currentChartSymbol) {
   const tradeSymbol = normalizeTradeChartSymbol(symbol);
-  const trade = activeLiveOrders?.[tradeSymbol] || null;
+  const liveTrade = activeLiveOrders?.[tradeSymbol] || null;
 
-  return trade && isLiveTradeActiveForDisplay(trade) ? trade : null;
+  if (liveTrade && isLiveTradeActiveForDisplay(liveTrade)) return liveTrade;
+
+  const paperTrade = latestRawPanelData?.paper_trades?.[tradeSymbol] || null;
+  if (paperTrade && String(paperTrade.status || "").toUpperCase() === "OPEN") {
+    return paperTrade;
+  }
+
+  return null;
 }
 
 function clearTradeLines(symbol = currentChartSymbol) {
@@ -6785,13 +6886,16 @@ function addTradeVisualLine(price, title, color, options = {}) {
 function getTradeChartLevels(trade, symbol = currentChartSymbol) {
   const raw = trade?.raw && typeof trade.raw === "object" ? trade.raw : {};
   const nestedRaw = raw?.raw && typeof raw.raw === "object" ? raw.raw : {};
+  const tradeSymbol = normalizeTradeChartSymbol(symbol);
+  const signalPlan = latestRawPanelData?.[tradeSymbol] || {};
 
   return {
     entry:
       trade?.entry ??
       trade?.entry_price ??
       raw?.entry ??
-      nestedRaw?.price,
+      nestedRaw?.price ??
+      signalPlan?.entry_price,
     original_sl:
       trade?.original_sl ??
       trade?.initial_sl ??
@@ -6800,19 +6904,22 @@ function getTradeChartLevels(trade, symbol = currentChartSymbol) {
       trade?.stop_loss ??
       trade?.stopLoss ??
       raw?.stopLoss ??
-      nestedRaw?.stopLoss,
+      nestedRaw?.stopLoss ??
+      signalPlan?.stop_loss,
     current_sl:
       trade?.sl ??
       trade?.current_sl ??
       trade?.stop_loss ??
       trade?.stopLoss ??
       raw?.stopLoss ??
-      nestedRaw?.stopLoss,
+      nestedRaw?.stopLoss ??
+      signalPlan?.stop_loss,
     tp1:
       trade?.tp1 ??
       trade?.take_profit_1 ??
       raw?.tp1 ??
-      nestedRaw?.tp1,
+      nestedRaw?.tp1 ??
+      signalPlan?.tp1,
     tp2:
       trade?.tp2 ??
       trade?.take_profit_2 ??
@@ -6822,8 +6929,16 @@ function getTradeChartLevels(trade, symbol = currentChartSymbol) {
       raw?.tp2 ??
       raw?.takeProfit ??
       nestedRaw?.tp2 ??
-      nestedRaw?.takeProfit,
+      nestedRaw?.takeProfit ??
+      signalPlan?.tp2,
   };
+}
+
+function hasCompleteTradeChartLevels(levels) {
+  return ["entry", "current_sl", "tp1", "tp2"].every((key) => {
+    const value = Number(levels?.[key]);
+    return Number.isFinite(value);
+  });
 }
 
 function drawTradeVisualLevels() {
@@ -6842,6 +6957,14 @@ function drawTradeVisualLevels() {
   }
 
   const chartLevels = getTradeChartLevels(trade, symbol);
+  if (!hasCompleteTradeChartLevels(chartLevels)) {
+    console.warn("TRADE_VISUAL_LEVELS_SKIPPED_INCOMPLETE =", {
+      symbol,
+      levels: chartLevels,
+    });
+    return;
+  }
+
   const levels = {
     symbol,
     ...chartLevels,

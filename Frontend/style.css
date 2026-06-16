@@ -1856,6 +1856,27 @@ body.fit-mode .dashboard-grid {
     rgba(12, 18, 30, 0.82);
 }
 
+.streamer-voice-menu.collapsed {
+  gap: 0;
+}
+
+.streamer-voice-toggle {
+  width: 100%;
+  min-height: 30px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+.streamer-voice-menu.collapsed .streamer-voice-list {
+  display: none;
+}
+
+.streamer-voice-menu:not(.collapsed) .streamer-voice-toggle span {
+  transform: rotate(90deg);
+}
+
 .streamer-voice-list {
   display: grid;
   gap: 6px;
@@ -1888,6 +1909,25 @@ body.fit-mode .dashboard-grid {
   font-family: Arial, Helvetica, sans-serif;
   font-size: 11px;
   font-weight: 900;
+}
+
+.streamer-voice-input {
+  width: 100%;
+  min-width: 0;
+  min-height: 28px;
+  padding: 0 8px;
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  border-radius: 7px;
+  background: rgba(8, 13, 24, 0.72);
+  color: #dce6f3;
+  font-size: 10px;
+  font-weight: 700;
+  outline: none;
+}
+
+.streamer-voice-input:focus {
+  border-color: rgba(96, 165, 250, 0.62);
+  box-shadow: 0 0 0 2px rgba(96, 165, 250, 0.14);
 }
 
 #assistantModal .assistant-settings {
