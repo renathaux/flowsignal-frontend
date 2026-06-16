@@ -439,8 +439,22 @@ const dashboardWeeklyPnl = document.getElementById("dashboardWeeklyPnl");
 const dashboardFloatingPnl = document.getElementById("dashboardFloatingPnl");
 const dashboardOpenTrades = document.getElementById("dashboardOpenTrades");
 const voiceToggleBtn = document.getElementById("voiceToggleBtn");
+const menuAssistantBtn = document.getElementById("menuAssistantBtn");
+const assistantModal = document.getElementById("assistantModal");
+const closeAssistantPanelBtn = document.getElementById("closeAssistantPanelBtn");
+const assistantPopupToggle = document.getElementById("assistantPopupToggle");
+const flowAssistantSettings = document.getElementById("flowAssistantSettings");
+const menuVoiceToggleBtn = document.getElementById("menuVoiceToggleBtn");
+const voiceSelect = document.getElementById("voiceSelect");
+const testVoiceBtn = document.getElementById("testVoiceBtn");
+const voiceSpeed = document.getElementById("voiceSpeed");
+const voiceSpeedValue = document.getElementById("voiceSpeedValue");
+const voicePitch = document.getElementById("voicePitch");
+const voicePitchValue = document.getElementById("voicePitchValue");
+const assistantStyle = document.getElementById("assistantStyle");
 const smartExplain = document.getElementById("smartExplain");
 const smartExplainTitle = document.getElementById("smartExplainTitle");
+const smartExplainSubtitle = document.getElementById("smartExplainSubtitle");
 const smartExplainText = document.getElementById("smartExplainText");
 const smartExplainDetails = document.getElementById("smartExplainDetails");
 const smartExplainState = document.getElementById("smartExplainState");
@@ -458,13 +472,10 @@ if (landingLang) {
     localStorage.setItem("flowsignal_lang", lang);
 
     applyLanguage(lang);
-    const languageName = {
-      en: "English",
-      fr: "French",
-      es: "Spanish"
-    }[lang] || lang;
+    updateAssistantLanguageUI();
+    refreshVoiceForCurrentLanguage();
     showAssistantMessage(
-      `Language changed to ${languageName}.`,
+      assistantEventMessage("languageChanged"),
       "LANGUAGE"
     );
   });
@@ -890,10 +901,474 @@ let liveTradeStats = {
 
 const VOICE_COOLDOWN_MS = 10000;
 const ASSISTANT_REPEAT_MS = 20000;
+const ASSISTANT_CLICK_DEBOUNCE_MS = 320;
+const VOICE_STORAGE = {
+  enabled: "flowsignal_voice_enabled",
+  name: "flowsignal_voice_name",
+  rate: "flowsignal_voice_speed",
+  pitch: "flowsignal_voice_pitch",
+  style: "flowsignal_assistant_style",
+  popup: "flowsignal_assistant_popup"
+};
+const VOICE_DEFAULTS = {
+  rate: 0.9,
+  pitch: 1.05,
+  volume: 1,
+  style: "calm"
+};
+const VOICE_STYLE_TUNING = {
+  calm: { rate: 1, pitch: 1 },
+  confident: { rate: 1.02, pitch: 1 },
+  hype: { rate: 1.08, pitch: 1.06 },
+  professional: { rate: 1, pitch: 0.96 }
+};
+const VOICE_PREFERRED_NAMES = [
+  "Google UK English Female",
+  "Victoria",
+  "Karen",
+  "Google US English",
+  "Alex"
+];
+const ASSISTANT_LOCALES = {
+  en: "en-US",
+  fr: "fr-FR",
+  es: "es-ES"
+};
+const ASSISTANT_COPY = {
+  en: {
+    panelTitle: "Market Voice",
+    settings: "Voice Settings",
+    voice: "Voice",
+    testVoice: "Test Voice",
+    showPopup: "Show text popup",
+    speed: "Voice speed",
+    pitch: "Voice pitch",
+    style: "Assistant style",
+    styles: ["Calm", "Confident", "Hype", "Professional"],
+    stopVoice: "Stop Voice",
+    closePanel: "Close Panel",
+    voiceOn: "Voice ON",
+    voiceOff: "Voice OFF",
+    voiceOnMessage: "Perfect. I’ll keep you updated.",
+    voiceOffMessage: "Okay, I’ll stay quiet.",
+    testMessage: "Welcome back to FlowSignal. I'm watching the market for you.",
+    wait: "{symbol} is waiting. No clean setup yet.",
+    holdBuy: "The trend is still bullish, but the fresh entry is gone.",
+    holdSell: "The trend is still bearish, but the fresh entry is gone.",
+    freshBuy: "Okay... {symbol} has a fresh buy setup.",
+    freshSell: "Careful... {symbol} has a fresh sell setup.",
+    blocked: "Execution is blocked because {reason}.",
+    blockedEvent: "{symbol} has a {side} signal, but execution is blocked because {reason}.",
+    riskBlocked: "broker risk is {actual}, above the {maximum} limit",
+    blockedReasons: {
+      distance: "the minimum stop loss distance is not met",
+      volume: "broker volume safety rejected the risk",
+      running: "a trade is already running",
+      disconnected: "the broker is disconnected",
+      safety: "a safety check did not pass"
+    },
+    buyAutoOff: "{symbol} has a buy setup, but live auto is off.",
+    sellAutoOff: "{symbol} has a sell setup, but live auto is off.",
+    chart: "{symbol}, on the {timeframe} chart, is {direction}. I’m waiting for {waiting} before a trade.",
+    waiting: {
+      candle: "a clean confirmation candle",
+      choch: "a confirmed change of character",
+      bos: "a confirmed structure break",
+      swing: "a closed candle beyond the swing level",
+      structure: "a clean structure break and candle close"
+    },
+    executed: "{symbol} {side} trade confirmed. We’re in.",
+    activeTrade: "{symbol} has an active {side} trade.",
+    tp1: "Nice. {symbol} reached the first target.",
+    tp1Protected: "Nice. {symbol} reached the first target and stop loss is protected.",
+    protected: "{symbol} stop loss is protected now.",
+    win: "{symbol} trade closed in profit.",
+    loss: "{symbol} trade closed in loss.",
+    gold: "gold",
+    euro: "euro dollar",
+    directions: { bullish: "bullish", bearish: "bearish", sideways: "sideways", unclear: "unclear" },
+    timeframes: { "5m": "five minute", "15m": "fifteen minute", "1h": "one hour" },
+    languageChanged: "Language changed to English.",
+    paperAuto: "Paper auto is {state}.",
+    liveAuto: "Live auto is {state}.",
+    on: "on",
+    off: "off",
+    assistant: "Assistant",
+    manualBuy: "Okay... manual buy selected for {symbol}.",
+    manualSell: "Okay... manual sell selected for {symbol}."
+  },
+  fr: {
+    panelTitle: "Voix du marché",
+    settings: "Réglages de la voix",
+    voice: "Voix",
+    testVoice: "Tester la voix",
+    showPopup: "Afficher la fenêtre de texte",
+    speed: "Vitesse de la voix",
+    pitch: "Tonalité de la voix",
+    style: "Style de l’assistant",
+    styles: ["Calme", "Assuré", "Énergique", "Professionnel"],
+    stopVoice: "Arrêter la voix",
+    closePanel: "Fermer",
+    voiceOn: "Voix ACTIVÉE",
+    voiceOff: "Voix DÉSACTIVÉE",
+    voiceOnMessage: "Parfait. Je vous tiendrai au courant.",
+    voiceOffMessage: "D’accord, je reste silencieux.",
+    testMessage: "Bienvenue sur FlowSignal. Je surveille le marché pour vous.",
+    wait: "{symbol} est en attente. Aucune configuration claire pour le moment.",
+    holdBuy: "La tendance reste haussière, mais l’entrée récente est passée.",
+    holdSell: "La tendance reste baissière, mais l’entrée récente est passée.",
+    freshBuy: "D’accord... {symbol} présente une nouvelle configuration d’achat.",
+    freshSell: "Attention... {symbol} montre maintenant une pression vendeuse.",
+    blocked: "L’exécution est bloquée parce que {reason}.",
+    blockedEvent: "{symbol} présente un signal de {side}, mais l’exécution est bloquée parce que {reason}.",
+    riskBlocked: "le risque du courtier est de {actual}, au-dessus de la limite de {maximum}",
+    blockedReasons: {
+      distance: "la distance minimale du stop loss n’est pas respectée",
+      volume: "la sécurité du volume du courtier a refusé le risque",
+      running: "un trade est déjà en cours",
+      disconnected: "le courtier est déconnecté",
+      safety: "un contrôle de sécurité n’est pas validé"
+    },
+    buyAutoOff: "{symbol} présente un achat, mais le trading automatique réel est désactivé.",
+    sellAutoOff: "{symbol} présente une vente, mais le trading automatique réel est désactivé.",
+    chart: "{symbol}, sur le graphique de {timeframe}, est {direction}. J’attends {waiting} avant un trade.",
+    waiting: {
+      candle: "une bougie de confirmation claire",
+      choch: "un changement de caractère confirmé",
+      bos: "une cassure de structure confirmée",
+      swing: "une clôture au-delà du niveau de swing",
+      structure: "une cassure de structure avec clôture confirmée"
+    },
+    executed: "Trade {side} confirmé sur {symbol}. Nous sommes en position.",
+    activeTrade: "{symbol} a un trade {side} actif.",
+    tp1: "Bien. {symbol} a atteint le premier objectif.",
+    tp1Protected: "Bien. {symbol} a atteint le premier objectif et le stop est protégé.",
+    protected: "Le stop loss de {symbol} est maintenant protégé.",
+    win: "Le trade sur {symbol} est clôturé en profit.",
+    loss: "Le trade sur {symbol} est clôturé en perte.",
+    gold: "l’or",
+    euro: "l’euro dollar",
+    directions: { bullish: "haussier", bearish: "baissier", sideways: "latéral", unclear: "incertain" },
+    timeframes: { "5m": "cinq minutes", "15m": "quinze minutes", "1h": "une heure" },
+    languageChanged: "La langue est maintenant le français.",
+    paperAuto: "Le trading automatique papier est {state}.",
+    liveAuto: "Le trading automatique réel est {state}.",
+    on: "activé",
+    off: "désactivé",
+    assistant: "Assistant",
+    manualBuy: "D’accord... achat manuel sélectionné pour {symbol}.",
+    manualSell: "D’accord... vente manuelle sélectionnée pour {symbol}."
+  },
+  es: {
+    panelTitle: "Voz del mercado",
+    settings: "Ajustes de voz",
+    voice: "Voz",
+    testVoice: "Probar voz",
+    showPopup: "Mostrar ventana de texto",
+    speed: "Velocidad de voz",
+    pitch: "Tono de voz",
+    style: "Estilo del asistente",
+    styles: ["Calmado", "Seguro", "Enérgico", "Profesional"],
+    stopVoice: "Detener voz",
+    closePanel: "Cerrar",
+    voiceOn: "Voz ACTIVADA",
+    voiceOff: "Voz DESACTIVADA",
+    voiceOnMessage: "Perfecto. Te mantendré informado.",
+    voiceOffMessage: "De acuerdo, me quedaré en silencio.",
+    testMessage: "Bienvenido a FlowSignal. Estoy vigilando el mercado por ti.",
+    wait: "{symbol} está en espera. Todavía no hay una configuración clara.",
+    holdBuy: "La tendencia sigue alcista, pero la entrada reciente ya pasó.",
+    holdSell: "La tendencia sigue bajista, pero la entrada reciente ya pasó.",
+    freshBuy: "Bien... {symbol} muestra una nueva configuración de compra.",
+    freshSell: "Cuidado... {symbol} muestra presión vendedora ahora.",
+    blocked: "La ejecución está bloqueada porque {reason}.",
+    blockedEvent: "{symbol} tiene una señal de {side}, pero la ejecución está bloqueada porque {reason}.",
+    riskBlocked: "el riesgo del bróker es {actual}, por encima del límite de {maximum}",
+    blockedReasons: {
+      distance: "no se cumple la distancia mínima del stop loss",
+      volume: "la seguridad de volumen del bróker rechazó el riesgo",
+      running: "ya hay una operación activa",
+      disconnected: "el bróker está desconectado",
+      safety: "no se aprobó una comprobación de seguridad"
+    },
+    buyAutoOff: "{symbol} tiene una compra, pero el trading automático real está desactivado.",
+    sellAutoOff: "{symbol} tiene una venta, pero el trading automático real está desactivado.",
+    chart: "{symbol}, en el gráfico de {timeframe}, está {direction}. Estoy esperando {waiting} antes de operar.",
+    waiting: {
+      candle: "una vela de confirmación clara",
+      choch: "un cambio de carácter confirmado",
+      bos: "una ruptura de estructura confirmada",
+      swing: "un cierre más allá del nivel de swing",
+      structure: "una ruptura de estructura con cierre confirmado"
+    },
+    executed: "Operación de {side} confirmada en {symbol}. Ya estamos dentro.",
+    activeTrade: "{symbol} tiene una operación de {side} activa.",
+    tp1: "Bien. {symbol} alcanzó el primer objetivo.",
+    tp1Protected: "Bien. {symbol} alcanzó el primer objetivo y el stop está protegido.",
+    protected: "El stop loss de {symbol} ya está protegido.",
+    win: "La operación de {symbol} cerró con ganancia.",
+    loss: "La operación de {symbol} cerró con pérdida.",
+    gold: "el oro",
+    euro: "el euro dólar",
+    directions: { bullish: "alcista", bearish: "bajista", sideways: "lateral", unclear: "indefinido" },
+    timeframes: { "5m": "cinco minutos", "15m": "quince minutos", "1h": "una hora" },
+    languageChanged: "El idioma cambió a español.",
+    paperAuto: "El trading automático de prueba está {state}.",
+    liveAuto: "El trading automático real está {state}.",
+    on: "activado",
+    off: "desactivado",
+    assistant: "Asistente",
+    manualBuy: "Bien... compra manual seleccionada para {symbol}.",
+    manualSell: "Bien... venta manual seleccionada para {symbol}."
+  }
+};
+
+const VOICE_EVENT_PRIORITY = {
+  BROKER_DISCONNECTED: 130,
+  BROKER_CONNECTED: 125,
+  MARKET_CLOSED: 120,
+  WIN: 110,
+  LOSS: 110,
+  TP2: 100,
+  TP1: 95,
+  PROTECTED: 90,
+  EXECUTED: 85,
+  BLOCKED: 80,
+  HIGH_CONFIDENCE: 65,
+  STRONG_MOMENTUM: 62,
+  BUY: 60,
+  SELL: 60,
+  HOLD: 45,
+  WAIT: 30,
+  USER_ACTION: 20,
+  APP_OPENED: 10
+};
+
+const VOICE_LIBRARY = {
+  en: {
+    brokerDisconnected: [
+      "I've lost connection to the broker.",
+      "Broker connection is unavailable right now."
+    ],
+    brokerConnected: [
+      "Broker connection restored.",
+      "We're connected again."
+    ],
+    marketClosed: [
+      "The market is currently closed.",
+      "I'll resume monitoring when the market reopens."
+    ],
+    executed: [
+      "Trade confirmed. We're in.",
+      "Position opened successfully.",
+      "We have an active trade.",
+      "Execution confirmed."
+    ],
+    activeTrade: [
+      "{symbol} already has an active trade.",
+      "{symbol} is already running a position.",
+      "An active trade is already open on {symbol}."
+    ],
+    blocked: [
+      "I found a setup, but I can't take it right now.",
+      "The signal is there, but something is blocking execution.",
+      "I see the opportunity, but a safety check stopped it.",
+      "The setup looks valid, but execution isn't allowed yet."
+    ],
+    tp1: [
+      "Nice. First target reached.",
+      "TP1 has been secured.",
+      "Good start. First target completed."
+    ],
+    protected: [
+      "Stop loss is protected now.",
+      "The trade is protected.",
+      "We've locked in protection."
+    ],
+    tp2: [
+      "Excellent. Final target reached.",
+      "We got the full move.",
+      "Target achieved."
+    ],
+    win: [
+      "Trade closed in profit.",
+      "Nice result.",
+      "That one finished green.",
+      "Another winning trade."
+    ],
+    loss: [
+      "Trade closed at a loss.",
+      "That one didn't work out.",
+      "Small loss. We'll wait for the next setup."
+    ],
+    buySetup: [
+      "Okay... {symbol} is starting to look bullish.",
+      "I'm seeing a fresh buy opportunity on {symbol}.",
+      "Momentum is building to the upside on {symbol}.",
+      "{symbol} is getting interesting.",
+      "We may have a buy developing on {symbol}."
+    ],
+    sellSetup: [
+      "Careful... I'm seeing growing sell pressure on {symbol}.",
+      "{symbol} is starting to lean bearish.",
+      "A fresh sell setup is forming on {symbol}.",
+      "Momentum is shifting to the downside on {symbol}.",
+      "We may have a sell opportunity on {symbol}."
+    ],
+    highConfidence: [
+      "This setup looks strong.",
+      "Confidence is increasing.",
+      "This one deserves attention."
+    ],
+    strongMomentum: [
+      "Momentum is accelerating.",
+      "This move is gaining strength.",
+      "Pressure is building quickly."
+    ],
+    holdBuy: [
+      "The trend is still bullish, but the entry is no longer fresh.",
+      "I still like the direction, but we're a bit late now.",
+      "The move is active, but I don't see a new entry.",
+      "The trend remains healthy, but I need a fresh setup."
+    ],
+    holdSell: [
+      "The trend is still bearish, but the entry is no longer fresh.",
+      "The move is active, but we're late to the entry.",
+      "I still like the downside, but I need a new setup."
+    ],
+    wait: [
+      "{symbol} is waiting. No clean setup yet.",
+      "Not ready yet. I need a little more confirmation.",
+      "There's movement, but I don't have an entry yet.",
+      "I'm staying patient on this one.",
+      "Nothing actionable right now."
+    ],
+    liveAutoOn: [
+      "Perfect. Live trading is active.",
+      "I'm ready to execute valid setups.",
+      "Live mode is on. I'll let you know when something appears."
+    ],
+    liveAutoOff: [
+      "Live trading is off. I'll keep monitoring the market.",
+      "No problem. I'll watch the market without trading.",
+      "Live execution is disabled for now."
+    ],
+    paperAutoOn: [
+      "Paper auto is active.",
+      "Paper mode is ready to track valid setups."
+    ],
+    paperAutoOff: [
+      "Paper auto is off.",
+      "Paper mode is disabled for now."
+    ],
+    voiceOn: [
+      "I'm back.",
+      "Voice notifications are active.",
+      "I'll keep you updated."
+    ],
+    voiceOff: [
+      "Okay. I'll stay quiet.",
+      "Understood. Voice notifications are off."
+    ],
+    languageChanged: [
+      "Language updated.",
+      "Your language preference has been changed."
+    ],
+    manualBuy: [
+      "Manual buy selected.",
+      "You've chosen a buy position."
+    ],
+    manualSell: [
+      "Manual sell selected.",
+      "You've chosen a sell position."
+    ],
+    goldClicked: [
+      "I'm watching gold.",
+      "Let's take a look at gold."
+    ],
+    euroClicked: [
+      "I'm watching euro dollar.",
+      "Let's take a look at euro dollar."
+    ],
+    appOpened: [
+      "Welcome back. I'm watching the market for you.",
+      "Good to see you again. Let's see what the market gives us.",
+      "Everything is ready. I'm monitoring both markets."
+    ]
+  },
+  fr: {
+    brokerDisconnected: ["J'ai perdu la connexion au courtier.", "La connexion au courtier est indisponible."],
+    brokerConnected: ["Connexion au courtier rétablie.", "Nous sommes reconnectés."],
+    marketClosed: ["Le marché est actuellement fermé.", "Je reprendrai la surveillance à la réouverture."],
+    executed: ["Trade confirmé. Nous sommes en position.", "Position ouverte avec succès.", "Nous avons un trade actif.", "Exécution confirmée."],
+    activeTrade: ["{symbol} a déjà un trade actif.", "{symbol} a déjà une position en cours.", "Un trade actif est déjà ouvert sur {symbol}."],
+    blocked: ["J'ai trouvé un setup, mais je ne peux pas le prendre maintenant.", "Le signal est là, mais quelque chose bloque l'exécution.", "Je vois l'opportunité, mais une sécurité l'a arrêtée.", "Le setup semble valide, mais l'exécution n'est pas encore autorisée."],
+    tp1: ["Bien. Premier objectif atteint.", "TP1 est sécurisé.", "Bon départ. Premier objectif terminé."],
+    protected: ["Le stop loss est maintenant protégé.", "Le trade est protégé.", "La protection est verrouillée."],
+    tp2: ["Excellent. Objectif final atteint.", "Nous avons pris tout le mouvement.", "Objectif atteint."],
+    win: ["Trade clôturé en profit.", "Beau résultat.", "Celui-là finit vert.", "Encore un trade gagnant."],
+    loss: ["Trade clôturé en perte.", "Celui-là n'a pas fonctionné.", "Petite perte. Nous attendrons le prochain setup."],
+    buySetup: ["D'accord... {symbol} commence à devenir haussier.", "Je vois une nouvelle opportunité d'achat sur {symbol}.", "Le momentum monte vers le haut sur {symbol}.", "{symbol} devient intéressant.", "Nous avons peut-être un achat en formation sur {symbol}."],
+    sellSetup: ["Attention... je vois une pression vendeuse grandir sur {symbol}.", "{symbol} commence à pencher baissier.", "Une nouvelle vente se forme sur {symbol}.", "Le momentum bascule vers le bas sur {symbol}.", "Nous avons peut-être une vente sur {symbol}."],
+    highConfidence: ["Ce setup semble solide.", "La confiance augmente.", "Celui-ci mérite de l'attention."],
+    strongMomentum: ["Le momentum accélère.", "Ce mouvement prend de la force.", "La pression monte rapidement."],
+    holdBuy: ["La tendance reste haussière, mais l'entrée n'est plus fraîche.", "J'aime encore la direction, mais nous sommes un peu en retard.", "Le mouvement est actif, mais je ne vois pas de nouvelle entrée.", "La tendance reste saine, mais il me faut un nouveau setup."],
+    holdSell: ["La tendance reste baissière, mais l'entrée n'est plus fraîche.", "Le mouvement est actif, mais l'entrée est tardive.", "J'aime encore la baisse, mais il me faut un nouveau setup."],
+    wait: ["{symbol} attend. Aucun setup clair pour le moment.", "Pas encore prêt. Il me faut un peu plus de confirmation.", "Il y a du mouvement, mais pas encore d'entrée.", "Je reste patient sur celui-ci.", "Rien d'actionnable pour le moment."],
+    liveAutoOn: ["Parfait. Le trading réel est actif.", "Je suis prêt à exécuter les setups valides.", "Le mode réel est activé. Je vous dirai quand quelque chose apparaît."],
+    liveAutoOff: ["Le trading réel est désactivé. Je continue de surveiller le marché.", "Aucun problème. Je surveille sans trader.", "L'exécution réelle est désactivée pour l'instant."],
+    paperAutoOn: ["Le trading papier est actif.", "Le mode papier est prêt à suivre les setups valides."],
+    paperAutoOff: ["Le trading papier est désactivé.", "Le mode papier est désactivé pour l'instant."],
+    voiceOn: ["Je suis de retour.", "Les notifications vocales sont actives.", "Je vous tiendrai au courant."],
+    voiceOff: ["D'accord. Je reste silencieux.", "Compris. Les notifications vocales sont désactivées."],
+    languageChanged: ["Langue mise à jour.", "Votre préférence de langue a été modifiée."],
+    manualBuy: ["Achat manuel sélectionné.", "Vous avez choisi une position acheteuse."],
+    manualSell: ["Vente manuelle sélectionnée.", "Vous avez choisi une position vendeuse."],
+    goldClicked: ["Je surveille l'or.", "Regardons l'or."],
+    euroClicked: ["Je surveille l'euro dollar.", "Regardons l'euro dollar."],
+    appOpened: ["Bon retour. Je surveille le marché pour vous.", "Content de vous revoir. Voyons ce que le marché donne.", "Tout est prêt. Je surveille les deux marchés."]
+  },
+  es: {
+    brokerDisconnected: ["Perdí la conexión con el bróker.", "La conexión con el bróker no está disponible ahora."],
+    brokerConnected: ["Conexión con el bróker restaurada.", "Estamos conectados otra vez."],
+    marketClosed: ["El mercado está cerrado ahora.", "Volveré a vigilar cuando el mercado abra."],
+    executed: ["Operación confirmada. Ya estamos dentro.", "Posición abierta correctamente.", "Tenemos una operación activa.", "Ejecución confirmada."],
+    activeTrade: ["{symbol} ya tiene una operación activa.", "{symbol} ya tiene una posición en curso.", "Ya hay una operación abierta en {symbol}."],
+    blocked: ["Encontré un setup, pero no puedo tomarlo ahora.", "La señal está ahí, pero algo bloquea la ejecución.", "Veo la oportunidad, pero una seguridad la detuvo.", "El setup parece válido, pero la ejecución todavía no está permitida."],
+    tp1: ["Bien. Primer objetivo alcanzado.", "TP1 está asegurado.", "Buen inicio. Primer objetivo completado."],
+    protected: ["El stop loss ya está protegido.", "La operación está protegida.", "Hemos bloqueado la protección."],
+    tp2: ["Excelente. Objetivo final alcanzado.", "Tomamos todo el movimiento.", "Objetivo alcanzado."],
+    win: ["Operación cerrada en ganancia.", "Buen resultado.", "Esta terminó en verde.", "Otra operación ganadora."],
+    loss: ["Operación cerrada en pérdida.", "Esta no funcionó.", "Pérdida pequeña. Esperaremos el próximo setup."],
+    buySetup: ["Bien... {symbol} empieza a verse alcista.", "Veo una nueva oportunidad de compra en {symbol}.", "El impulso sube hacia arriba en {symbol}.", "{symbol} se está poniendo interesante.", "Puede que tengamos una compra formándose en {symbol}."],
+    sellSetup: ["Cuidado... veo presión vendedora creciendo en {symbol}.", "{symbol} empieza a inclinarse bajista.", "Se está formando una nueva venta en {symbol}.", "El impulso cambia hacia abajo en {symbol}.", "Puede que tengamos una venta en {symbol}."],
+    highConfidence: ["Este setup se ve fuerte.", "La confianza está aumentando.", "Este merece atención."],
+    strongMomentum: ["El impulso está acelerando.", "Este movimiento gana fuerza.", "La presión crece rápido."],
+    holdBuy: ["La tendencia sigue alcista, pero la entrada ya no es fresca.", "Todavía me gusta la dirección, pero ya vamos tarde.", "El movimiento sigue activo, pero no veo una nueva entrada.", "La tendencia sigue sana, pero necesito un setup fresco."],
+    holdSell: ["La tendencia sigue bajista, pero la entrada ya no es fresca.", "El movimiento sigue activo, pero llegamos tarde a la entrada.", "Todavía me gusta la baja, pero necesito un nuevo setup."],
+    wait: ["{symbol} está esperando. No hay setup claro todavía.", "Aún no está listo. Necesito un poco más de confirmación.", "Hay movimiento, pero todavía no tengo entrada.", "Me mantengo paciente en este.", "Nada accionable por ahora."],
+    liveAutoOn: ["Perfecto. Trading real activo.", "Estoy listo para ejecutar setups válidos.", "Modo real activado. Te avisaré cuando aparezca algo."],
+    liveAutoOff: ["Trading real apagado. Seguiré vigilando el mercado.", "Sin problema. Vigilaré el mercado sin operar.", "La ejecución real está desactivada por ahora."],
+    paperAutoOn: ["Paper auto está activo.", "El modo de prueba está listo para seguir setups válidos."],
+    paperAutoOff: ["Paper auto está apagado.", "El modo de prueba está desactivado por ahora."],
+    voiceOn: ["Estoy de vuelta.", "Las notificaciones de voz están activas.", "Te mantendré informado."],
+    voiceOff: ["De acuerdo. Me quedaré en silencio.", "Entendido. Las notificaciones de voz están desactivadas."],
+    languageChanged: ["Idioma actualizado.", "Tu preferencia de idioma ha cambiado."],
+    manualBuy: ["Compra manual seleccionada.", "Elegiste una posición de compra."],
+    manualSell: ["Venta manual seleccionada.", "Elegiste una posición de venta."],
+    goldClicked: ["Estoy mirando oro.", "Veamos oro."],
+    euroClicked: ["Estoy mirando euro dólar.", "Veamos euro dólar."],
+    appOpened: ["Bienvenido de vuelta. Estoy vigilando el mercado por ti.", "Me alegra verte otra vez. Veamos qué nos da el mercado.", "Todo está listo. Estoy vigilando ambos mercados."]
+  }
+};
+const speechSynthesisSupported =
+  "speechSynthesis" in window &&
+  "SpeechSynthesisUtterance" in window;
+
 const voiceState = {
   enabled:
-    "speechSynthesis" in window &&
-    localStorage.getItem("flowsignal_voice_enabled") !== "false",
+    speechSynthesisSupported &&
+    localStorage.getItem(VOICE_STORAGE.enabled) !== "false",
   initialized: false,
   snapshots: {},
   spokenFingerprints: new Set(),
@@ -901,10 +1376,98 @@ const voiceState = {
   pendingBySymbol: {},
   pendingTimers: {},
   eventSequence: 0,
-  preferredVoice: null,
+  voices: [],
+  selectedVoiceName: localStorage.getItem(VOICE_STORAGE.name) || "",
+  selectedVoice: null,
+  rate: Number(localStorage.getItem(VOICE_STORAGE.rate)) || VOICE_DEFAULTS.rate,
+  pitch: Number(localStorage.getItem(VOICE_STORAGE.pitch)) || VOICE_DEFAULTS.pitch,
+  style: localStorage.getItem(VOICE_STORAGE.style) || VOICE_DEFAULTS.style,
+  popupEnabled: localStorage.getItem(VOICE_STORAGE.popup) !== "false",
+  lastSpokenMessage: "",
+  lastSpokenMessageAt: 0,
+  lastLibraryMessage: "",
   lastAssistantMessage: "",
-  lastAssistantSpokenAt: 0
+  lastAssistantSpokenAt: 0,
+  systemSnapshot: null,
+  interactionTimer: null
 };
+
+function assistantCopy(key, replacements = {}) {
+  const copy = ASSISTANT_COPY[currentLang] || ASSISTANT_COPY.en;
+  let value = copy[key] ?? ASSISTANT_COPY.en[key] ?? key;
+
+  Object.entries(replacements).forEach(([name, replacement]) => {
+    value = String(value).replaceAll(`{${name}}`, String(replacement));
+  });
+
+  return value;
+}
+
+function applyAssistantReplacements(value, replacements = {}) {
+  let output = String(value || "");
+
+  Object.entries(replacements).forEach(([name, replacement]) => {
+    output = output.replaceAll(`{${name}}`, String(replacement));
+  });
+
+  return output;
+}
+
+function assistantLibraryLine(key, replacements = {}) {
+  const library = VOICE_LIBRARY[currentLang] || VOICE_LIBRARY.en;
+  const fallbackLibrary = VOICE_LIBRARY.en;
+  const lines = library[key] || fallbackLibrary[key] || [assistantCopy(key)];
+  const prepared = lines.map((line) => applyAssistantReplacements(line, replacements));
+  let options = prepared.filter((line) => (
+    line &&
+    line !== voiceState.lastLibraryMessage &&
+    line !== voiceState.lastSpokenMessage
+  ));
+
+  if (!options.length) {
+    options = prepared.filter(Boolean);
+  }
+
+  const selected =
+    options[Math.floor(Math.random() * options.length)] ||
+    prepared[0] ||
+    "";
+
+  return selected;
+}
+
+function trimSentencePunctuation(value) {
+  return String(value || "").trim().replace(/[.!?]+$/g, "");
+}
+
+function assistantBlockedLine(reason = "") {
+  const cleanReason = trimSentencePunctuation(reason);
+  const base = trimSentencePunctuation(assistantLibraryLine("blocked"));
+  const connector =
+    currentLang === "fr" ? "parce que" :
+    currentLang === "es" ? "porque" :
+    "because";
+
+  if (!cleanReason) return `${base}.`;
+
+  return `${base} ${connector} ${cleanReason}.`;
+}
+
+function assistantEventMessage(key, replacements = {}) {
+  return assistantLibraryLine(key, replacements);
+}
+
+function assistantLiveAutoOffReason() {
+  return assistantCopy("liveAuto", {
+    state: assistantCopy("off")
+  }).toLowerCase();
+}
+
+function assistantSymbolClickMessage(symbol) {
+  return assistantEventMessage(
+    symbol === "XAUUSD" ? "goldClicked" : "euroClicked"
+  );
+}
 
 function createVoiceFingerprint(base) {
   voiceState.eventSequence += 1;
@@ -912,65 +1475,162 @@ function createVoiceFingerprint(base) {
 }
 
 function updateVoiceControls() {
-  const supported = "speechSynthesis" in window;
+  const supported = speechSynthesisSupported;
 
-  if (voiceToggleBtn) {
-    voiceToggleBtn.textContent = supported
-      ? (voiceState.enabled ? "Voice ON" : "Voice OFF")
-      : "Voice N/A";
-    voiceToggleBtn.classList.toggle("is-off", !voiceState.enabled);
-    voiceToggleBtn.setAttribute("aria-pressed", String(voiceState.enabled));
-    voiceToggleBtn.disabled = !supported;
-  }
-
+  [voiceToggleBtn, menuVoiceToggleBtn].forEach((button) => {
+    if (!button) return;
+    button.textContent = voiceState.enabled
+      ? assistantCopy("voiceOn")
+      : assistantCopy("voiceOff");
+    button.classList.toggle("is-off", !voiceState.enabled);
+    button.setAttribute("aria-pressed", String(voiceState.enabled));
+    button.disabled = !supported;
+  });
 }
 
-function selectPreferredVoice() {
-  if (!("speechSynthesis" in window)) return null;
+function findVoiceByName(voices, name) {
+  const target = String(name || "").toLowerCase();
+  if (!target) return null;
+
+  return voices.find((voice) => voice.name.toLowerCase() === target)
+    || voices.find((voice) => voice.name.toLowerCase().includes(target))
+    || null;
+}
+
+function chooseAssistantVoice(voices) {
+  const savedVoice = findVoiceByName(voices, voiceState.selectedVoiceName);
+  const languagePrefix = (ASSISTANT_LOCALES[currentLang] || "en-US")
+    .slice(0, 2)
+    .toLowerCase();
+
+  if (
+    savedVoice &&
+    String(savedVoice.lang || "").toLowerCase().startsWith(languagePrefix)
+  ) {
+    return savedVoice;
+  }
+
+  const languageVoices = voices.filter((voice) => (
+    String(voice.lang || "").toLowerCase().startsWith(languagePrefix)
+  ));
+
+  for (const preferredName of VOICE_PREFERRED_NAMES) {
+    const preferredVoice = findVoiceByName(voices, preferredName);
+    if (
+      preferredVoice &&
+      String(preferredVoice.lang || "").toLowerCase().startsWith(languagePrefix)
+    ) {
+      return preferredVoice;
+    }
+  }
+
+  return languageVoices[0] || null;
+}
+
+function refreshAssistantVoices() {
+  if (!speechSynthesisSupported) return;
 
   const voices = window.speechSynthesis.getVoices();
-  const preferredNames = [
-    "Google US English",
-    "Samantha",
-    "Victoria",
-    "Microsoft Aria",
-    "Microsoft Jenny"
-  ];
+  voiceState.voices = voices;
+  voiceState.selectedVoice = chooseAssistantVoice(voices);
 
-  for (const preferredName of preferredNames) {
-    const exact = voices.find((voice) => (
-      voice.name.toLowerCase() === preferredName.toLowerCase()
-    ));
-    if (exact) return exact;
-
-    const partial = voices.find((voice) => (
-      voice.name.toLowerCase().includes(preferredName.toLowerCase())
-    ));
-    if (partial) return partial;
+  if (
+    voiceState.selectedVoice &&
+    voiceState.selectedVoiceName !== voiceState.selectedVoice.name
+  ) {
+    voiceState.selectedVoiceName = voiceState.selectedVoice.name;
+    localStorage.setItem(VOICE_STORAGE.name, voiceState.selectedVoiceName);
   }
 
-  return null;
-}
+  if (voiceSelect) {
+    const previousValue = voiceState.selectedVoice?.name || "";
+    voiceSelect.innerHTML = "";
 
-function refreshPreferredVoice() {
-  voiceState.preferredVoice = selectPreferredVoice();
-}
+    const defaultOption = document.createElement("option");
+    defaultOption.value = "";
+    defaultOption.textContent = "Browser default";
+    voiceSelect.appendChild(defaultOption);
 
-if ("speechSynthesis" in window) {
-  refreshPreferredVoice();
-  window.speechSynthesis.addEventListener?.("voiceschanged", refreshPreferredVoice);
+    voices.forEach((voice) => {
+      const option = document.createElement("option");
+      option.value = voice.name;
+      option.textContent = `${voice.name}${voice.lang ? ` · ${voice.lang}` : ""}`;
+      voiceSelect.appendChild(option);
+    });
+
+    voiceSelect.value = previousValue;
+  }
 }
 
 function configureAssistantUtterance(utterance) {
-  refreshPreferredVoice();
+  refreshAssistantVoices();
 
-  if (voiceState.preferredVoice) {
-    utterance.voice = voiceState.preferredVoice;
+  if (voiceState.selectedVoice) {
+    utterance.voice = voiceState.selectedVoice;
   }
 
-  utterance.rate = 0.95;
-  utterance.pitch = 1.15;
-  utterance.volume = 1;
+  const tuning = VOICE_STYLE_TUNING[voiceState.style]
+    || VOICE_STYLE_TUNING.calm;
+  utterance.lang = ASSISTANT_LOCALES[currentLang] || ASSISTANT_LOCALES.en;
+  utterance.rate = Math.min(2, Math.max(0.1, voiceState.rate * tuning.rate));
+  utterance.pitch = Math.min(2, Math.max(0, voiceState.pitch * tuning.pitch));
+  utterance.volume = VOICE_DEFAULTS.volume;
+}
+
+function initializeVoiceSettings() {
+  if (!speechSynthesisSupported) {
+    console.warn("Flow Assistant voice disabled: browser speechSynthesis is unavailable.");
+    voiceToggleBtn?.closest(".voice-controls")?.classList.add("hidden");
+    flowAssistantSettings?.classList.add("hidden");
+    return;
+  }
+
+  if (voiceSpeed) voiceSpeed.value = String(voiceState.rate);
+  if (voicePitch) voicePitch.value = String(voiceState.pitch);
+  if (assistantStyle) assistantStyle.value = voiceState.style;
+  if (assistantPopupToggle) {
+    assistantPopupToggle.checked = voiceState.popupEnabled;
+  }
+  if (voiceSpeedValue) voiceSpeedValue.textContent = voiceState.rate.toFixed(2);
+  if (voicePitchValue) voicePitchValue.textContent = voiceState.pitch.toFixed(2);
+
+  refreshAssistantVoices();
+  window.speechSynthesis.addEventListener?.(
+    "voiceschanged",
+    refreshAssistantVoices
+  );
+  updateAssistantLanguageUI();
+}
+
+function updateAssistantLanguageUI() {
+  const copy = ASSISTANT_COPY[currentLang] || ASSISTANT_COPY.en;
+  const setText = (id, value) => {
+    const element = document.getElementById(id);
+    if (element) element.textContent = value;
+  };
+
+  setText("assistantModalTitle", copy.panelTitle);
+  setText("flowAssistantSettingsTitle", copy.settings);
+  setText("assistantVoiceLabel", copy.voice);
+  setText("testVoiceBtn", copy.testVoice);
+  setText("assistantPopupLabel", copy.showPopup);
+  setText("assistantSpeedLabel", copy.speed);
+  setText("assistantPitchLabel", copy.pitch);
+  setText("assistantStyleLabel", copy.style);
+
+  if (assistantStyle) {
+    Array.from(assistantStyle.options).forEach((option, index) => {
+      option.textContent = copy.styles[index] || option.textContent;
+    });
+  }
+
+  updateVoiceControls();
+}
+
+function refreshVoiceForCurrentLanguage() {
+  voiceState.selectedVoiceName = "";
+  voiceState.selectedVoice = null;
+  refreshAssistantVoices();
 }
 
 function clearPendingVoiceEvents() {
@@ -982,11 +1642,29 @@ function clearPendingVoiceEvents() {
   voiceState.pendingTimers = {};
 }
 
+function openAssistantPanel() {
+  if (!assistantModal) return;
+
+  assistantModal.classList.remove("hidden");
+  sideMenu?.classList.add("hidden");
+}
+
+function closeAssistantPanel() {
+  assistantModal?.classList.add("hidden");
+}
+
+function stopAssistantVoice() {
+  if (speechSynthesisSupported) {
+    window.speechSynthesis.cancel();
+  }
+  clearPendingVoiceEvents();
+}
+
 function speakVoiceEvent(event) {
   if (
     !voiceState.enabled ||
     !event?.message ||
-    !("speechSynthesis" in window) ||
+    !speechSynthesisSupported ||
     voiceState.spokenFingerprints.has(event.fingerprint)
   ) {
     return;
@@ -994,6 +1672,12 @@ function speakVoiceEvent(event) {
 
   const symbol = event.symbol || "SYSTEM";
   const now = Date.now();
+  const repeatedTooSoon =
+    event.message === voiceState.lastSpokenMessage &&
+    now - voiceState.lastSpokenMessageAt < ASSISTANT_REPEAT_MS;
+
+  if (repeatedTooSoon) return;
+
   const elapsed = now - (voiceState.lastSpokenAt[symbol] || 0);
 
   if (elapsed < VOICE_COOLDOWN_MS) {
@@ -1022,8 +1706,16 @@ function speakVoiceEvent(event) {
   const utterance = new SpeechSynthesisUtterance(event.message);
   configureAssistantUtterance(utterance);
 
+  window.speechSynthesis.cancel();
+  renderAssistantPopup(event.message, event.state || "UPDATE", {
+    symbol,
+    subtitle: getAssistantSubtitle(symbol)
+  });
   voiceState.spokenFingerprints.add(event.fingerprint);
   voiceState.lastSpokenAt[symbol] = now;
+  voiceState.lastSpokenMessage = event.message;
+  voiceState.lastSpokenMessageAt = now;
+  voiceState.lastLibraryMessage = event.message;
   window.speechSynthesis.speak(utterance);
 }
 
@@ -1033,14 +1725,18 @@ function queueVoiceEvents(events) {
   events.forEach((event) => {
     if (!event || voiceState.spokenFingerprints.has(event.fingerprint)) return;
 
-    const current = bestBySymbol.get(event.symbol);
+    const symbol = event.symbol || "SYSTEM";
+    const current = bestBySymbol.get(symbol);
 
     if (!current || event.priority > current.priority) {
-      bestBySymbol.set(event.symbol, event);
+      bestBySymbol.set(symbol, event);
     }
   });
 
-  bestBySymbol.forEach(speakVoiceEvent);
+  const selected = Array.from(bestBySymbol.values())
+    .sort((left, right) => right.priority - left.priority)[0];
+
+  if (selected) speakVoiceEvent(selected);
 }
 
 function normalizeVoiceSignal(item) {
@@ -1048,28 +1744,93 @@ function normalizeVoiceSignal(item) {
   return signal === "BUY" || signal === "SELL" ? signal : "WAIT";
 }
 
+function getSpokenSymbol(symbol) {
+  return symbol === "XAUUSD"
+    ? assistantCopy("gold")
+    : assistantCopy("euro");
+}
+
+function getAssistantSubtitle(symbol, timeframe = "") {
+  const symbolName = symbol === "XAUUSD"
+    ? (currentLang === "en" ? "Gold" : currentLang === "fr" ? "Or" : "Oro")
+    : (currentLang === "es" ? "Euro Dólar" : "Euro Dollar");
+
+  return timeframe
+    ? `${symbolName} · ${timeframe}`
+    : `${symbolName} ${assistantCopy("assistant")}`;
+}
+
+function getAssistantDisplaySymbol(symbol) {
+  return symbol === "XAUUSD" ? "XAUUSD" : "EURUSD";
+}
+
+function getLocalizedTradeSide(side) {
+  const normalized = String(side || "").toUpperCase();
+
+  if (currentLang === "fr") return normalized === "SELL" ? "vente" : "achat";
+  if (currentLang === "es") return normalized === "SELL" ? "venta" : "compra";
+  return normalized === "SELL" ? "sell" : "buy";
+}
+
 function getVoiceBlockedReason(status) {
   const reason = getShortAutoTradeReason(status)
     .replace(/\bTrade not sent\.?/gi, "")
     .trim();
   const lower = reason.toLowerCase();
+  const copy = ASSISTANT_COPY[currentLang] || ASSISTANT_COPY.en;
 
   if (lower.includes("min") && lower.includes("distance")) {
-    return "minimum stop loss distance";
+    return copy.blockedReasons.distance;
   }
 
   if (lower.includes("volume") || lower.includes("risk")) {
-    return "broker volume safety";
+    return copy.blockedReasons.volume;
   }
 
   if (lower.includes("already running") || lower.includes("already active")) {
-    return "a trade is already running";
+    return copy.blockedReasons.running;
   }
 
-  return (reason || "safety check")
+  if (lower.includes("disconnect")) {
+    return copy.blockedReasons.disconnected;
+  }
+
+  return (reason || copy.blockedReasons.safety)
     .split(/[.!?]/)[0]
     .trim()
     .toLowerCase();
+}
+
+function getVoiceBlockedExplanation(status) {
+  const shortReason = getVoiceBlockedReason(status);
+  const details = getAutoTradeDetails(status);
+  const actualRisk =
+    details.final_risk_percent ??
+    details.risk_percent_if_minimum ??
+    details.minimum_volume_risk_percent;
+  const maximumRisk =
+    details.maximum_allowed_risk_percent ??
+    details.required_risk_percent ??
+    details.risk_percent;
+  const actualRiskText = formatRiskPercent(actualRisk);
+  const maximumRiskText = formatRiskPercent(maximumRisk);
+
+  if (
+    (
+      shortReason === ASSISTANT_COPY.en.blockedReasons.volume ||
+      shortReason === ASSISTANT_COPY.fr.blockedReasons.volume ||
+      shortReason === ASSISTANT_COPY.es.blockedReasons.volume
+    ) &&
+    actualRiskText &&
+    maximumRiskText
+  ) {
+    return assistantCopy("riskBlocked", {
+      actual: actualRiskText,
+      maximum: maximumRiskText
+    });
+  }
+
+  return shortReason;
 }
 
 function getVoiceTradeKey(trade, fallback = "") {
@@ -1080,10 +1841,39 @@ function getVoiceTradeKey(trade, fallback = "") {
   );
 }
 
+function wasActiveTradeAnnounced(tradeKey) {
+  if (!tradeKey) return false;
+
+  try {
+    return sessionStorage.getItem(`flowsignal_voice_active_${tradeKey}`) === "true";
+  } catch (error) {
+    return false;
+  }
+}
+
+function markActiveTradeAnnounced(tradeKey) {
+  if (!tradeKey) return;
+
+  try {
+    sessionStorage.setItem(`flowsignal_voice_active_${tradeKey}`, "true");
+  } catch (error) {
+    // Session storage is optional; voice still works without persistence.
+  }
+}
+
 function buildVoiceSnapshot(symbol, data, meta) {
   const autoStatus = meta?.live_auto_status_by_symbol?.[symbol] || {};
   const autoState = String(autoStatus.status || "").toUpperCase();
-  const activeTrade = meta?.live_active_orders?.[symbol] || null;
+  const possibleActiveTrade = meta?.live_active_orders?.[symbol] || null;
+  const activeTrade = (
+    ["", "broker", "ctrader"].includes(
+      String(possibleActiveTrade?.source || "").toLowerCase()
+    ) &&
+    hasRealLiveBrokerId(possibleActiveTrade) &&
+    isLiveTradeActiveForDisplay(possibleActiveTrade)
+  )
+    ? possibleActiveTrade
+    : null;
   const activeTradeKey = activeTrade ? getVoiceTradeKey(activeTrade, symbol) : "";
   const history = Array.isArray(meta?.live_trade_history)
     ? meta.live_trade_history
@@ -1105,36 +1895,151 @@ function buildVoiceSnapshot(symbol, data, meta) {
     });
 
   return {
+    rawSignal: String(data?.[symbol]?.signal || "WAIT").trim().toUpperCase(),
     signal: normalizeVoiceSignal(data?.[symbol]),
     autoState,
-    autoReason: getVoiceBlockedReason(autoStatus),
+    liveAutoEnabled:
+      typeof meta?.live_auto_enabled === "boolean"
+        ? meta.live_auto_enabled
+        : Boolean(liveAutoEnabled),
+    autoReason: getVoiceBlockedExplanation(autoStatus),
     autoFingerprint: [
       autoState,
       autoStatus.signal || autoStatus.action || "",
       stringifyAutoTradeValue(autoStatus.reason)
     ].join("|"),
+    confidence: Number(data?.[symbol]?.confidence ?? 0),
+    momentumScore: Math.max(
+      Number(data?.[symbol]?.displacement_score ?? 0),
+      Number(data?.[symbol]?.momentum_score ?? 0),
+      Number(data?.[symbol]?.volume_score ?? 0)
+    ),
     activeTradeKey,
+    activeTradeSide: String(
+      activeTrade?.side || activeTrade?.action || ""
+    ).toUpperCase(),
     tp1Hit: Boolean(
       activeTrade?.hit_tp1 ||
       getLiveTradeResult(activeTrade) === "TP1 HIT" ||
       hasConfirmedProfitProtection(activeTrade)
+    ),
+    tp2Hit: Boolean(
+      activeTrade?.hit_tp2 ||
+      getLiveTradeResult(activeTrade) === "TP2 HIT" ||
+      getLiveTradeResult(activeTrade) === "TARGET HIT"
     ),
     protectedSl: hasConfirmedProfitProtection(activeTrade),
     closedTrades
   };
 }
 
-function processVoiceAnnouncements(data, meta) {
+function buildVoiceSystemSnapshot(meta, rawData) {
+  const feedStatuses = Object.values(rawData?.feed_status || {});
+  const marketClosed = Boolean(
+    rawData?.market_closed ||
+    feedStatuses.some((status) => Boolean(status?.market_closed))
+  );
+  const brokerKnown = Boolean(meta?.live_account);
+  const brokerConnected = brokerKnown
+    ? Boolean(meta.live_account.connected)
+    : null;
+
+  return {
+    brokerKnown,
+    brokerConnected,
+    marketClosed
+  };
+}
+
+function buildVoiceSystemEvents(meta, rawData) {
+  const next = buildVoiceSystemSnapshot(meta, rawData);
+  const previous = voiceState.systemSnapshot;
+  const events = [];
+
+  if (!voiceState.initialized || !previous) {
+    events.push({
+      symbol: "SYSTEM",
+      state: "APP",
+      priority: VOICE_EVENT_PRIORITY.APP_OPENED,
+      fingerprint: "system:app-opened",
+      message: assistantEventMessage("appOpened")
+    });
+
+    if (next.brokerKnown && next.brokerConnected === false) {
+      events.push({
+        symbol: "SYSTEM",
+        state: "BROKER",
+        priority: VOICE_EVENT_PRIORITY.BROKER_DISCONNECTED,
+        fingerprint: "system:broker-disconnected:initial",
+        message: assistantEventMessage("brokerDisconnected")
+      });
+    }
+
+    if (next.marketClosed) {
+      events.push({
+        symbol: "SYSTEM",
+        state: "MARKET CLOSED",
+        priority: VOICE_EVENT_PRIORITY.MARKET_CLOSED,
+        fingerprint: "system:market-closed:initial",
+        message: assistantEventMessage("marketClosed")
+      });
+    }
+
+    return { snapshot: next, events };
+  }
+
+  if (
+    next.brokerKnown &&
+    previous.brokerConnected !== null &&
+    next.brokerConnected !== previous.brokerConnected
+  ) {
+    const connected = Boolean(next.brokerConnected);
+    events.push({
+      symbol: "SYSTEM",
+      state: "BROKER",
+      priority: connected
+        ? VOICE_EVENT_PRIORITY.BROKER_CONNECTED
+        : VOICE_EVENT_PRIORITY.BROKER_DISCONNECTED,
+      fingerprint: `system:broker:${connected ? "connected" : "disconnected"}:${Date.now()}`,
+      message: assistantEventMessage(
+        connected ? "brokerConnected" : "brokerDisconnected"
+      )
+    });
+  }
+
+  if (next.marketClosed && !previous.marketClosed) {
+    events.push({
+      symbol: "SYSTEM",
+      state: "MARKET CLOSED",
+      priority: VOICE_EVENT_PRIORITY.MARKET_CLOSED,
+      fingerprint: `system:market-closed:${Date.now()}`,
+      message: assistantEventMessage("marketClosed")
+    });
+  }
+
+  return { snapshot: next, events };
+}
+
+function processVoiceAnnouncements(data, meta, rawData = null) {
   const symbols = ["EURUSD", "XAUUSD"];
   const nextSnapshots = {};
-  const events = [];
+  const system = buildVoiceSystemEvents(meta, rawData);
+  const events = [...system.events];
 
   symbols.forEach((symbol) => {
     const next = buildVoiceSnapshot(symbol, data, meta);
     const previous = voiceState.snapshots[symbol];
     nextSnapshots[symbol] = next;
 
-    if (!voiceState.initialized || !previous) return;
+    if (!voiceState.initialized || !previous) {
+      if (
+        next.activeTradeKey &&
+        !wasActiveTradeAnnounced(next.activeTradeKey)
+      ) {
+        markActiveTradeAnnounced(next.activeTradeKey);
+      }
+      return;
+    }
 
     next.closedTrades.forEach((trade) => {
       const profitable =
@@ -1161,9 +2066,10 @@ function processVoiceAnnouncements(data, meta) {
       if (profitable || losing) {
         events.push({
           symbol,
-          priority: 100,
+          state: profitable ? "WIN" : "LOSS",
+          priority: profitable ? VOICE_EVENT_PRIORITY.WIN : VOICE_EVENT_PRIORITY.LOSS,
           fingerprint: `${symbol}:closed:${trade.key}:${profitable ? "WIN" : "LOSS"}`,
-          message: `${symbol} trade closed ${profitable ? "in profit" : "in loss"}.`
+          message: assistantEventMessage(profitable ? "win" : "loss")
         });
       }
     });
@@ -1171,16 +2077,28 @@ function processVoiceAnnouncements(data, meta) {
     if (
       next.activeTradeKey &&
       next.activeTradeKey === previous.activeTradeKey &&
+      next.tp2Hit &&
+      !previous.tp2Hit
+    ) {
+      events.push({
+        symbol,
+        state: "TP2",
+        priority: VOICE_EVENT_PRIORITY.TP2,
+        fingerprint: `${symbol}:tp2:${next.activeTradeKey}`,
+        message: assistantEventMessage("tp2")
+      });
+    } else if (
+      next.activeTradeKey &&
+      next.activeTradeKey === previous.activeTradeKey &&
       next.tp1Hit &&
       !previous.tp1Hit
     ) {
       events.push({
         symbol,
-        priority: 90,
+        state: "TP1",
+        priority: VOICE_EVENT_PRIORITY.TP1,
         fingerprint: `${symbol}:tp1:${next.activeTradeKey}`,
-        message: next.protectedSl
-          ? `TP1 hit on ${symbol} with stop loss protected.`
-          : `TP1 hit on ${symbol}.`
+        message: assistantEventMessage("tp1")
       });
     } else if (
       next.activeTradeKey &&
@@ -1190,9 +2108,10 @@ function processVoiceAnnouncements(data, meta) {
     ) {
       events.push({
         symbol,
-        priority: 85,
+        state: "PROTECTED",
+        priority: VOICE_EVENT_PRIORITY.PROTECTED,
         fingerprint: `${symbol}:protected:${next.activeTradeKey}`,
-        message: `Protected stop loss is active on ${symbol}.`
+        message: assistantEventMessage("protected")
       });
     }
 
@@ -1200,122 +2119,222 @@ function processVoiceAnnouncements(data, meta) {
       next.activeTradeKey &&
       next.activeTradeKey !== previous.activeTradeKey
     ) {
+      markActiveTradeAnnounced(next.activeTradeKey);
       events.push({
         symbol,
-        priority: 80,
+        state: "EXECUTED",
+        priority: VOICE_EVENT_PRIORITY.EXECUTED,
         fingerprint: `${symbol}:executed:${next.activeTradeKey}`,
-        message: `Live trade executed on ${symbol}.`
-      });
-    } else if (
-      ["EXECUTED", "ORDER_SENT"].includes(next.autoState) &&
-      next.autoFingerprint !== previous.autoFingerprint
-    ) {
-      events.push({
-        symbol,
-        priority: 80,
-        fingerprint: createVoiceFingerprint(`${symbol}:executed:${next.autoFingerprint}`),
-        message: `Live trade executed on ${symbol}.`
+        message: assistantEventMessage("executed")
       });
     }
 
     if (
-      ["BLOCKED", "ORDER_REJECTED"].includes(next.autoState) &&
+      next.autoState === "BLOCKED" &&
+      ["BUY", "SELL"].includes(next.rawSignal) &&
+      !next.activeTradeKey &&
       next.autoFingerprint !== previous.autoFingerprint
     ) {
       events.push({
         symbol,
-        priority: 70,
+        state: "BLOCKED",
+        priority: VOICE_EVENT_PRIORITY.BLOCKED,
         fingerprint: createVoiceFingerprint(`${symbol}:blocked:${next.autoFingerprint}`),
-        message: `${symbol} trade blocked because ${next.autoReason}.`
+        message: assistantBlockedLine(next.autoReason)
       });
     }
 
-    if (next.signal !== previous.signal) {
-      const message = next.signal === "BUY"
-        ? `Buy signal on ${symbol}.`
-        : next.signal === "SELL"
-          ? `Sell signal on ${symbol}.`
-          : `${symbol} waiting for confirmation.`;
+    if (
+      next.rawSignal === "WAIT" &&
+      previous.rawSignal !== "WAIT" &&
+      smartExplain?.dataset.symbol === symbol &&
+      smartExplain?.dataset.state === "blocked"
+    ) {
+      renderAssistantPopup(
+        assistantEventMessage("wait", { symbol: getSpokenSymbol(symbol) }),
+        "WAIT",
+        {
+          symbol,
+          subtitle: getAssistantSubtitle(symbol)
+        }
+      );
+    }
+
+    if (
+      (next.rawSignal === "WAIT" || next.rawSignal === "HOLD BUY" || next.rawSignal === "HOLD SELL") &&
+      previous.rawSignal !== "WAIT" &&
+      !next.activeTradeKey
+    ) {
+      events.push({
+        symbol,
+        state: "WAIT",
+        priority: VOICE_EVENT_PRIORITY.WAIT,
+        fingerprint: createVoiceFingerprint(`${symbol}:wait:${previous.rawSignal}:${next.rawSignal}`),
+        message: assistantEventMessage("wait", {
+          symbol: getSpokenSymbol(symbol)
+        })
+      });
+    }
+
+    if (
+      next.signal !== previous.signal &&
+      ["BUY", "SELL"].includes(next.signal)
+    ) {
+      const liveAutoOff = !next.liveAutoEnabled;
+      const message = liveAutoOff
+        ? assistantBlockedLine(assistantLiveAutoOffReason())
+        : next.signal === "BUY"
+          ? assistantEventMessage("buySetup", { symbol: getSpokenSymbol(symbol) })
+          : assistantEventMessage("sellSetup", { symbol: getSpokenSymbol(symbol) });
 
       events.push({
         symbol,
-        priority: 50,
+        state: liveAutoOff ? "BLOCKED" : next.signal,
+        priority: liveAutoOff
+          ? VOICE_EVENT_PRIORITY.BLOCKED
+          : VOICE_EVENT_PRIORITY[next.signal],
         fingerprint: createVoiceFingerprint(`${symbol}:signal:${previous.signal}:${next.signal}`),
         message
+      });
+    }
+
+    if (
+      ["BUY", "SELL"].includes(next.signal) &&
+      next.confidence >= 75 &&
+      (!previous.confidence || previous.confidence < 75)
+    ) {
+      events.push({
+        symbol,
+        state: "CONFIDENCE",
+        priority: VOICE_EVENT_PRIORITY.HIGH_CONFIDENCE,
+        fingerprint: createVoiceFingerprint(`${symbol}:confidence:${Math.floor(next.confidence)}`),
+        message: assistantEventMessage("highConfidence")
+      });
+    }
+
+    if (
+      ["BUY", "SELL"].includes(next.signal) &&
+      next.momentumScore >= 80 &&
+      (!previous.momentumScore || previous.momentumScore < 80)
+    ) {
+      events.push({
+        symbol,
+        state: "MOMENTUM",
+        priority: VOICE_EVENT_PRIORITY.STRONG_MOMENTUM,
+        fingerprint: createVoiceFingerprint(`${symbol}:momentum:${Math.floor(next.momentumScore)}`),
+        message: assistantEventMessage("strongMomentum")
       });
     }
   });
 
   voiceState.snapshots = nextSnapshots;
+  voiceState.systemSnapshot = system.snapshot;
 
   if (!voiceState.initialized) {
     voiceState.initialized = true;
-    return;
   }
 
-  queueVoiceEvents(events);
+  if (events.length) {
+    queueVoiceEvents(events);
+  }
 }
 
-if (voiceToggleBtn) {
-  voiceToggleBtn.addEventListener("click", () => {
+function setVoiceEnabled(nextEnabled) {
+  if (!speechSynthesisSupported) return;
+
+  const shouldEnable = Boolean(nextEnabled);
+
+  if (!shouldEnable) {
+    window.speechSynthesis.cancel();
+    clearPendingVoiceEvents();
+  }
+
+  voiceState.enabled = shouldEnable;
+  localStorage.setItem(
+    VOICE_STORAGE.enabled,
+    voiceState.enabled ? "true" : "false"
+  );
+  updateVoiceControls();
+
+  showAssistantMessage(
+    voiceState.enabled
+      ? assistantEventMessage("voiceOn")
+      : assistantEventMessage("voiceOff"),
+    voiceState.enabled ? "VOICE ON" : "VOICE OFF",
+    { forceSpeech: true }
+  );
+}
+
+[voiceToggleBtn, menuVoiceToggleBtn].forEach((button) => {
+  button?.addEventListener("click", () => {
     const nextEnabled = !voiceState.enabled;
-
-    if (!nextEnabled) {
-      if ("speechSynthesis" in window) {
-        window.speechSynthesis.cancel();
-      }
-      clearPendingVoiceEvents();
-    }
-
-    voiceState.enabled = nextEnabled;
-    localStorage.setItem(
-      "flowsignal_voice_enabled",
-      voiceState.enabled ? "true" : "false"
-    );
-
-    updateVoiceControls();
-
-    if (!voiceState.enabled) {
-      showAssistantMessage("Voice is now off.", "VOICE OFF", {
-        forceSpeech: true
-      });
-    } else {
-      showAssistantMessage("Voice is now on.", "VOICE ON");
-    }
+    setVoiceEnabled(nextEnabled);
   });
-}
+});
 
+voiceSelect?.addEventListener("change", () => {
+  voiceState.selectedVoiceName = voiceSelect.value;
+  voiceState.selectedVoice = findVoiceByName(
+    voiceState.voices,
+    voiceState.selectedVoiceName
+  );
+  localStorage.setItem(VOICE_STORAGE.name, voiceState.selectedVoiceName);
+});
+
+voiceSpeed?.addEventListener("input", () => {
+  voiceState.rate = Number(voiceSpeed.value) || VOICE_DEFAULTS.rate;
+  if (voiceSpeedValue) voiceSpeedValue.textContent = voiceState.rate.toFixed(2);
+  localStorage.setItem(VOICE_STORAGE.rate, String(voiceState.rate));
+});
+
+voicePitch?.addEventListener("input", () => {
+  voiceState.pitch = Number(voicePitch.value) || VOICE_DEFAULTS.pitch;
+  if (voicePitchValue) voicePitchValue.textContent = voiceState.pitch.toFixed(2);
+  localStorage.setItem(VOICE_STORAGE.pitch, String(voiceState.pitch));
+});
+
+assistantStyle?.addEventListener("change", () => {
+  voiceState.style = assistantStyle.value;
+  localStorage.setItem(VOICE_STORAGE.style, voiceState.style);
+});
+
+assistantPopupToggle?.addEventListener("change", () => {
+  voiceState.popupEnabled = assistantPopupToggle.checked;
+  localStorage.setItem(
+    VOICE_STORAGE.popup,
+    voiceState.popupEnabled ? "true" : "false"
+  );
+
+  if (!voiceState.popupEnabled) {
+    hideSmartExplanation();
+  }
+});
+
+testVoiceBtn?.addEventListener("click", () => {
+  showAssistantMessage(
+    assistantCopy("testMessage"),
+    "TEST VOICE",
+    { forceSpeech: true }
+  );
+});
+
+initializeVoiceSettings();
 updateVoiceControls();
 
 function getSmartExplainBlockedStatus(symbol, data) {
   const autoStatus = liveAutoStatusBySymbol?.[symbol] || {};
   const autoState = String(autoStatus.status || "").toUpperCase();
-  const blockedBy = String(data?.blocked_by || "").toUpperCase();
-  const signalBeforeFilters = String(data?.signal_before_filters || "").toUpperCase();
-  const blockedReason =
-    autoStatus.reason ||
-    data?.blocked_reason ||
-    data?.blocked_by ||
-    "";
-  const strategyIsStillWaiting = [
-    "STRUCTURE_WAIT",
-    "MISSING_15M_SETUP",
-    "MISSING_RETEST"
-  ].includes(blockedBy);
-  const filteredTradeSignal =
-    ["BUY", "SELL"].includes(signalBeforeFilters) &&
-    blockedBy &&
-    !strategyIsStillWaiting;
+  const currentSignal = String(data?.signal || "WAIT").trim().toUpperCase();
 
   if (
-    ["BLOCKED", "ORDER_REJECTED"].includes(autoState) ||
-    filteredTradeSignal
+    ["BUY", "SELL"].includes(currentSignal) &&
+    autoState === "BLOCKED"
   ) {
     return {
       blocked: true,
-      reason: getVoiceBlockedReason({
+      reason: getVoiceBlockedExplanation({
         ...autoStatus,
-        reason: blockedReason
+        reason: autoStatus.reason || "current live auto safety check"
       }),
       status: autoStatus
     };
@@ -1378,36 +2397,73 @@ function buildVolumeSafetyAssistantDetails(status) {
   return parts.join(" • ");
 }
 
+function getVerifiedActiveTrade(symbol) {
+  const trade = activeLiveOrders?.[symbol] || null;
+  const source = String(trade?.source || "").toLowerCase();
+
+  if (
+    !trade ||
+    !["", "broker", "ctrader"].includes(source) ||
+    !hasRealLiveBrokerId(trade) ||
+    !isLiveTradeActiveForDisplay(trade)
+  ) {
+    return null;
+  }
+
+  return trade;
+}
+
 function buildSmartExplanation(symbol) {
   const data = latestPanelData?.[symbol] || {};
   const rawSignal = String(data?.signal || "WAIT").trim().toUpperCase();
   const signal = normalizeVoiceSignal(data);
   const blocked = getSmartExplainBlockedStatus(symbol, data);
+  const activeTrade = getVerifiedActiveTrade(symbol);
   let message = "";
   let state = signal;
   let details = "";
 
-  if (!liveAutoEnabled) {
-    state = "BLOCKED";
-    message = `${symbol} is blocked because live auto is off.`;
+  if (activeTrade) {
+    state = "EXECUTED";
+    message = assistantEventMessage("activeTrade", {
+      symbol: getSpokenSymbol(symbol)
+    });
+  } else if (
+    rawSignal === "WAIT" ||
+    rawSignal === "HOLD BUY" ||
+    rawSignal === "HOLD SELL"
+  ) {
+    state = "WAIT";
+    message = assistantEventMessage("wait", {
+      symbol: getSpokenSymbol(symbol)
+    });
   } else if (blocked.blocked) {
     state = "BLOCKED";
-    message = `${symbol} is blocked because ${blocked.reason}.`;
-    if (blocked.reason === "broker volume safety") {
-      details = buildVolumeSafetyAssistantDetails(blocked.status);
-    }
-  } else if (rawSignal === "HOLD BUY") {
-    state = "HOLD";
-    message = `${symbol} remains bullish, but there is no fresh buy entry.`;
-  } else if (rawSignal === "HOLD SELL") {
-    state = "HOLD";
-    message = `${symbol} remains bearish, but there is no fresh sell entry.`;
+    message = assistantBlockedLine(blocked.reason);
+    details = buildVolumeSafetyAssistantDetails(blocked.status);
   } else if (signal === "BUY") {
-    message = `${symbol} has a buy setup and is checking execution safety.`;
+    if (!liveAutoEnabled) {
+      state = "BLOCKED";
+      message = assistantBlockedLine(assistantLiveAutoOffReason());
+    } else {
+      message = assistantEventMessage("buySetup", {
+        symbol: getSpokenSymbol(symbol)
+      });
+    }
   } else if (signal === "SELL") {
-    message = `${symbol} has a sell setup and is checking execution safety.`;
+    if (!liveAutoEnabled) {
+      state = "BLOCKED";
+      message = assistantBlockedLine(assistantLiveAutoOffReason());
+    } else {
+      message = assistantEventMessage("sellSetup", {
+        symbol: getSpokenSymbol(symbol)
+      });
+    }
   } else {
-    message = `${symbol} is waiting. No clean setup yet.`;
+    state = "WAIT";
+    message = assistantEventMessage("wait", {
+      symbol: getSpokenSymbol(symbol)
+    });
   }
 
   return {
@@ -1418,21 +2474,43 @@ function buildSmartExplanation(symbol) {
   };
 }
 
-function speakAssistantMessage(message, force = false) {
+function speakAssistantMessage(
+  message,
+  force = false,
+  symbol = "SYSTEM",
+  interaction = false,
+  bypassSymbolCooldown = false
+) {
+  if (interaction) {
+    window.clearTimeout(voiceState.interactionTimer);
+    voiceState.interactionTimer = window.setTimeout(() => {
+      speakAssistantMessage(message, force, symbol, false, true);
+    }, ASSISTANT_CLICK_DEBOUNCE_MS);
+    return;
+  }
+
   if (
     (!voiceState.enabled && !force) ||
     !message ||
-    !("speechSynthesis" in window)
+    !speechSynthesisSupported
   ) {
     return;
   }
 
   const now = Date.now();
   const repeatedTooSoon =
-    message === voiceState.lastAssistantMessage &&
-    now - voiceState.lastAssistantSpokenAt < ASSISTANT_REPEAT_MS;
+    message === voiceState.lastSpokenMessage &&
+    now - voiceState.lastSpokenMessageAt < ASSISTANT_REPEAT_MS;
 
   if (repeatedTooSoon) return;
+
+  if (
+    !bypassSymbolCooldown &&
+    ["EURUSD", "XAUUSD"].includes(symbol) &&
+    now - (voiceState.lastSpokenAt[symbol] || 0) < VOICE_COOLDOWN_MS
+  ) {
+    return;
+  }
 
   window.speechSynthesis.cancel();
 
@@ -1440,6 +2518,10 @@ function speakAssistantMessage(message, force = false) {
   configureAssistantUtterance(utterance);
   voiceState.lastAssistantMessage = message;
   voiceState.lastAssistantSpokenAt = now;
+  voiceState.lastSpokenMessage = message;
+  voiceState.lastSpokenMessageAt = now;
+  voiceState.lastLibraryMessage = message;
+  voiceState.lastSpokenAt[symbol] = now;
   window.speechSynthesis.speak(utterance);
 }
 
@@ -1447,12 +2529,20 @@ function hideSmartExplanation() {
   smartExplain?.classList.add("hidden");
 }
 
-function showAssistantMessage(message, state = "INFO", options = {}) {
+function renderAssistantPopup(message, state = "INFO", options = {}) {
   if (!smartExplain || !smartExplainTitle || !smartExplainText || !smartExplainState) {
     return;
   }
 
-  smartExplainTitle.textContent = options.title || "Flow Assistant";
+  if (!voiceState.popupEnabled && !options.forcePopup) {
+    hideSmartExplanation();
+    return;
+  }
+
+  smartExplainTitle.textContent = "Flow Assistant";
+  if (smartExplainSubtitle) {
+    smartExplainSubtitle.textContent = options.subtitle || "Market Assistant";
+  }
   smartExplainText.textContent = message;
   if (smartExplainDetails) {
     smartExplainDetails.textContent = options.details || "";
@@ -1460,15 +2550,102 @@ function showAssistantMessage(message, state = "INFO", options = {}) {
   }
   smartExplainState.textContent = state;
   smartExplainState.dataset.state = String(state).toLowerCase().split(" ")[0];
+  smartExplain.dataset.state = String(state).toLowerCase().split(" ")[0];
+  smartExplain.dataset.symbol = options.symbol || "SYSTEM";
   smartExplain.classList.remove("hidden");
-  speakAssistantMessage(message, Boolean(options.forceSpeech));
+}
+
+function showAssistantMessage(message, state = "INFO", options = {}) {
+  renderAssistantPopup(message, state, options);
+
+  speakAssistantMessage(
+    message,
+    Boolean(options.forceSpeech),
+    options.symbol || "SYSTEM",
+    Boolean(options.interaction)
+  );
 }
 
 function showSmartExplanation(symbol) {
   const result = buildSmartExplanation(symbol);
   showAssistantMessage(result.message, result.state, {
-    title: `${symbol} Assistant`,
-    details: result.details
+    subtitle: getAssistantSubtitle(symbol),
+    symbol,
+    details: result.details,
+    interaction: true
+  });
+}
+
+function getChartDirection(symbol, timeframe) {
+  const candles =
+    latestRawPanelData?.candles?.[symbol]?.[timeframe] || [];
+  const recent = candles.slice(-12);
+
+  if (recent.length < 2) return "unclear";
+
+  const first = Number(recent[0]?.close);
+  const last = Number(recent[recent.length - 1]?.close);
+
+  if (!Number.isFinite(first) || !Number.isFinite(last) || first === 0) {
+    return "unclear";
+  }
+
+  const move = (last - first) / Math.abs(first);
+  const flatThreshold = symbol === "XAUUSD" ? 0.0008 : 0.00025;
+
+  if (Math.abs(move) < flatThreshold) return "sideways";
+  return move > 0 ? "bullish" : "bearish";
+}
+
+function getChartWaitingText(data, timeframe) {
+  const timeframeStructure = timeframe === "1h"
+    ? data?.structure_trend
+    : timeframe === "15m"
+      ? data?.structure_type
+      : data?.structure_next;
+  const structure = String(timeframeStructure || "").toLowerCase();
+  const planReason = String(data?.plan_reason || "").trim();
+  const copy = ASSISTANT_COPY[currentLang] || ASSISTANT_COPY.en;
+
+  const combined = `${structure} ${planReason}`.toLowerCase();
+  if (combined.includes("swing")) return copy.waiting.swing;
+  if (combined.includes("closed") && combined.includes("candle")) {
+    return copy.waiting.swing;
+  }
+  if (combined.includes("choch")) return copy.waiting.choch;
+  if (combined.includes("bos")) return copy.waiting.bos;
+  if (combined.includes("confirmation")) return copy.waiting.candle;
+  return copy.waiting.structure;
+}
+
+function buildChartExplanation(symbol, timeframe) {
+  const data = latestPanelData?.[symbol] || {};
+  const direction = getChartDirection(symbol, timeframe);
+  const spokenSymbol = getSpokenSymbol(symbol);
+  const waitingFor = getChartWaitingText(data, timeframe);
+  const signal = String(data?.signal || "WAIT").trim().toUpperCase();
+  const state = ["BUY", "SELL"].includes(signal) ? signal : "WAIT";
+  const copy = ASSISTANT_COPY[currentLang] || ASSISTANT_COPY.en;
+  const spokenTimeframe = copy.timeframes[timeframe] || timeframe;
+  const spokenDirection = copy.directions[direction] || direction;
+
+  return {
+    state,
+    message: assistantCopy("chart", {
+      symbol: spokenSymbol,
+      timeframe: spokenTimeframe,
+      direction: spokenDirection,
+      waiting: waitingFor
+    })
+  };
+}
+
+function showChartExplanation(symbol, timeframe) {
+  const explanation = buildChartExplanation(symbol, timeframe);
+  showAssistantMessage(explanation.message, explanation.state, {
+    subtitle: getAssistantSubtitle(symbol, timeframe),
+    symbol,
+    interaction: true
   });
 }
 
@@ -1516,7 +2693,6 @@ if (mainSmcPanel) {
 }
 
 smartExplainClose?.addEventListener("click", hideSmartExplanation);
-
 document.addEventListener("keydown", (event) => {
   if (event.key === "Escape") hideSmartExplanation();
 });
@@ -1780,6 +2956,7 @@ function applySignalStyle(symbol, signal) {
   const shell = document.getElementById(`${symbol.toLowerCase()}-signal-shell`);
   const box = document.getElementById(`${symbol.toLowerCase()}-signal-box`);
   const text = document.getElementById(`${symbol.toLowerCase()}-signal`);
+  const note = document.getElementById(`${symbol.toLowerCase()}-signal-note`);
 
   if (!shell || !box || !text) {
     console.warn(`Missing signal elements for ${symbol}`);
@@ -1790,11 +2967,11 @@ function applySignalStyle(symbol, signal) {
   box.className = "signal-box";
   text.className = "signal-text";
 
-  if (signal === "BUY" || signal === "HOLD BUY") {
+  if (signal === "BUY") {
     shell.classList.add("signal-buy");
     box.classList.add("signal-border-buy");
     text.classList.add("buy-text");
-  } else if (signal === "SELL" || signal === "HOLD SELL") {
+  } else if (signal === "SELL") {
     shell.classList.add("signal-sell");
     box.classList.add("signal-border-sell");
     text.classList.add("sell-text");
@@ -1812,16 +2989,18 @@ function applySignalStyle(symbol, signal) {
     text.classList.add("wait-text");
   }
 
-  if (signal === "WAIT") {
+  const isHold = signal === "HOLD BUY" || signal === "HOLD SELL";
+
+  if (note) {
+    note.classList.add("hidden");
+  }
+
+  if (signal === "WAIT" || isHold) {
     text.textContent = LANG[currentLang].wait;
   } else if (signal === "BUY") {
     text.textContent = LANG[currentLang].buy.toUpperCase();
   } else if (signal === "SELL") {
     text.textContent = LANG[currentLang].sell.toUpperCase();
-  } else if (signal === "HOLD BUY") {
-    text.textContent = "HOLD BUY";
-  } else if (signal === "HOLD SELL") {
-    text.textContent = "HOLD SELL";
   } else {
     text.textContent = signal;
   }
@@ -1833,8 +3012,7 @@ function tSignal(signal) {
   if (s === "WAIT") return LANG[currentLang].wait;
   if (s === "BUY") return LANG[currentLang].buy.toUpperCase();
   if (s === "SELL") return LANG[currentLang].sell.toUpperCase();
-  if (s === "HOLD BUY") return "HOLD BUY";
-  if (s === "HOLD SELL") return "HOLD SELL";
+  if (s === "HOLD BUY" || s === "HOLD SELL") return LANG[currentLang].wait;
 
   if (s === "EXIT SELL") return "EXIT SELL";
   if (s === "EXIT BUY") return "EXIT BUY";
@@ -2074,24 +3252,29 @@ if (confLabel) confLabel.textContent = `${LANG[currentLang].confidence}: ${confi
     const invalidationEl = document.getElementById(`${smcSymbol}-invalidation`);
     const reasonEl = document.getElementById(`${smcSymbol}-reason`);
 
-if (typeEl) typeEl.textContent = data.plan_type || "--";
-if (biasEl) biasEl.textContent = data.plan_bias || "--";
 const planType = String(data.plan_type || "").toUpperCase();
+const isHoldSignal = signal === "HOLD BUY" || signal === "HOLD SELL";
+const safePlanType = isHoldSignal
+  ? "WAIT FOR STRATEGY CONFIRMATION"
+  : data.plan_type || "--";
+
+if (typeEl) typeEl.textContent = safePlanType;
+if (biasEl) biasEl.textContent = isHoldSignal ? "WAIT" : data.plan_bias || "--";
 
 [typeEl, biasEl].forEach((el) => {
   if (!el) return;
   el.classList.remove("plan-buy", "plan-sell", "plan-exit", "plan-wait");
 
-  if (planType.includes("BUY")) el.classList.add("plan-buy");
-  else if (planType.includes("SELL")) el.classList.add("plan-sell");
+  if (!isHoldSignal && planType.includes("BUY")) el.classList.add("plan-buy");
+  else if (!isHoldSignal && planType.includes("SELL")) el.classList.add("plan-sell");
   else if (planType.includes("EXIT")) el.classList.add("plan-exit");
   else el.classList.add("plan-wait");
 });
-if (entryEl) entryEl.textContent = data.entry_price || "--";
-if (slEl) slEl.textContent = data.stop_loss || "--";
-if (tp1El) tp1El.textContent = data.tp1 || "--";
-if (tp2El) tp2El.textContent = data.tp2 || "--";
-if (rrEl) rrEl.textContent = data.risk_reward || "--";
+if (entryEl) entryEl.textContent = isHoldSignal ? "--" : data.entry_price || "--";
+if (slEl) slEl.textContent = isHoldSignal ? "--" : data.stop_loss || "--";
+if (tp1El) tp1El.textContent = isHoldSignal ? "--" : data.tp1 || "--";
+if (tp2El) tp2El.textContent = isHoldSignal ? "--" : data.tp2 || "--";
+if (rrEl) rrEl.textContent = isHoldSignal ? "--" : data.risk_reward || "--";
 if (invalidationEl) invalidationEl.textContent = data.invalidation || "--";
 if (reasonEl) reasonEl.textContent = data.plan_reason || "--";
 
@@ -2287,15 +3470,26 @@ if (priceEl) {
       ? `${displayName} <img src="eurusd.png" class="main-symbol-icon">`
       : `${displayName} <img src="gold.png" class="main-symbol-icon gold-main-icon">`;
 
-  document.getElementById("main-signal").textContent = tSignal(signal);
+  const mainDisplaySignal =
+    signal === "HOLD BUY"
+      ? "WAIT"
+      : signal === "HOLD SELL"
+        ? "WAIT"
+        : signal;
+  document.getElementById("main-signal").textContent = tSignal(mainDisplaySignal);
   const mainSignal = document.getElementById("main-signal");
+  const mainSignalNote = document.getElementById("main-signal-note");
+
+  if (mainSignalNote) {
+    mainSignalNote.classList.add("hidden");
+  }
 
   if (mainSignal) {
     mainSignal.className = "main-signal-text";
 
-    if (signal === "BUY" || signal === "HOLD BUY") {
+    if (signal === "BUY") {
       mainSignal.classList.add("buy-text");
-    } else if (signal === "SELL" || signal === "HOLD SELL" || signal.includes("EXIT")) {
+    } else if (signal === "SELL" || signal.includes("EXIT")) {
       mainSignal.classList.add("sell-text");
     } else {
       mainSignal.classList.add("wait-text");
@@ -2463,10 +3657,51 @@ function updateUTC() {
   utcLabel.textContent = `UTC ${utc}`;
 }
 
-function setStatus(text, mode = "live") {
+function setConnectionBadge(state = "live", details = "") {
   if (!statusEl) return;
-  statusEl.textContent = text;
-  statusEl.className = `status ${mode}`;
+
+  const normalized = ["loading", "live", "stale", "error"].includes(state)
+    ? state
+    : "live";
+  const labels = {
+    loading: "● Updating...",
+    live: "● Live",
+    stale: "● Data delayed",
+    error: "● Connection issue"
+  };
+
+  statusEl.textContent = labels[normalized];
+  statusEl.title = details || labels[normalized];
+  statusEl.dataset.fullStatus = details || labels[normalized];
+  statusEl.dataset.connectionState = normalized;
+  statusEl.className = `status status-${normalized}`;
+}
+
+function setStatus(text, mode = "live") {
+  const upperText = String(text || "").toUpperCase();
+
+  if (mode === "error" || upperText.includes("ERROR")) {
+    setConnectionBadge("error", text);
+  } else if (upperText.includes("STALE") || upperText.includes("CACHE")) {
+    setConnectionBadge("stale", text);
+  } else if (upperText.includes("LOADING") || upperText.includes("SENDING")) {
+    setConnectionBadge("loading", text);
+  } else {
+    setConnectionBadge("live", text);
+  }
+}
+
+function refreshConnectionBadgeFreshness() {
+  if (!statusEl || !latestPanelFetchedAt) return;
+  if (Date.now() - latestPanelFetchedAt <= 60000) return;
+
+  const state = statusEl.dataset.connectionState;
+  if (state === "error" || state === "stale") return;
+
+  setConnectionBadge(
+    "stale",
+    `Last updated: ${new Date(latestPanelFetchedAt).toLocaleTimeString()}`
+  );
 }
 
 function updateTradeButtonsLock() {
@@ -2651,9 +3886,26 @@ async function executeTrade(symbol, action) {
 }
 
 function confirmTrade(symbol, action) {
+  const internalSignal = String(
+    latestPanelData?.[symbol]?.signal || "WAIT"
+  ).toUpperCase();
+
+  if (internalSignal === "HOLD BUY" || internalSignal === "HOLD SELL") {
+    showAssistantMessage(
+      internalSignal === "HOLD BUY"
+        ? assistantCopy("holdBuy")
+        : assistantCopy("holdSell"),
+      "HOLD",
+      { symbol, interaction: true }
+    );
+    setStatus(`● HOLD • ${symbol} has no fresh entry`, "error");
+    return;
+  }
+
   showAssistantMessage(
-    `${action === "BUY" ? "Buy" : "Sell"} button selected for ${symbol}.`,
-    `MANUAL ${action}`
+    assistantEventMessage(action === "BUY" ? "manualBuy" : "manualSell"),
+    action,
+    { symbol, interaction: true }
   );
 
   const role = localStorage.getItem("flowsignal_role");
@@ -3790,11 +5042,10 @@ async function refreshPanel() {
   }
 
   panelRefreshInProgress = true;
+  let badgeSettled = false;
 
   try {
-    if (!statusEl || !statusEl.textContent.includes("TRADE")) {
-      setStatus("● LOADING PANEL...", "live");
-    }
+    setConnectionBadge("loading", "Updating panel data...");
 
     console.log("⏳ Fetching panel data from:", API_URL);
 
@@ -3942,7 +5193,7 @@ updateLivePanel(
   meta.live_trade_stats || null
 );
 
-processVoiceAnnouncements(data, meta);
+processVoiceAnnouncements(data, meta, rawData);
 
 if (meta.auto_trade_status) {
   autoTradeStatus = meta.auto_trade_status;
@@ -3967,22 +5218,30 @@ if (chartCandles.length && (!marketClosed || !alreadyHasChart)) {
 
 
 updateUTC();
-    if (!statusEl || !statusEl.textContent.includes("TRADE")) {
-      const local = new Date().toLocaleTimeString();
-      const currentFeed = rawData?.feed_status?.[currentChartSymbol];
-      const marketClosed = Boolean(rawData?.market_closed || currentFeed?.market_closed);
+    const local = new Date().toLocaleTimeString();
+    const currentFeed = rawData?.feed_status?.[currentChartSymbol];
+    const feedStaleMinutes = Number(currentFeed?.stale_minutes);
+    const dataAgeMs = Date.now() - latestPanelFetchedAt;
+    const isDelayed =
+      marketClosed ||
+      meta?.source === "cache" ||
+      (Number.isFinite(feedStaleMinutes) && feedStaleMinutes >= 1) ||
+      dataAgeMs > 60000;
+    const updateDetail = `Last updated: ${local}`;
 
-      if (marketClosed) {
-        const stale = currentFeed?.stale_minutes;
-        setStatus(`● ${LANG[currentLang].marketClosed} • ${currentLang === "fr" ? "dernières bougies valides" : currentLang === "es" ? "últimas velas válidas" : "last valid candles"}${stale ? ` (${stale}m stale)` : ""}`, "market-closed");
-      } else if (meta?.source === "fallback_cache" && meta?.error) {
-        setStatus(`● CACHE • ${meta.error}`, "error");
-      } else if (meta?.source === "cache") {
-        setStatus(`● CACHE • updated (${local})`, "live");
-      } else {
-        setStatus(`● LIVE • updated (${local})`, "live");
-      }
+    if (meta?.source === "fallback_cache" && meta?.error) {
+      setConnectionBadge("error", `Connection issue: ${meta.error}`);
+    } else if (isDelayed) {
+      setConnectionBadge(
+        "stale",
+        marketClosed
+          ? `${updateDetail}; market closed`
+          : `${updateDetail}; data delayed`
+      );
+    } else {
+      setConnectionBadge("live", updateDetail);
     }
+    badgeSettled = true;
   } catch (err) {
   console.error("❌ Refresh error:", err);
   updateUTC();
@@ -4000,11 +5259,16 @@ updateUTC();
   renderChartFromPanel(lastGoodPanelData, currentChartSymbol, currentChartTimeframe);
 }
 
-    setStatus("● CACHE • using last good data", "live");
+    setConnectionBadge("error", `Connection issue: ${err.message}; using last successful panel data`);
+    badgeSettled = true;
   } else {
-    setStatus(`● Error • ${err.message}`, "error");
+    setConnectionBadge("error", `Connection issue: ${err.message}`);
+    badgeSettled = true;
   }
 } finally {
+    if (!badgeSettled) {
+      setConnectionBadge("error", "Panel refresh ended before status updated");
+    }
     panelRefreshInProgress = false;
   }
 }
@@ -4142,7 +5406,9 @@ if (paperAutoToggleBtn) {
       );
       updatePaperToggleUI();
       showAssistantMessage(
-        `Paper auto is now ${paperAutoEnabled ? "on" : "off"}.`,
+        assistantEventMessage(
+          paperAutoEnabled ? "paperAutoOn" : "paperAutoOff"
+        ),
         `PAPER AUTO ${paperAutoEnabled ? "ON" : "OFF"}`
       );
 
@@ -4227,12 +5493,14 @@ async function applyLiveAutoToggle(nextEnabled) {
         "error"
       );
       showAssistantMessage(
-        `Live auto is blocked because ${getVoiceBlockedReason({ reason: result.message })}.`,
+        assistantBlockedLine(getVoiceBlockedReason({ reason: result.message })),
         "LIVE AUTO BLOCKED"
       );
     } else {
       showAssistantMessage(
-        `Live auto is now ${liveAutoEnabled ? "on" : "off"}.`,
+        assistantEventMessage(
+          liveAutoEnabled ? "liveAutoOn" : "liveAutoOff"
+        ),
         `LIVE AUTO ${liveAutoEnabled ? "ON" : "OFF"}`
       );
     }
@@ -4265,7 +5533,10 @@ if (liveAutoToggleBtn) {
           "error"
         );
         showAssistantMessage(
-          "Live auto is blocked because the broker is disconnected.",
+          assistantBlockedLine(
+            (ASSISTANT_COPY[currentLang] || ASSISTANT_COPY.en)
+              .blockedReasons.disconnected
+          ),
           "LIVE AUTO BLOCKED"
         );
         return;
@@ -5417,21 +6688,22 @@ function drawTradeVisualLevels() {
   if (!chart || !candleSeries) return;
 
   const trade = getActiveTradeForChartSymbol(currentChartSymbol);
+  const symbol = normalizeTradeChartSymbol(currentChartSymbol);
+  const hasActiveTrade = Boolean(trade && isLiveTradeActiveForDisplay(trade));
 
-  if (!trade) return;
-  if (!isLiveTradeActiveForDisplay(trade)) {
+  if (!hasActiveTrade) return;
+  if (trade && !isLiveTradeActiveForDisplay(trade)) {
     clearTradeLines(currentChartSymbol);
     return;
   }
 
-  const symbol = normalizeTradeChartSymbol(currentChartSymbol);
   const chartLevels = getTradeChartLevels(trade, symbol);
   const levels = {
     symbol,
     ...chartLevels,
-    hit_tp1: Boolean(trade.hit_tp1),
+    hit_tp1: Boolean(trade?.hit_tp1),
     profit_protected: hasConfirmedProfitProtection(trade),
-    protected_sl_price: trade.protected_sl_price,
+    protected_sl_price: trade?.protected_sl_price,
   };
 
   console.log("TRADE_VISUAL_LEVELS =", levels);
@@ -5754,6 +7026,26 @@ function switchTimeframe(timeframe) {
 
 window.switchTimeframe = switchTimeframe;
 
+document.querySelectorAll(".chart-symbol-tabs button").forEach((button) => {
+  button.addEventListener("click", () => {
+    const symbol = button.textContent.trim().toUpperCase() === "GOLD"
+      ? "XAUUSD"
+      : "EURUSD";
+    window.setTimeout(() => {
+      showChartExplanation(symbol, currentChartTimeframe);
+    }, 0);
+  });
+});
+
+document.querySelectorAll(".chart-timeframes button").forEach((button) => {
+  button.addEventListener("click", () => {
+    const timeframe = button.textContent.trim();
+    window.setTimeout(() => {
+      showChartExplanation(currentChartSymbol, timeframe);
+    }, 0);
+  });
+});
+
 function bootMainApp() {
   updateUTC();
 
@@ -5850,6 +7142,8 @@ setInterval(() => {
   console.log("🔄 Auto refresh running...");
   refreshPanel();
 }, 15000);
+
+setInterval(refreshConnectionBadgeFreshness, 5000);
 
 _BAR_IDLE_TIMER = setInterval(() => {
   _BAR_IDLE_PHASE += 1;
@@ -5957,6 +7251,20 @@ if (menuToggleBtn && sideMenu) {
   });
 }
 
+menuAssistantBtn?.addEventListener("click", (event) => {
+  event.preventDefault();
+  event.stopPropagation();
+  openAssistantPanel();
+});
+
+closeAssistantPanelBtn?.addEventListener("click", closeAssistantPanel);
+
+assistantModal?.addEventListener("click", (event) => {
+  if (event.target === assistantModal) {
+    closeAssistantPanel();
+  }
+});
+
 if (menuFeedbackBtn) {
   menuFeedbackBtn.addEventListener("click", () => {
     if (sideMenu) sideMenu.classList.add("hidden");
@@ -6032,6 +7340,16 @@ document.addEventListener("click", (e) => {
   }
 });
 
+document.addEventListener("keydown", (event) => {
+  if (
+    event.key === "Escape" &&
+    assistantModal &&
+    !assistantModal.classList.contains("hidden")
+  ) {
+    closeAssistantPanel();
+  }
+});
+
 const langSelect = document.getElementById("langSelect");
 
 if (langSelect) {
@@ -6042,13 +7360,10 @@ if (langSelect) {
     localStorage.setItem("flowsignal_lang", currentLang);
 
     applyLanguage(currentLang);
-    const languageName = {
-      en: "English",
-      fr: "French",
-      es: "Spanish"
-    }[currentLang] || currentLang;
+    updateAssistantLanguageUI();
+    refreshVoiceForCurrentLanguage();
     showAssistantMessage(
-      `Language changed to ${languageName}.`,
+      assistantEventMessage("languageChanged"),
       "LANGUAGE"
     );
 

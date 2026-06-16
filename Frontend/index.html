@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>nathaux.Fx</title>
-  <link rel="stylesheet" href="style.css?v=2" />
+  <link rel="stylesheet" href="style.css?v=7" />
 </head>
 <body class="fit-mode">
   <div id="landingPage" class="landing-page landing-pro">
@@ -147,6 +147,11 @@
   <span class="menu-row-text">Auto Trade</span>
 </button>
 
+<button id="menuAssistantBtn" class="menu-row" title="Flow Assistant">
+  <span class="menu-row-icon">◉</span>
+  <span class="menu-row-text">Flow Assistant</span>
+</button>
+
 <button id="logoutBtn" class="menu-row" title="Logout">
   <span class="menu-row-icon">🚪</span>
   <span class="menu-row-text">Logout</span>
@@ -221,7 +226,7 @@
     </section>
 
     <div class="topbar">
-      <div id="status" class="status live">● LIVE • Loading...</div>
+      <div id="status" class="status status-loading" title="Updating panel data...">● Updating...</div>
 
       <div class="controls">
   <label class="switch-wrap">
@@ -257,6 +262,7 @@
                 <div class="signal-text wait-text" id="eurusd-signal">WAIT</div>
               </div>
             </div>
+            <div id="eurusd-signal-note" class="signal-freshness-note hidden">Trend active · no fresh entry</div>
 
             <div class="metric-label" id="eurusd-buy-label">Buy: 0%</div>
             <div class="bar-wrap">
@@ -306,6 +312,7 @@
                 <div class="signal-text wait-text" id="gold-signal">WAIT</div>
               </div>
             </div>
+            <div id="gold-signal-note" class="signal-freshness-note hidden">Trend active · no fresh entry</div>
 
             <div class="metric-label" id="gold-buy-label">Buy: 0%</div>
             <div class="bar-wrap">
@@ -355,6 +362,7 @@
     <div class="main-signal-box">
       <span id="main-signal">WAIT</span>
     </div>
+    <div id="main-signal-note" class="signal-freshness-note main-signal-note hidden">Trend active · no fresh entry</div>
 
     <div class="main-metrics">
       <div><span>Buy</span><strong id="main-buy">--%</strong></div>
@@ -524,14 +532,16 @@
   <div id="smartExplain" class="smart-explain hidden" role="dialog" aria-modal="false" aria-labelledby="smartExplainTitle">
     <div class="smart-explain-head">
       <div>
-        <span class="smart-explain-kicker">FLOW ASSISTANT</span>
-        <strong id="smartExplainTitle">Smart Explain</strong>
+        <strong id="smartExplainTitle">Flow Assistant</strong>
+        <span id="smartExplainSubtitle" class="smart-explain-kicker">Market Assistant</span>
       </div>
       <button id="smartExplainClose" class="smart-explain-close" type="button" aria-label="Close explanation">×</button>
     </div>
     <p id="smartExplainText">FlowSignal is ready.</p>
     <div id="smartExplainDetails" class="smart-explain-details hidden"></div>
-    <div id="smartExplainState" class="smart-explain-state"></div>
+    <div class="smart-explain-footer">
+      <div id="smartExplainState" class="smart-explain-state"></div>
+    </div>
   </div>
 
   <div id="tradeModal" class="trade-modal hidden">
@@ -722,8 +732,62 @@
 
   </div>
 </div>
+
+<div id="assistantModal" class="trade-modal assistant-modal hidden">
+  <div class="trade-modal-box assistant-modal-box" role="dialog" aria-modal="true" aria-labelledby="assistantModalTitle">
+    <div class="assistant-panel-head">
+      <div>
+        <span id="assistantPanelKicker">FLOW ASSISTANT</span>
+        <div id="assistantModalTitle" class="trade-modal-title">Market Voice</div>
+      </div>
+      <button id="closeAssistantPanelBtn" class="assistant-panel-close" type="button" aria-label="Close Flow Assistant">×</button>
+    </div>
+
+    <section id="flowAssistantSettings" class="assistant-settings" aria-labelledby="flowAssistantSettingsTitle">
+      <div class="assistant-settings-heading">
+        <span>◉</span>
+        <strong id="flowAssistantSettingsTitle">Voice Settings</strong>
+      </div>
+
+      <button id="menuVoiceToggleBtn" class="assistant-setting-toggle" type="button" aria-pressed="true">Voice ON</button>
+
+      <label class="assistant-setting-field">
+        <span id="assistantVoiceLabel">Voice</span>
+        <select id="voiceSelect" aria-label="Assistant voice"></select>
+      </label>
+
+      <button id="testVoiceBtn" class="assistant-test-voice" type="button">Test Voice</button>
+
+      <label class="assistant-popup-setting">
+        <span id="assistantPopupLabel">Show text popup</span>
+        <input id="assistantPopupToggle" type="checkbox" checked>
+      </label>
+
+      <label class="assistant-setting-field">
+        <span><span id="assistantSpeedLabel">Voice speed</span> <output id="voiceSpeedValue">0.90</output></span>
+        <input id="voiceSpeed" type="range" min="0.6" max="1.3" step="0.05" value="0.9">
+      </label>
+
+      <label class="assistant-setting-field">
+        <span><span id="assistantPitchLabel">Voice pitch</span> <output id="voicePitchValue">1.05</output></span>
+        <input id="voicePitch" type="range" min="0.7" max="1.4" step="0.05" value="1.05">
+      </label>
+
+      <label class="assistant-setting-field">
+        <span id="assistantStyleLabel">Assistant style</span>
+        <select id="assistantStyle">
+          <option value="calm">Calm</option>
+          <option value="confident">Confident</option>
+          <option value="hype">Hype</option>
+          <option value="professional">Professional</option>
+        </select>
+      </label>
+    </section>
+
+  </div>
+</div>
 <script src="https://unpkg.com/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
-  <script src="script.js?v=5"></script>
+  <script src="script.js?v=12"></script>
 </body>
 </html>
   
