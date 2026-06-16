@@ -2160,21 +2160,7 @@ function processVoiceAnnouncements(data, meta, rawData = null) {
       );
     }
 
-    if (
-      (next.rawSignal === "WAIT" || next.rawSignal === "HOLD BUY" || next.rawSignal === "HOLD SELL") &&
-      previous.rawSignal !== "WAIT" &&
-      !next.activeTradeKey
-    ) {
-      events.push({
-        symbol,
-        state: "WAIT",
-        priority: VOICE_EVENT_PRIORITY.WAIT,
-        fingerprint: createVoiceFingerprint(`${symbol}:wait:${previous.rawSignal}:${next.rawSignal}`),
-        message: assistantEventMessage("wait", {
-          symbol: getSpokenSymbol(symbol)
-        })
-      });
-    }
+    // WAIT is normal market noise during refreshes. Keep it for user clicks only.
 
     if (
       next.signal !== previous.signal &&
@@ -6634,7 +6620,6 @@ function addTradeVisualLine(price, title, color, options = {}) {
 }
 
 function getTradeChartLevels(trade, symbol = currentChartSymbol) {
-  const plan = latestPanelData?.[normalizeTradeChartSymbol(symbol)] || {};
   const raw = trade?.raw && typeof trade.raw === "object" ? trade.raw : {};
   const nestedRaw = raw?.raw && typeof raw.raw === "object" ? raw.raw : {};
 
@@ -6643,8 +6628,7 @@ function getTradeChartLevels(trade, symbol = currentChartSymbol) {
       trade?.entry ??
       trade?.entry_price ??
       raw?.entry ??
-      nestedRaw?.price ??
-      plan.entry_price,
+      nestedRaw?.price,
     original_sl:
       trade?.original_sl ??
       trade?.initial_sl ??
@@ -6653,32 +6637,29 @@ function getTradeChartLevels(trade, symbol = currentChartSymbol) {
       trade?.stop_loss ??
       trade?.stopLoss ??
       raw?.stopLoss ??
-      nestedRaw?.stopLoss ??
-      plan.stop_loss,
+      nestedRaw?.stopLoss,
     current_sl:
       trade?.sl ??
       trade?.current_sl ??
       trade?.stop_loss ??
       trade?.stopLoss ??
       raw?.stopLoss ??
-      nestedRaw?.stopLoss ??
-      plan.stop_loss,
+      nestedRaw?.stopLoss,
     tp1:
       trade?.tp1 ??
       trade?.take_profit_1 ??
-      trade?.take_profit ??
-      trade?.takeProfit ??
       raw?.tp1 ??
-      raw?.takeProfit ??
-      nestedRaw?.takeProfit ??
-      plan.tp1,
+      nestedRaw?.tp1,
     tp2:
       trade?.tp2 ??
       trade?.take_profit_2 ??
       trade?.tp2_price ??
+      trade?.take_profit ??
+      trade?.takeProfit ??
       raw?.tp2 ??
+      raw?.takeProfit ??
       nestedRaw?.tp2 ??
-      plan.tp2,
+      nestedRaw?.takeProfit,
   };
 }
 
