@@ -452,6 +452,7 @@ const voiceSpeedValue = document.getElementById("voiceSpeedValue");
 const voicePitch = document.getElementById("voicePitch");
 const voicePitchValue = document.getElementById("voicePitchValue");
 const assistantStyle = document.getElementById("assistantStyle");
+const streamerVoiceList = document.getElementById("streamerVoiceList");
 const smartExplain = document.getElementById("smartExplain");
 const smartExplainTitle = document.getElementById("smartExplainTitle");
 const smartExplainSubtitle = document.getElementById("smartExplainSubtitle");
@@ -1365,6 +1366,18 @@ const speechSynthesisSupported =
   "speechSynthesis" in window &&
   "SpeechSynthesisUtterance" in window;
 
+const streamerVoiceMessages = {
+  "1": "Welcome to FlowSignal, let’s watch the market together.",
+  "2": "Please like the live if you enjoy the signals.",
+  "3": "Follow the page so you don’t miss the next setup.",
+  "4": "We are waiting for a clean opportunity.",
+  "5": "No rush, patience is part of trading.",
+  "6": "Let’s see if the market gives confirmation.",
+  "7": "Drop your pair in the chat and I’ll check it.",
+  "8": "What do you think, buy or sell?",
+  "9": "Thanks for watching, I appreciate you."
+};
+
 const voiceState = {
   enabled:
     speechSynthesisSupported &&
@@ -1577,6 +1590,52 @@ function configureAssistantUtterance(utterance) {
   utterance.volume = VOICE_DEFAULTS.volume;
 }
 
+function speakStreamerVoice(message) {
+  if (!message || !speechSynthesisSupported) return;
+
+  window.speechSynthesis.cancel();
+
+  const utterance = new SpeechSynthesisUtterance(message);
+  configureAssistantUtterance(utterance);
+  window.speechSynthesis.speak(utterance);
+}
+
+function renderStreamerVoiceMenu() {
+  if (!streamerVoiceList) return;
+
+  streamerVoiceList.innerHTML = Object.entries(streamerVoiceMessages)
+    .map(([key, message]) => `
+      <div class="streamer-voice-row">
+        <kbd>${key}</kbd>
+        <span>${message}</span>
+      </div>
+    `)
+    .join("");
+}
+
+function isTypingInEditableField() {
+  const active = document.activeElement;
+  const tag = active?.tagName?.toLowerCase();
+
+  return (
+    tag === "input" ||
+    tag === "textarea" ||
+    tag === "select" ||
+    Boolean(active?.isContentEditable)
+  );
+}
+
+document.addEventListener("keydown", (event) => {
+  if (event.repeat || event.altKey || event.ctrlKey || event.metaKey) return;
+  if (isTypingInEditableField()) return;
+
+  const message = streamerVoiceMessages[event.key];
+  if (!message) return;
+
+  event.preventDefault();
+  speakStreamerVoice(message);
+});
+
 function initializeVoiceSettings() {
   if (!speechSynthesisSupported) {
     console.warn("Flow Assistant voice disabled: browser speechSynthesis is unavailable.");
@@ -1594,6 +1653,7 @@ function initializeVoiceSettings() {
   if (voiceSpeedValue) voiceSpeedValue.textContent = voiceState.rate.toFixed(2);
   if (voicePitchValue) voicePitchValue.textContent = voiceState.pitch.toFixed(2);
 
+  renderStreamerVoiceMenu();
   refreshAssistantVoices();
   window.speechSynthesis.addEventListener?.(
     "voiceschanged",
