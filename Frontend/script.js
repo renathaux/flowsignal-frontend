@@ -1366,16 +1366,75 @@ const speechSynthesisSupported =
   "speechSynthesis" in window &&
   "SpeechSynthesisUtterance" in window;
 
-const streamerVoiceMessages = {
-  "1": "Welcome to FlowSignal, let’s watch the market together.",
-  "2": "Please like the live if you enjoy the signals.",
-  "3": "Follow the page so you don’t miss the next setup.",
-  "4": "We are waiting for a clean opportunity.",
-  "5": "No rush, patience is part of trading.",
-  "6": "Let’s see if the market gives confirmation.",
-  "7": "Drop your pair in the chat and I’ll check it.",
-  "8": "What do you think, buy or sell?",
-  "9": "Thanks for watching, I appreciate you."
+const streamerVoiceTitles = {
+  en: "Streamer Voice",
+  fr: "Voix Streamer",
+  es: "Voz Streamer"
+};
+
+const streamerVoiceHotkeyOrder = [
+  "1",
+  "2",
+  "3",
+  "4",
+  "5",
+  "6",
+  "7",
+  "8",
+  "9",
+  "0",
+  "space",
+  "spaceDouble"
+];
+
+const streamerVoiceHotkeyLabels = {
+  space: "Space",
+  spaceDouble: "Space x2"
+};
+
+const streamerVoiceMessagesByLang = {
+  en: {
+    "1": "Welcome to FlowSignal, let’s watch the market together.",
+    "2": "Please like the live if you enjoy the signals.",
+    "3": "Follow the page so you don’t miss the next setup.",
+    "4": "We are waiting for a clean opportunity.",
+    "5": "No rush, patience is part of trading.",
+    "6": "Let’s see if the market gives confirmation.",
+    "7": "Drop your pair in the chat and I’ll check it.",
+    "8": "What do you think, buy or sell?",
+    "9": "Thanks for watching, I appreciate you.",
+    "0": "Thank you guys.",
+    space: "Thanks for the gift.",
+    spaceDouble: "Thank you, I appreciate it."
+  },
+  fr: {
+    "1": "Bienvenue sur FlowSignal, regardons le marché ensemble.",
+    "2": "Mettez un like au live si vous aimez les signaux.",
+    "3": "Suivez la page pour ne pas manquer le prochain setup.",
+    "4": "Nous attendons une opportunité propre.",
+    "5": "Pas de précipitation, la patience fait partie du trading.",
+    "6": "Voyons si le marché donne une confirmation.",
+    "7": "Envoyez votre paire dans le chat et je vais la regarder.",
+    "8": "Vous pensez quoi, achat ou vente ?",
+    "9": "Merci de regarder, je vous apprécie.",
+    "0": "Merci à tous.",
+    space: "Merci pour le cadeau.",
+    spaceDouble: "Merci, j’apprécie vraiment."
+  },
+  es: {
+    "1": "Bienvenidos a FlowSignal, vamos a mirar el mercado juntos.",
+    "2": "Dale like al live si te gustan las señales.",
+    "3": "Sigue la página para no perderte el próximo setup.",
+    "4": "Estamos esperando una oportunidad limpia.",
+    "5": "Sin prisa, la paciencia es parte del trading.",
+    "6": "Veamos si el mercado da confirmación.",
+    "7": "Deja tu par en el chat y lo reviso.",
+    "8": "¿Qué piensan, compra o venta?",
+    "9": "Gracias por mirar, se los agradezco.",
+    "0": "Gracias a todos.",
+    space: "Gracias por el regalo.",
+    spaceDouble: "Gracias, lo aprecio mucho."
+  }
 };
 
 const voiceState = {
@@ -1600,14 +1659,50 @@ function speakStreamerVoice(message) {
   window.speechSynthesis.speak(utterance);
 }
 
+function getStreamerVoiceMessages() {
+  return streamerVoiceMessagesByLang[currentLang] || streamerVoiceMessagesByLang.en;
+}
+
+function getStreamerVoiceMessage(key) {
+  const messages = getStreamerVoiceMessages();
+  return messages[key] || streamerVoiceMessagesByLang.en[key] || "";
+}
+
+let streamerSpacePressTimer = null;
+
+function clearStreamerSpaceTimer() {
+  if (!streamerSpacePressTimer) return;
+
+  window.clearTimeout(streamerSpacePressTimer);
+  streamerSpacePressTimer = null;
+}
+
+function handleStreamerSpaceHotkey() {
+  if (streamerSpacePressTimer) {
+    clearStreamerSpaceTimer();
+    speakStreamerVoice(getStreamerVoiceMessage("spaceDouble"));
+    return;
+  }
+
+  streamerSpacePressTimer = window.setTimeout(() => {
+    streamerSpacePressTimer = null;
+    speakStreamerVoice(getStreamerVoiceMessage("space"));
+  }, 260);
+}
+
 function renderStreamerVoiceMenu() {
   if (!streamerVoiceList) return;
 
-  streamerVoiceList.innerHTML = Object.entries(streamerVoiceMessages)
-    .map(([key, message]) => `
+  const title = document.getElementById("streamerVoiceTitle");
+  if (title) {
+    title.textContent = streamerVoiceTitles[currentLang] || streamerVoiceTitles.en;
+  }
+
+  streamerVoiceList.innerHTML = streamerVoiceHotkeyOrder
+    .map((key) => `
       <div class="streamer-voice-row">
-        <kbd>${key}</kbd>
-        <span>${message}</span>
+        <kbd>${streamerVoiceHotkeyLabels[key] || key}</kbd>
+        <span>${getStreamerVoiceMessage(key)}</span>
       </div>
     `)
     .join("");
@@ -1629,10 +1724,17 @@ document.addEventListener("keydown", (event) => {
   if (event.repeat || event.altKey || event.ctrlKey || event.metaKey) return;
   if (isTypingInEditableField()) return;
 
-  const message = streamerVoiceMessages[event.key];
+  if (event.code === "Space" || event.key === " ") {
+    event.preventDefault();
+    handleStreamerSpaceHotkey();
+    return;
+  }
+
+  const message = getStreamerVoiceMessage(event.key);
   if (!message) return;
 
   event.preventDefault();
+  clearStreamerSpaceTimer();
   speakStreamerVoice(message);
 });
 
@@ -1677,6 +1779,7 @@ function updateAssistantLanguageUI() {
   setText("assistantSpeedLabel", copy.speed);
   setText("assistantPitchLabel", copy.pitch);
   setText("assistantStyleLabel", copy.style);
+  renderStreamerVoiceMenu();
 
   if (assistantStyle) {
     Array.from(assistantStyle.options).forEach((option, index) => {
