@@ -5870,6 +5870,14 @@ body.paper-open .dashboard-grid {
   display: none;
 }
 
+.app.user-no-performance .topbar {
+  margin-bottom: 20px;
+}
+
+.app.user-no-performance .dashboard-grid {
+  margin-top: 18px !important;
+}
+
 .performance-card {
   min-width: 0;
   padding: 10px 16px;

@@ -899,6 +899,10 @@ function updatePnlVisibility() {
     dashboardPerformanceStrip.classList.toggle("user-no-pnl", !showPnl);
   }
 
+  if (mainApp) {
+    mainApp.classList.toggle("user-no-performance", !showPnl);
+  }
+
   const livePnlCardRow = document.getElementById("livePnlCardRow");
 
   if (livePnlCardRow) {
@@ -3983,9 +3987,9 @@ function setConnectionBadge(state = "live", details = "") {
     ? state
     : "live";
   const labels = {
-    loading: "● Updating...",
+    loading: "● LIVE loading...",
     live: "● Live",
-    stale: "● Data delayed",
+    stale: "● LIVE loading...",
     error: "● Connection issue"
   };
 
@@ -5624,7 +5628,7 @@ updateUTC();
         "stale",
         marketClosed
           ? `${updateDetail}; market closed`
-          : `${updateDetail}; data delayed`
+          : `${updateDetail}; live loading`
       );
     } else {
       setConnectionBadge("live", updateDetail);
