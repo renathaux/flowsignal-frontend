@@ -438,6 +438,8 @@ const mainApp = document.getElementById("mainApp");
 const dashboardWeeklyPnl = document.getElementById("dashboardWeeklyPnl");
 const dashboardFloatingPnl = document.getElementById("dashboardFloatingPnl");
 const dashboardOpenTrades = document.getElementById("dashboardOpenTrades");
+const dashboardPerformanceStrip = document.querySelector(".performance-strip");
+const dashboardPnlCards = document.querySelectorAll(".performance-weekly, .performance-floating");
 const voiceToggleBtn = document.getElementById("voiceToggleBtn");
 const menuAssistantBtn = document.getElementById("menuAssistantBtn");
 const assistantModal = document.getElementById("assistantModal");
@@ -689,6 +691,7 @@ if (adminLoginBtn) {
           time: Date.now()
         }));
         localStorage.setItem("flowsignal_role", "admin");
+        updatePnlVisibility();
 
 
       if (menuStatsBtn) {
@@ -753,6 +756,7 @@ if (accessBtn) {
     time: Date.now()
   }));
   localStorage.setItem("flowsignal_role", "user");
+  updatePnlVisibility();
 
   setAuthMessage("");
 
@@ -879,6 +883,28 @@ let pendingTrade = null;
 let panelRefreshInProgress = false;
 let isAdminUnlocked = false;
 const ADMIN_CODE = "nathaux123";
+
+function isAdminAccount() {
+  return localStorage.getItem("flowsignal_role") === "admin";
+}
+
+function updatePnlVisibility() {
+  const showPnl = isAdminAccount();
+
+  dashboardPnlCards.forEach((card) => {
+    card.classList.toggle("admin-only-hidden", !showPnl);
+  });
+
+  if (dashboardPerformanceStrip) {
+    dashboardPerformanceStrip.classList.toggle("user-no-pnl", !showPnl);
+  }
+
+  const livePnlCardRow = document.getElementById("livePnlCardRow");
+
+  if (livePnlCardRow) {
+    livePnlCardRow.classList.toggle("hidden", !showPnl);
+  }
+}
 
 let latestRawPanelData = null;
 let latestPanelFetchedAt = 0;
@@ -4352,7 +4378,7 @@ function hasConfirmedProfitProtection(trade) {
 
 function getProfitProtectionLabel(trade) {
   return hasConfirmedProfitProtection(trade)
-    ? "Profit Protected (+40% TP2 locked)"
+    ? "Profit Protected (+50% TP2 locked)"
     : "";
 }
 
@@ -4830,6 +4856,11 @@ function ensureLiveAutoSymbolStatusEl() {
 function ensureLiveTotalTradesCard() {
   if (!liveAutoSection) return null;
 
+  if (!isAdminAccount()) {
+    document.getElementById("livePnlCardRow")?.remove();
+    return null;
+  }
+
   const oldTotalCard = document.getElementById("liveTotalTradesCard");
   const existingRow = document.getElementById("livePnlCardRow");
 
@@ -4864,6 +4895,11 @@ function ensureLiveTotalTradesCard() {
 }
 
 function renderLiveTotalTradesCard() {
+  if (!isAdminAccount()) {
+    document.getElementById("livePnlCardRow")?.remove();
+    return;
+  }
+
   ensureLiveTotalTradesCard();
 
   const weeklyEl = document.getElementById("liveWeeklyPnlCard");
@@ -4925,6 +4961,8 @@ function formatDashboardMoney(value) {
 }
 
 function renderDashboardPerformance(meta = {}) {
+  updatePnlVisibility();
+
   const floating = Number(
     meta.floating_live_pl ??
     liveTradeStats.floating_live_pl ??
@@ -7492,6 +7530,7 @@ document.querySelectorAll(".chart-timeframes button").forEach((button) => {
 
 function bootMainApp() {
   updateUTC();
+  updatePnlVisibility();
 
   const role = localStorage.getItem("flowsignal_role");
 
@@ -7560,6 +7599,7 @@ try {
 }
 
 const role = localStorage.getItem("flowsignal_role");
+updatePnlVisibility();
 
 if (access?.granted || role === "user" || role === "admin") {
   if (landingPage) {
@@ -7578,6 +7618,7 @@ if (localStorage.getItem("flowsignal_role") === "admin") {
   if (menuStatsBtn) menuStatsBtn.classList.remove("hidden");
   if (menuPaperBtn) menuPaperBtn.classList.remove("hidden");
 }
+updatePnlVisibility();
 
     bootMainApp();
   }, 120);

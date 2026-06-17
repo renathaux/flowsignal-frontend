@@ -5862,6 +5862,20 @@ body.paper-open .dashboard-grid {
   overflow: hidden;
 }
 
+.admin-only-hidden {
+  display: none !important;
+}
+
+.performance-strip.user-no-pnl {
+  width: min(380px, calc(100% - 44px));
+  margin: 0 auto 12px;
+  grid-template-columns: 1fr;
+}
+
+.performance-strip.user-no-pnl .performance-trades {
+  border-right: 0;
+}
+
 .performance-card {
   min-width: 0;
   padding: 10px 16px;
