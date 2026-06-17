@@ -4357,9 +4357,60 @@ function getProfitProtectionLabel(trade) {
 }
 
 function getSlProtectionWarning(trade) {
+  if (
+    trade?.broker_stop_loss_missing ||
+    (isLiveBrokerTrade(trade) && !trade?.broker_stop_loss_confirmed)
+  ) {
+    return "No broker stop loss attached";
+  }
+
   return trade?.sl_protection_failed || trade?.sl_protection_warning
     ? "TP1 hit, but broker SL protection failed"
     : "";
+}
+
+function getBrokerTargetWarning(trade) {
+  if (
+    trade?.broker_take_profit_missing ||
+    (isLiveBrokerTrade(trade) && !trade?.broker_take_profit_confirmed)
+  ) {
+    return "No broker take profit attached";
+  }
+
+  return "";
+}
+
+function getBrokerStopLossDisplay(trade) {
+  if (
+    trade?.broker_stop_loss_missing ||
+    (isLiveBrokerTrade(trade) && !trade?.broker_stop_loss_confirmed)
+  ) {
+    return "No broker SL";
+  }
+
+  return trade?.sl ?? trade?.current_sl ?? trade?.stop_loss ?? "--";
+}
+
+function getBrokerTakeProfitDisplay(trade) {
+  if (
+    trade?.broker_take_profit_missing ||
+    (isLiveBrokerTrade(trade) && !trade?.broker_take_profit_confirmed)
+  ) {
+    return "No broker TP";
+  }
+
+  return trade?.tp2 ?? trade?.take_profit_2 ?? trade?.take_profit ?? trade?.takeProfit ?? "--";
+}
+
+function getTp1Display(trade) {
+  if (
+    trade?.broker_take_profit_missing ||
+    (isLiveBrokerTrade(trade) && !trade?.broker_take_profit_confirmed)
+  ) {
+    return trade?.planned_tp1 ? `${trade.planned_tp1} planned` : "Planned only";
+  }
+
+  return trade?.tp1 ?? trade?.take_profit_1 ?? "--";
 }
 
 function getTradeDisplayResult(trade) {
@@ -6340,11 +6391,12 @@ function renderLiveHistory() {
       const pnlClass = pnl > 0 ? "positive" : pnl < 0 ? "negative" : "";
       const protectionLabel = getProfitProtectionLabel(trade);
       const protectionWarning = getSlProtectionWarning(trade);
+      const targetWarning = getBrokerTargetWarning(trade);
       const entry = trade.entry || trade.entry_price || "--";
       const originalSl = trade.original_sl || trade.initial_sl || trade.sl || "--";
-      const currentSl = trade.sl || trade.current_sl || trade.stop_loss || "--";
-      const tp1 = trade.tp1 || trade.take_profit_1 || "--";
-      const tp2 = trade.tp2 || trade.take_profit_2 || "--";
+      const currentSl = getBrokerStopLossDisplay(trade);
+      const tp1 = getTp1Display(trade);
+      const tp2 = getBrokerTakeProfitDisplay(trade);
       const protectedSl = trade.protected_sl_price || "--";
       const tp1Hit = trade.hit_tp1 ? "Yes" : "No";
       const profitProtected = trade.profit_protected ? "Yes" : "No";
@@ -6367,6 +6419,7 @@ function renderLiveHistory() {
           <div style="padding:0 8px 7px;color:#cbd5e1;font-size:10px;line-height:1.35;">
             ${protectionLabel ? `<div class="live-side" style="color:#86efac;">${protectionLabel}</div>` : ""}
             ${protectionWarning ? `<div class="live-side" style="color:#fbbf24;">${protectionWarning}</div>` : ""}
+            ${targetWarning ? `<div class="live-side" style="color:#fbbf24;">${targetWarning}</div>` : ""}
             Trade ID: <b>${tradeId}</b><br>
             Entry: <b>${entry}</b><br>
             Original SL: <b>${originalSl}</b> • Current SL: <b>${currentSl}</b><br>
@@ -6497,9 +6550,9 @@ function renderLiveActiveOrders() {
     const lotSize = trade.lot_size ?? trade.volume;
     const entry = trade.entry || trade.entry_price || "--";
     const originalSl = trade.original_sl || trade.initial_sl || trade.sl || "--";
-    const currentSl = trade.sl || trade.current_sl || trade.stop_loss || "--";
-    const tp1 = trade.tp1 || trade.take_profit_1 || "--";
-    const tp2 = trade.tp2 || trade.take_profit_2 || "--";
+    const currentSl = getBrokerStopLossDisplay(trade);
+    const tp1 = getTp1Display(trade);
+    const tp2 = getBrokerTakeProfitDisplay(trade);
     const protectedSl = trade.protected_sl_price || "--";
     const tp1Hit = trade.hit_tp1 ? "Yes" : "No";
     const profitProtected = trade.profit_protected ? "Yes" : "No";
@@ -6511,6 +6564,7 @@ function renderLiveActiveOrders() {
     const status = trade.status || "--";
     const reason = trade.exit_reason || trade.note || trade.reason || "--";
     const protectionLabel = getProfitProtectionLabel(trade);
+    const targetWarning = getBrokerTargetWarning(trade);
     const displayResult = getTradeDisplayResult(trade);
     const cardSignalText = cardStatus.signal || trade.side || "--";
     const cardLiveAutoText = getTradeDisplayResult(trade);
@@ -6550,6 +6604,7 @@ function renderLiveActiveOrders() {
           </div>
           <div class="live-status-reason">Reason ${reason}</div>
           ${protectionLabel ? `<div class="live-side" style="color:#86efac;">${protectionLabel}</div>` : ""}
+          ${targetWarning ? `<div class="live-side" style="color:#fbbf24;">${targetWarning}</div>` : ""}
         </div>
       </details>
     `;
@@ -6977,6 +7032,40 @@ function getTradeChartLevels(trade, symbol = currentChartSymbol) {
   const nestedRaw = raw?.raw && typeof raw.raw === "object" ? raw.raw : {};
   const tradeSymbol = normalizeTradeChartSymbol(symbol);
   const signalPlan = latestRawPanelData?.[tradeSymbol] || {};
+  const liveBrokerTrade = isLiveBrokerTrade(trade);
+  const brokerStopLossMissing = Boolean(trade?.broker_stop_loss_missing);
+  const brokerStopLossConfirmed = Boolean(trade?.broker_stop_loss_confirmed);
+  const brokerStopLoss =
+    trade?.sl ??
+    trade?.current_sl ??
+    trade?.stop_loss ??
+    trade?.stopLoss ??
+    raw?.stopLoss ??
+    nestedRaw?.stopLoss;
+  const brokerTakeProfitMissing = Boolean(trade?.broker_take_profit_missing);
+  const brokerTakeProfitConfirmed = Boolean(trade?.broker_take_profit_confirmed);
+  const brokerTakeProfit =
+    trade?.tp2 ??
+    trade?.take_profit_2 ??
+    trade?.tp2_price ??
+    trade?.take_profit ??
+    trade?.takeProfit ??
+    raw?.tp2 ??
+    raw?.takeProfit ??
+    nestedRaw?.tp2 ??
+    nestedRaw?.takeProfit;
+  const plannedStopLoss =
+    trade?.planned_sl ??
+    trade?.original_sl ??
+    trade?.initial_sl ??
+    signalPlan?.stop_loss;
+  const plannedTp1 =
+    trade?.planned_tp1 ??
+    trade?.take_profit_1 ??
+    signalPlan?.tp1;
+  const plannedTp2 =
+    trade?.planned_tp2 ??
+    signalPlan?.tp2;
 
   return {
     entry:
@@ -6988,43 +7077,23 @@ function getTradeChartLevels(trade, symbol = currentChartSymbol) {
     original_sl:
       trade?.original_sl ??
       trade?.initial_sl ??
-      trade?.sl ??
-      trade?.current_sl ??
-      trade?.stop_loss ??
-      trade?.stopLoss ??
-      raw?.stopLoss ??
-      nestedRaw?.stopLoss ??
-      signalPlan?.stop_loss,
-    current_sl:
-      trade?.sl ??
-      trade?.current_sl ??
-      trade?.stop_loss ??
-      trade?.stopLoss ??
-      raw?.stopLoss ??
-      nestedRaw?.stopLoss ??
-      signalPlan?.stop_loss,
-    tp1:
-      trade?.tp1 ??
-      trade?.take_profit_1 ??
-      raw?.tp1 ??
-      nestedRaw?.tp1 ??
-      signalPlan?.tp1,
-    tp2:
-      trade?.tp2 ??
-      trade?.take_profit_2 ??
-      trade?.tp2_price ??
-      trade?.take_profit ??
-      trade?.takeProfit ??
-      raw?.tp2 ??
-      raw?.takeProfit ??
-      nestedRaw?.tp2 ??
-      nestedRaw?.takeProfit ??
-      signalPlan?.tp2,
+      brokerStopLoss ??
+      plannedStopLoss,
+    planned_sl: plannedStopLoss,
+    current_sl: brokerStopLossMissing ? null : brokerStopLoss,
+    broker_stop_loss_confirmed: brokerStopLossConfirmed || (!liveBrokerTrade && brokerStopLoss != null),
+    broker_stop_loss_missing: brokerStopLossMissing || (liveBrokerTrade && !brokerStopLossConfirmed) || brokerStopLoss == null,
+    tp1: brokerTakeProfitMissing ? null : trade?.tp1 ?? trade?.take_profit_1 ?? raw?.tp1 ?? nestedRaw?.tp1,
+    tp2: brokerTakeProfitMissing ? null : brokerTakeProfit,
+    planned_tp1: plannedTp1,
+    planned_tp2: plannedTp2,
+    broker_take_profit_confirmed: brokerTakeProfitConfirmed || (!liveBrokerTrade && brokerTakeProfit != null),
+    broker_take_profit_missing: brokerTakeProfitMissing || (liveBrokerTrade && !brokerTakeProfitConfirmed) || brokerTakeProfit == null,
   };
 }
 
 function hasCompleteTradeChartLevels(levels) {
-  return ["entry", "current_sl", "tp1", "tp2"].every((key) => {
+  return ["entry"].every((key) => {
     const value = Number(levels?.[key]);
     return Number.isFinite(value);
   });
@@ -7085,22 +7154,38 @@ function drawTradeVisualLevels() {
         lineWidth: 3,
       }
     );
-  } else {
-    addTradeVisualLine(levels.current_sl ?? levels.original_sl, "SL", "#ef4444", {
+  } else if (levels.broker_stop_loss_confirmed) {
+    addTradeVisualLine(levels.current_sl, "Broker SL", "#ef4444", {
       lineStyle: LightweightCharts.LineStyle.Solid,
+    });
+  } else {
+    addTradeVisualLine(levels.planned_sl ?? levels.original_sl, "Planned SL inactive", "rgba(248, 113, 113, 0.55)", {
+      lineStyle: LightweightCharts.LineStyle.Dotted,
+      lineWidth: 1,
     });
   }
 
-  addTradeVisualLine(levels.tp1, "TP1", "#facc15", {
-    lineStyle: levels.hit_tp1
-      ? LightweightCharts.LineStyle.Solid
-      : LightweightCharts.LineStyle.Dashed,
-    lineWidth: levels.hit_tp1 ? 3 : 2,
-  });
+  if (levels.broker_take_profit_confirmed) {
+    addTradeVisualLine(levels.tp1, "TP1 app target", "#facc15", {
+      lineStyle: levels.hit_tp1
+        ? LightweightCharts.LineStyle.Solid
+        : LightweightCharts.LineStyle.Dashed,
+      lineWidth: levels.hit_tp1 ? 3 : 2,
+    });
 
-  addTradeVisualLine(levels.tp2, "TP2", "#22c55e", {
-    lineStyle: LightweightCharts.LineStyle.Solid,
-  });
+    addTradeVisualLine(levels.tp2, "Broker TP", "#22c55e", {
+      lineStyle: LightweightCharts.LineStyle.Solid,
+    });
+  } else {
+    addTradeVisualLine(levels.planned_tp1, "Planned TP1 inactive", "rgba(250, 204, 21, 0.55)", {
+      lineStyle: LightweightCharts.LineStyle.Dotted,
+      lineWidth: 1,
+    });
+    addTradeVisualLine(levels.planned_tp2, "Planned TP2 inactive", "rgba(34, 197, 94, 0.55)", {
+      lineStyle: LightweightCharts.LineStyle.Dotted,
+      lineWidth: 1,
+    });
+  }
 }
 
 function drawStructureLine(data) {
