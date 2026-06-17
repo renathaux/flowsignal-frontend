@@ -439,7 +439,7 @@ const dashboardWeeklyPnl = document.getElementById("dashboardWeeklyPnl");
 const dashboardFloatingPnl = document.getElementById("dashboardFloatingPnl");
 const dashboardOpenTrades = document.getElementById("dashboardOpenTrades");
 const dashboardPerformanceStrip = document.querySelector(".performance-strip");
-const dashboardPnlCards = document.querySelectorAll(".performance-weekly, .performance-floating");
+const dashboardAdminCards = document.querySelectorAll(".performance-weekly, .performance-floating, .performance-trades");
 const voiceToggleBtn = document.getElementById("voiceToggleBtn");
 const menuAssistantBtn = document.getElementById("menuAssistantBtn");
 const assistantModal = document.getElementById("assistantModal");
@@ -891,7 +891,7 @@ function isAdminAccount() {
 function updatePnlVisibility() {
   const showPnl = isAdminAccount();
 
-  dashboardPnlCards.forEach((card) => {
+  dashboardAdminCards.forEach((card) => {
     card.classList.toggle("admin-only-hidden", !showPnl);
   });
 
