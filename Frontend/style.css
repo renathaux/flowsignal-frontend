@@ -5837,6 +5837,17 @@ body.paper-open .dashboard-grid {
   -webkit-overflow-scrolling: touch !important;
 }
 
+/* Final user-page spacing override. Keep cards clear of the fetch badge. */
+body.fit-mode .app.user-no-performance .dashboard-grid,
+.app.user-no-performance .dashboard-grid {
+  margin-top: 58px !important;
+}
+
+body.fit-mode .app.user-no-performance .signals-panel,
+.app.user-no-performance .signals-panel {
+  padding-top: 18px !important;
+}
+
 /* Full-screen live trading dashboard */
 .brand-left {
   display: flex;
@@ -5868,14 +5879,6 @@ body.paper-open .dashboard-grid {
 
 .performance-strip.user-no-pnl {
   display: none;
-}
-
-.app.user-no-performance .topbar {
-  margin-bottom: 20px;
-}
-
-.app.user-no-performance .dashboard-grid {
-  margin-top: 18px !important;
 }
 
 .performance-card {
