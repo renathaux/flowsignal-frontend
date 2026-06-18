@@ -4013,12 +4013,22 @@ function updateMainPanel(symbol) {
  updateSmcVisual(data);
   const marketClosed = Boolean(data.market_closed);
   const mainLive = document.querySelector(".main-live");
+  const candleSourceState = data.signal_data_source || {};
+  const feedAvailable = candleSourceState.available !== false;
+  const feedStale =
+    String(candleSourceState.tf_5m_source || "").toLowerCase().includes("stale")
+    || String(candleSourceState.candle_source || "").toLowerCase().includes("stale");
 
   if (mainLive) {
     mainLive.textContent = marketClosed
       ? `• ${LANG[currentLang].marketClosed}`
+      : (!feedAvailable || feedStale)
+      ? "• FEED STALE"
       : `• ${LANG[currentLang].live}`;
-    mainLive.style.color = marketClosed ? "#ef4444" : "#35ff8a";
+    mainLive.style.color =
+      marketClosed || !feedAvailable || feedStale
+        ? "#ef4444"
+        : "#35ff8a";
   }
 
   let signal = String(data.signal || "WAIT").trim().toUpperCase();
@@ -4056,7 +4066,10 @@ if (priceEl) {
       + `Source: ${String(candleSource.candle_source || candleSource.tf_5m_source || "cache")} · `
       + `Last fetch: ${formatCandleDebugTime(lastFetch)} · `
       + `Misses: ${missedFetches}`;
-    candleDebugEl.classList.toggle("is-stale", missedFetches > 0);
+    candleDebugEl.classList.toggle(
+      "is-stale",
+      missedFetches > 0 || !feedAvailable || feedStale
+    );
   }
 
   console.log("CHART_CANDLE_DEBUG", {
@@ -5323,6 +5336,125 @@ function renderDashboardPerformance(meta = {}) {
   }
 }
 
+function formatPerformanceMoney(value) {
+  const numeric = Number(value);
+  return Number.isFinite(numeric)
+    ? formatDashboardMoney(numeric)
+    : "--";
+}
+
+function formatPerformanceNumber(value, suffix = "") {
+  const numeric = Number(value);
+  return Number.isFinite(numeric)
+    ? `${numeric.toLocaleString("en-US", {
+        maximumFractionDigits: 2
+      })}${suffix}`
+    : "--";
+}
+
+function setPerformanceText(id, value) {
+  const element = document.getElementById(id);
+  if (element) element.textContent = value;
+}
+
+function renderPerformanceEquityCurve(points = []) {
+  const line = document.querySelector(".performance-equity-chart .equity-line");
+  const area = document.querySelector(".performance-equity-chart .equity-area");
+  const marker = document.querySelector(".performance-equity-chart circle");
+  const values = (points || [])
+    .map((point) => Number(point?.equity))
+    .filter(Number.isFinite);
+
+  if (!line || !area || !marker || !values.length) return;
+
+  const chartWidth = 700;
+  const top = 20;
+  const bottom = 165;
+  const min = Math.min(0, ...values);
+  const max = Math.max(0, ...values);
+  const range = Math.max(max - min, 1);
+  const plotted = values.map((value, index) => {
+    const x = values.length === 1
+      ? chartWidth
+      : index * (chartWidth / (values.length - 1));
+    const y = bottom - ((value - min) / range) * (bottom - top);
+    return { x: Math.round(x), y: Math.round(y) };
+  });
+  const linePath = plotted
+    .map((point, index) => `${index ? "L" : "M"}${point.x} ${point.y}`)
+    .join(" ");
+  const last = plotted[plotted.length - 1];
+
+  line.setAttribute("d", linePath);
+  area.setAttribute(
+    "d",
+    `${linePath} L${last.x} 190 L0 190 Z`
+  );
+  marker.setAttribute("cx", String(last.x));
+  marker.setAttribute("cy", String(last.y));
+}
+
+function renderPerformanceSummary(data = {}) {
+  const wins = Number(data.wins || 0);
+  const losses = Number(data.losses || 0);
+  const symbolText = (stats) => {
+    const item = stats || {};
+    return `${Number(item.trades || 0)} trades • `
+      + `${formatPerformanceNumber(item.winRate || 0, "%")} • `
+      + `${formatPerformanceMoney(item.pnl || 0)}`;
+  };
+
+  setPerformanceText("perfWinRate", formatPerformanceNumber(data.winRate || 0, "%"));
+  setPerformanceText("perfTotalTrades", String(Number(data.totalTrades || 0)));
+  setPerformanceText("perfWinsLosses", `${wins} / ${losses}`);
+  setPerformanceText("perfWeeklyPnl", formatPerformanceMoney(data.weeklyPnl));
+  setPerformanceText("perfMonthlyPnl", formatPerformanceMoney(data.monthlyPnl));
+  setPerformanceText("perfBestTrade", formatPerformanceMoney(data.bestTrade));
+  setPerformanceText("perfWorstTrade", formatPerformanceMoney(data.worstTrade));
+  setPerformanceText("perfAverageRr", data.averageRr == null
+    ? "--"
+    : formatPerformanceNumber(data.averageRr));
+  setPerformanceText("perfProfitFactor", data.profitFactor == null
+    ? "--"
+    : formatPerformanceNumber(data.profitFactor));
+  setPerformanceText("perfEurusd", symbolText(data.eurusd));
+  setPerformanceText("perfXauusd", symbolText(data.xauusd));
+
+  setPerformanceText("perfTotalTradesSummary", String(Number(data.totalTrades || 0)));
+  setPerformanceText("perfWinsLossesSummary", `${wins} / ${losses}`);
+  setPerformanceText("perfWeeklyPnlSummary", formatPerformanceMoney(data.weeklyPnl));
+  setPerformanceText("perfMonthlyPnlSummary", formatPerformanceMoney(data.monthlyPnl));
+  setPerformanceText("perfProfitFactorSummary", data.profitFactor == null
+    ? "--"
+    : formatPerformanceNumber(data.profitFactor));
+  setPerformanceText("perfSummaryTrades", String(Number(data.totalTrades || 0)));
+  setPerformanceText("perfSummaryWins", `${wins} / ${losses}`);
+  setPerformanceText("perfSummaryWeekly", formatPerformanceMoney(data.weeklyPnl));
+  setPerformanceText("perfSummaryMonthly", formatPerformanceMoney(data.monthlyPnl));
+  setPerformanceText("perfSummaryFactor", data.profitFactor == null
+    ? "--"
+    : formatPerformanceNumber(data.profitFactor));
+  renderPerformanceEquityCurve(data.equityCurve);
+
+  const updated = document.getElementById("perfLastUpdated");
+  if (updated) {
+    const timestamp = data.updatedAt ? new Date(data.updatedAt) : new Date();
+    updated.textContent = `Last Updated: ${timestamp.toLocaleString()}`;
+  }
+}
+
+async function loadPerformanceSummary() {
+  const response = await fetch(`${BASE_URL}/performance/summary`);
+  const data = await response.json();
+
+  if (!response.ok || data.ok === false) {
+    throw new Error(data.reason || "Performance unavailable");
+  }
+
+  renderPerformanceSummary(data);
+  return data;
+}
+
 function formatAutoTradeStatusText(status) {
   const item = status || {};
   const state = String(item.status || "WAITING").toUpperCase();
@@ -6038,9 +6170,16 @@ function stabilizePanelSignals(rawData, previousData) {
     const chartCandles = rawData?.candles?.[symbol]?.["5m"] || [];
     const source = incoming?.signal_data_source || {};
     const missedFetches = Number(source.missed_fetch_count || 0);
+    const sourceAvailable = source.available !== false;
+    const sourceStale =
+      String(source.tf_5m_source || "").toLowerCase().includes("stale")
+      || String(source.candle_source || "").toLowerCase().includes("stale")
+      || String(source.reason || "").toLowerCase().includes("stale");
     const temporarilyUnavailable =
       chartCandles.length > 0
       && missedFetches < 3
+      && sourceAvailable
+      && !sourceStale
       && (
         String(incoming?.market_condition || "").toUpperCase() === "CTRADER_UNAVAILABLE"
         || (
@@ -8658,7 +8797,7 @@ brokerAccountsModal?.querySelectorAll("[data-broker-nav]").forEach((button) => {
     if (target === "performance") {
       statsModal?.classList.remove("hidden");
       setActiveSettingsPage("performance");
-      loadAdminStats();
+      loadPerformanceSummary().catch(console.error);
       return;
     }
 
@@ -8808,8 +8947,11 @@ if (menuStatsBtn) {
     if (perfUpdated) perfUpdated.textContent = `Last Updated: ${new Date().toLocaleString()}`;
 
     try {
-      const res = await fetch(`${BASE_URL}/admin-stats`);
-      const data = await res.json();
+      const [adminResponse] = await Promise.all([
+        fetch(`${BASE_URL}/admin-stats`),
+        loadPerformanceSummary(),
+      ]);
+      const data = await adminResponse.json();
 
       if (totalVisitorsCount) {
         totalVisitorsCount.textContent = data.total_visits || 0;
@@ -8840,22 +8982,6 @@ if (menuStatsBtn) {
       }
     }
 
-      const totalTrades = document.getElementById("perfTotalTrades")?.textContent || "--";
-      const winsLosses = document.getElementById("perfWinsLosses")?.textContent || "--";
-      const weeklyPnl = document.getElementById("perfWeeklyPnl")?.textContent || dashboardWeeklyPnl?.textContent || "--";
-      const monthlyPnl = document.getElementById("perfMonthlyPnl")?.textContent || "--";
-      const profitFactor = document.getElementById("perfProfitFactor")?.textContent || "--";
-
-      setText("perfTotalTradesSummary", totalTrades);
-      setText("perfWinsLossesSummary", winsLosses);
-      setText("perfWeeklyPnlSummary", weeklyPnl);
-      setText("perfMonthlyPnlSummary", monthlyPnl);
-      setText("perfProfitFactorSummary", profitFactor);
-      setText("perfSummaryTrades", totalTrades);
-      setText("perfSummaryWins", winsLosses);
-      setText("perfSummaryWeekly", weeklyPnl);
-      setText("perfSummaryMonthly", monthlyPnl);
-      setText("perfSummaryFactor", profitFactor);
     } catch (err) {
       console.error(err);
       if (countryStats) countryStats.textContent = "Stats unavailable";
