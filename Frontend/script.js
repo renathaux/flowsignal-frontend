@@ -1223,7 +1223,7 @@ const ASSISTANT_COPY = {
     riskBlocked: "broker risk is {actual}, above the {maximum} limit",
     blockedReasons: {
       distance: "the minimum stop loss distance is not met",
-      volume: "broker volume safety rejected the risk",
+      volume: "Live trade blocked because calculated volume or broker minimum volume would exceed your risk settings",
       running: "a trade is already running",
       disconnected: "the broker is disconnected",
       safety: "a safety check did not pass"
@@ -5392,6 +5392,10 @@ function getShortAutoTradeReason(item) {
     details.risk_percent_if_minimum ??
     details.minimum_volume_risk_percent;
   const requiredRisk = details.risk_percent ?? details.required_risk_percent ?? 0.5;
+
+  if (reasonText.trim().toUpperCase().startsWith("LIVE BLOCKED:")) {
+    return reasonText.trim();
+  }
 
   if (
     reasonText.includes("Calculated risk is not close")
