@@ -505,10 +505,19 @@ const landingPage = document.getElementById("landingPage");
 const accessModal = document.getElementById("accessModal");
 const menuToggleBtn = document.getElementById("menuToggleBtn");
 const sideMenu = document.getElementById("sideMenu");
+const menuDashboardBtn = document.getElementById("menuDashboardBtn");
 const menuFeedbackBtn = document.getElementById("menuFeedbackBtn");
 const menuAdminBtn = document.getElementById("menuAdminBtn");
 const menuViewBtn = document.getElementById("menuViewBtn");
 const menuStatsBtn = document.getElementById("menuStatsBtn");
+const menuHistoryBtn = document.getElementById("menuHistoryBtn");
+const menuSettingsBtn = document.getElementById("menuSettingsBtn");
+const settingsSubmenu = document.getElementById("settingsSubmenu");
+const menuGeneralSettingsBtn = document.getElementById("menuGeneralSettingsBtn");
+const menuRiskSettingsBtn = document.getElementById("menuRiskSettingsBtn");
+const menuNotificationsSettingsBtn = document.getElementById("menuNotificationsSettingsBtn");
+const menuStrategySettingsBtn = document.getElementById("menuStrategySettingsBtn");
+const menuBrokerAccountsBtn = document.getElementById("menuBrokerAccountsBtn");
 const paperModal = document.getElementById("paperModal");
 const closePaperBtn = document.getElementById("closePaperBtn");
 const paperEurusdStatus = document.getElementById("paperEurusdStatus");
@@ -635,10 +644,226 @@ const menuPaperBtn = document.getElementById("menuPaperBtn");
 const statsModal = document.getElementById("statsModal");
 const totalVisitorsCount = document.getElementById("totalVisitorsCount");
 const closeStatsBtn = document.getElementById("closeStatsBtn");
+const brokerAccountsModal = document.getElementById("brokerAccountsModal");
+const brokerAccountsStatus = document.getElementById("brokerAccountsStatus");
+const brokerAccountSelect = document.getElementById("brokerAccountSelect");
+const brokerAccountList = document.getElementById("brokerAccountList");
+const brokerAccountCount = document.getElementById("brokerAccountCount");
+const brokerConnectedBadge = document.getElementById("brokerConnectedBadge");
+const brokerAuthorizedText = document.getElementById("brokerAuthorizedText");
+const activeBrokerAccountCard = document.getElementById("activeBrokerAccountCard");
+const connectCtraderBtn = document.getElementById("connectCtraderBtn");
+const disconnectCtraderBtn = document.getElementById("disconnectCtraderBtn");
+const refreshCtraderAccountsBtn = document.getElementById("refreshCtraderAccountsBtn");
+const setActiveCtraderAccountBtn = document.getElementById("setActiveCtraderAccountBtn");
+const forgetCtraderAccountBtn = document.getElementById("forgetCtraderAccountBtn");
+const clearAllBrokerAccountsBtn = document.getElementById("clearAllBrokerAccountsBtn");
+const closeBrokerAccountsBtn = document.getElementById("closeBrokerAccountsBtn");
 const uniqueVisitorsCount = document.getElementById("uniqueVisitorsCount");
 const todayVisitsCount = document.getElementById("todayVisitsCount");
 const lastVisitTime = document.getElementById("lastVisitTime");
 const countryStats = document.getElementById("countryStats");
+const settingsModal = document.getElementById("settingsModal");
+const closeSettingsModalBtn = document.getElementById("closeSettingsModalBtn");
+const settingsModalTitle = document.getElementById("settingsModalTitle");
+const settingsModalSubtitle = document.getElementById("settingsModalSubtitle");
+const generalSettingsPanel = document.getElementById("generalSettingsPanel");
+const riskSettingsPanel = document.getElementById("riskSettingsPanel");
+const notificationsSettingsPanel = document.getElementById("notificationsSettingsPanel");
+const strategySettingsPanel = document.getElementById("strategySettingsPanel");
+
+const DASHBOARD_PREFS_KEY = "flowsignal_dashboard_preferences";
+const RISK_PREFS_KEY = "flowsignal_risk_preferences";
+const DEFAULT_DASHBOARD_PREFS = {
+  showWeeklyPnl: true,
+  showFloatingPnl: true,
+  showConfidence: true,
+  showBuySellPct: true,
+  showOpenTradesCounter: true,
+  showMarketStructurePanel: true,
+  showRecentSignalHistory: true,
+  showAccountBalance: true,
+  showAccountNumber: true,
+  showBrokerInfo: true,
+};
+const DEFAULT_RISK_PREFS = {
+  riskPerTradePct: "0.50",
+  maxDailyLoss: "",
+  maxWeeklyLoss: "",
+  maxOpenTrades: "1",
+  tp1PercentOfTp2: "80",
+  protectedSlPercentOfTp2: "50",
+  breakEvenEnabled: true,
+  allowedSymbols: "EURUSD,XAUUSD",
+  defaultTradingMode: "PAPER",
+};
+
+function loadLocalObject(key, defaults) {
+  try {
+    return { ...defaults, ...JSON.parse(localStorage.getItem(key) || "{}") };
+  } catch {
+    return { ...defaults };
+  }
+}
+
+function saveLocalObject(key, value) {
+  localStorage.setItem(key, JSON.stringify(value));
+}
+
+function applyDashboardPreferences() {
+  const prefs = loadLocalObject(DASHBOARD_PREFS_KEY, DEFAULT_DASHBOARD_PREFS);
+  document.body.classList.toggle("hide-weekly-pnl", !prefs.showWeeklyPnl);
+  document.body.classList.toggle("hide-floating-pnl", !prefs.showFloatingPnl);
+  document.body.classList.toggle("hide-open-trades-counter", !prefs.showOpenTradesCounter);
+  document.body.classList.toggle("hide-confidence-ui", !prefs.showConfidence);
+  document.body.classList.toggle("hide-buy-sell-ui", !prefs.showBuySellPct);
+  document.body.classList.toggle("hide-market-structure-ui", !prefs.showMarketStructurePanel);
+  document.body.classList.toggle("hide-recent-history-ui", !prefs.showRecentSignalHistory);
+  document.body.classList.toggle("hide-account-balance-ui", !prefs.showAccountBalance);
+  document.body.classList.toggle("hide-account-number-ui", !prefs.showAccountNumber);
+  document.body.classList.toggle("hide-broker-info-ui", !prefs.showBrokerInfo);
+
+  document.querySelectorAll("[data-dashboard-pref]").forEach((input) => {
+    input.checked = Boolean(prefs[input.dataset.dashboardPref]);
+  });
+}
+
+function hydrateRiskSettings() {
+  const prefs = loadLocalObject(RISK_PREFS_KEY, DEFAULT_RISK_PREFS);
+
+  document.querySelectorAll("[data-risk-pref]").forEach((input) => {
+    const key = input.dataset.riskPref;
+    if (input.type === "checkbox") {
+      input.checked = Boolean(prefs[key]);
+    } else {
+      input.value = prefs[key] ?? "";
+    }
+  });
+}
+
+function saveRiskSettingsFromInputs() {
+  const prefs = loadLocalObject(RISK_PREFS_KEY, DEFAULT_RISK_PREFS);
+
+  document.querySelectorAll("[data-risk-pref]").forEach((input) => {
+    const key = input.dataset.riskPref;
+    prefs[key] = input.type === "checkbox" ? input.checked : input.value;
+  });
+
+  saveLocalObject(RISK_PREFS_KEY, prefs);
+  return prefs;
+}
+
+async function loadRiskSettingsFromBackend() {
+  try {
+    const response = await fetch(`${BASE_URL}/settings/risk`);
+    const data = await response.json();
+
+    if (!response.ok || !data.ok || !data.risk) return;
+
+    const prefs = {
+      ...DEFAULT_RISK_PREFS,
+      ...data.risk,
+      allowedSymbols: Array.isArray(data.risk.allowedSymbols)
+        ? data.risk.allowedSymbols.join(",")
+        : data.risk.allowedSymbols,
+    };
+    saveLocalObject(RISK_PREFS_KEY, prefs);
+    hydrateRiskSettings();
+  } catch (error) {
+    console.error("Risk settings load failed:", error);
+  }
+}
+
+let menuOpen = false;
+let activeSettingsPage = null;
+
+function closeAttachedMenuPage() {
+  settingsModal?.classList.add("hidden");
+  brokerAccountsModal?.classList.add("hidden");
+  statsModal?.classList.add("hidden");
+  assistantModal?.classList.add("hidden");
+  paperModal?.classList.add("hidden");
+  document.documentElement.classList.remove("paper-open");
+  document.body.classList.remove("paper-open");
+  activeSettingsPage = null;
+  document.body.removeAttribute("data-active-settings-page");
+}
+
+function getActiveAttachedPageElement() {
+  if (!activeSettingsPage) return null;
+  if (activeSettingsPage === "broker-accounts") {
+    return brokerAccountsModal?.querySelector(".broker-settings-content") || null;
+  }
+  if (activeSettingsPage === "performance") {
+    return statsModal?.querySelector(".performance-modal-box") || null;
+  }
+  if (activeSettingsPage === "assistant") {
+    return assistantModal?.querySelector(".assistant-modal-box") || null;
+  }
+  if (activeSettingsPage === "auto-trade") {
+    return paperModal?.querySelector(".trade-modal-box") || null;
+  }
+  if (activeSettingsPage.startsWith("settings:")) {
+    return settingsModal?.querySelector(".settings-modal-box") || null;
+  }
+  return null;
+}
+
+function setActiveSettingsPage(page) {
+  activeSettingsPage = page || null;
+  if (activeSettingsPage) {
+    document.body.dataset.activeSettingsPage = activeSettingsPage;
+  } else {
+    document.body.removeAttribute("data-active-settings-page");
+  }
+}
+
+function closeAllOverlays() {
+  feedbackModal?.classList.add("hidden");
+  statsModal?.classList.add("hidden");
+  settingsModal?.classList.add("hidden");
+  brokerAccountsModal?.classList.add("hidden");
+  assistantModal?.classList.add("hidden");
+  paperModal?.classList.add("hidden");
+  document.documentElement.classList.remove("paper-open");
+  document.body.classList.remove("paper-open");
+  setActiveSettingsPage(null);
+}
+
+function openSettingsPage(page = "general") {
+  if (!settingsModal) return;
+  closeAllOverlays();
+
+  const panels = {
+    general: generalSettingsPanel,
+    risk: riskSettingsPanel,
+    notifications: notificationsSettingsPanel,
+    strategy: strategySettingsPanel,
+  };
+
+  Object.values(panels).forEach((panel) => panel?.classList.add("hidden"));
+  panels[page]?.classList.remove("hidden");
+
+  const titles = {
+    general: ["General Settings", "Control what appears on your dashboard."],
+    risk: ["Risk Settings", "Configure your risk limits. Changes apply to all instruments (EURUSD & Gold)."],
+    notifications: ["Notifications", "Alert and notification controls."],
+    strategy: ["Strategy", "Strategy profile controls."],
+  };
+  const copy = titles[page] || titles.general;
+
+  if (settingsModalTitle) settingsModalTitle.textContent = copy[0];
+  if (settingsModalSubtitle) settingsModalSubtitle.textContent = copy[1];
+
+  applyDashboardPreferences();
+  hydrateRiskSettings();
+  if (page === "risk") {
+    loadRiskSettingsFromBackend();
+  }
+  settingsModal.classList.remove("hidden");
+  setActiveSettingsPage(`settings:${page}`);
+  setMainMenuOpen(true);
+}
 
 if (closeAccessBtn) {
   closeAccessBtn.addEventListener("click", () => {
@@ -972,7 +1197,7 @@ const ASSISTANT_LOCALES = {
 };
 const ASSISTANT_COPY = {
   en: {
-    panelTitle: "Market Voice",
+    panelTitle: "Flow Assistant",
     settings: "Voice Settings",
     voice: "Voice",
     testVoice: "Test Voice",
@@ -1014,6 +1239,7 @@ const ASSISTANT_COPY = {
       structure: "a clean structure break and candle close"
     },
     executed: "{symbol} {side} trade confirmed. We’re in.",
+    liveExecuted: "Live {side} executed on {symbol}. Entry, stop loss, and take profits are active.",
     activeTrade: "{symbol} has an active {side} trade.",
     tp1: "Nice. {symbol} reached the first target.",
     tp1Protected: "Nice. {symbol} reached the first target and stop loss is protected.",
@@ -1034,7 +1260,7 @@ const ASSISTANT_COPY = {
     manualSell: "Okay... manual sell selected for {symbol}."
   },
   fr: {
-    panelTitle: "Voix du marché",
+    panelTitle: "Assistant Flow",
     settings: "Réglages de la voix",
     voice: "Voix",
     testVoice: "Tester la voix",
@@ -1096,7 +1322,7 @@ const ASSISTANT_COPY = {
     manualSell: "D’accord... vente manuelle sélectionnée pour {symbol}."
   },
   es: {
-    panelTitle: "Voz del mercado",
+    panelTitle: "Asistente Flow",
     settings: "Ajustes de voz",
     voice: "Voz",
     testVoice: "Probar voz",
@@ -1978,11 +2204,13 @@ function openAssistantPanel() {
   if (!assistantModal) return;
 
   assistantModal.classList.remove("hidden");
-  sideMenu?.classList.add("hidden");
+  setActiveSettingsPage("assistant");
+  setMainMenuOpen(true);
 }
 
 function closeAssistantPanel() {
   assistantModal?.classList.add("hidden");
+  setMainMenuOpen(false);
 }
 
 function stopAssistantVoice() {
@@ -2369,6 +2597,16 @@ function processVoiceAnnouncements(data, meta, rawData = null) {
         !wasActiveTradeAnnounced(next.activeTradeKey)
       ) {
         markActiveTradeAnnounced(next.activeTradeKey);
+        events.push({
+          symbol,
+          state: "EXECUTED",
+          priority: VOICE_EVENT_PRIORITY.EXECUTED,
+          fingerprint: `${symbol}:executed:${next.activeTradeKey}`,
+          message: assistantEventMessage("liveExecuted", {
+            symbol,
+            side: next.activeTradeSide
+          })
+        });
       }
       return;
     }
@@ -2457,7 +2695,10 @@ function processVoiceAnnouncements(data, meta, rawData = null) {
         state: "EXECUTED",
         priority: VOICE_EVENT_PRIORITY.EXECUTED,
         fingerprint: `${symbol}:executed:${next.activeTradeKey}`,
-        message: assistantEventMessage("executed")
+        message: assistantEventMessage("liveExecuted", {
+          symbol,
+          side: next.activeTradeSide
+        })
       });
     }
 
@@ -3466,6 +3707,27 @@ function getLiveTickMid(symbol) {
   return Number.isFinite(mid) && mid > 0 && ageSeconds <= 20 ? mid : null;
 }
 
+function formatLivePrice(symbol, value) {
+  const price = Number(value);
+
+  if (!Number.isFinite(price) || price <= 0) return null;
+
+  return symbol === "XAUUSD" ? price.toFixed(2) : price.toFixed(5);
+}
+
+function formatCandleDebugTime(value) {
+  if (!value || value === "--") return "--";
+
+  const numericValue = Number(value);
+  const date = Number.isFinite(numericValue)
+    ? new Date(numericValue > 100000000000 ? numericValue : numericValue * 1000)
+    : new Date(value);
+
+  return Number.isNaN(date.getTime())
+    ? String(value)
+    : date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+}
+
 function updateCard(symbol, data) {
   const cardPrefix = getCardPrefix(symbol);
   let signal = String(data.signal || "WAIT").trim().toUpperCase();
@@ -3777,15 +4039,35 @@ const fixedPrice =
 const priceEl = document.getElementById("main-live-price");
 
 if (priceEl) {
-  if (fixedPrice) {
-    priceEl.textContent =
-      symbol === "XAUUSD"
-        ? Number(fixedPrice).toFixed(2)
-        : Number(fixedPrice).toFixed(5);
-  } else {
-    priceEl.textContent = "--";
-  }
+  priceEl.textContent = formatLivePrice(symbol, fixedPrice) || "Data unavailable";
 }
+  const candleDebugEl = document.getElementById("main-candle-debug");
+  const candleSource = data.signal_data_source || {};
+  const lastCandleTime =
+    candleSource.latest_5m_time
+    || lastCandle?.time
+    || "--";
+  const lastFetch = candleSource.last_successful_fetch || "--";
+  const missedFetches = Number(candleSource.missed_fetch_count || 0);
+
+  if (candleDebugEl) {
+    candleDebugEl.textContent =
+      `Candle: ${formatCandleDebugTime(lastCandleTime)} · `
+      + `Source: ${String(candleSource.candle_source || candleSource.tf_5m_source || "cache")} · `
+      + `Last fetch: ${formatCandleDebugTime(lastFetch)} · `
+      + `Misses: ${missedFetches}`;
+    candleDebugEl.classList.toggle("is-stale", missedFetches > 0);
+  }
+
+  console.log("CHART_CANDLE_DEBUG", {
+    symbol,
+    timeframe: currentChartTimeframe,
+    candleCount: liveCandles.length,
+    lastCandleTime,
+    source: candleSource.candle_source || candleSource.tf_5m_source,
+    lastSuccessfulFetch: lastFetch,
+    missedFetchCount: missedFetches,
+  });
   const displayName =
   DISPLAY_NAMES[symbol] || symbol;
   document.getElementById("main-symbol-title").innerHTML =
@@ -3882,6 +4164,7 @@ if (priceEl) {
 
   if (reasonEl) {
     const baseReason = tMarketText(String(data.plan_reason || "--"));
+    const scoreCapReason = String(data.score_cap_reason || "").trim();
 
     const displacement = data.displacement || "UNKNOWN";
     const displacementScore = data.displacement_score ?? 0;
@@ -3889,6 +4172,7 @@ if (priceEl) {
 
     reasonEl.innerHTML = `
       ${baseReason}<br>
+      ${scoreCapReason ? `<span style="color:#f59e0b;">SCORE:</span> ${tMarketText(scoreCapReason)}<br>` : ""}
       <span style="color:#5eead4;">${tMarketText("SESSION")}:</span> ${tMarketText(sessionText)}<br>
     <span style="color:#facc15;">FVG:</span> ${tMarketText(fvgText)}<br>
     <span style="color:#60a5fa;">${tMarketText("DISPLACEMENT")}:</span> ${tMarketText(displacement)} (${displacementScore})<br>
@@ -3898,7 +4182,6 @@ if (priceEl) {
 
   const showSignalBlocker =
     signal === "WAIT" &&
-    buyPct !== sellPct &&
     Boolean(data.blocked_by || data.blocked_reason);
   const blockedByRow = document.getElementById("main-blocked-by-row");
   const blockedReasonRow = document.getElementById("main-blocked-reason-row");
@@ -4157,6 +4440,19 @@ async function maybeExecuteLiveOrder(symbol, data) {
 
     if (!result.ok) {
       lastLiveOrderKey = null;
+      const blockReason =
+        result?.reason ||
+        result?.message ||
+        result?.result?.reason ||
+        result?.result?.message ||
+        "live order safety check failed";
+      speakVoiceEvent({
+        symbol,
+        state: "BLOCKED",
+        priority: VOICE_EVENT_PRIORITY.BLOCKED,
+        fingerprint: createVoiceFingerprint(`${symbol}:live-blocked:${blockReason}`),
+        message: `Live ${signal} blocked on ${symbol}. ${blockReason}.`
+      });
       return;
     }
 
@@ -4408,6 +4704,19 @@ function getBrokerTargetWarning(trade) {
   }
 
   return "";
+}
+
+function getLiveRiskError(trade) {
+  const missingSl =
+    trade?.broker_stop_loss_missing ||
+    (isLiveBrokerTrade(trade) && !trade?.broker_stop_loss_confirmed);
+  const missingTp =
+    trade?.broker_take_profit_missing ||
+    (isLiveBrokerTrade(trade) && !trade?.broker_take_profit_confirmed);
+
+  return missingSl || missingTp
+    ? "LIVE RISK ERROR: trade has no broker SL/TP"
+    : "";
 }
 
 function getBrokerStopLossDisplay(trade) {
@@ -4986,6 +5295,7 @@ function renderDashboardPerformance(meta = {}) {
   const activeTrades = Object.values(
     sanitizeActiveLiveOrders(meta.live_active_orders || activeLiveOrders || {})
   ).filter(Boolean);
+  const brokerOpenCount = Number(meta.broker_open_positions_count);
 
   [
     [dashboardWeeklyPnl, weeklyPnl],
@@ -5000,7 +5310,11 @@ function renderDashboardPerformance(meta = {}) {
   });
 
   if (dashboardOpenTrades) {
-    dashboardOpenTrades.textContent = String(activeTrades.length);
+    dashboardOpenTrades.textContent = String(
+      Number.isFinite(brokerOpenCount)
+        ? brokerOpenCount
+        : activeTrades.length
+    );
   }
 
   if (!activeTrades.length) {
@@ -5353,6 +5667,7 @@ function applyCtraderStatus(status) {
     Number(status.live_positions_count || 0);
   liveConnectionState.last_success = status.last_success || null;
   liveConnectionState.last_error = status.last_error || null;
+  liveConnectionState.degraded = Boolean(status.degraded);
 
   if (!liveConnectionState.connected) {
     liveAutoEnabled = false;
@@ -5389,6 +5704,286 @@ async function fetchCtraderStatus() {
   } catch (err) {
     console.warn("CTRADER STATUS ERROR:", err);
     return null;
+  }
+}
+
+function formatBrokerMoney(value, currency = "") {
+  const amount = Number(value);
+
+  if (!Number.isFinite(amount)) return "--";
+
+  return `${amount.toLocaleString("en-US", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  })}${currency ? ` ${currency}` : ""}`;
+}
+
+function getBrokerAccountStatus(account, activeAccountId) {
+  if (account.unavailable) return "unavailable";
+  if (String(account.account_id) === String(activeAccountId)) return "active";
+  return account.status || "available";
+}
+
+function getBrokerAccountLabel(account) {
+  return [
+    account.account_id || "--",
+    account.account_number ? `#${account.account_number}` : "",
+    account.broker_name || "cTrader",
+    account.mode || "",
+    account.status || "",
+  ].filter(Boolean).join(" • ");
+}
+
+function renderBrokerAccounts(data = {}) {
+  const accounts = Array.isArray(data.accounts) ? data.accounts : [];
+  const activeAccountId = Object.prototype.hasOwnProperty.call(data, "active_account_id")
+    ? (data.active_account_id || "")
+    : (liveConnectionState.account_id || "");
+  const activeAccount = accounts.find((account) => String(account.account_id) === String(activeAccountId));
+  const connected = data.ok !== false && (liveConnectionState.connected || accounts.length > 0 || activeAccountId);
+
+  if (brokerAccountsStatus) {
+    brokerAccountsStatus.innerHTML = data.ok === false
+      ? `Connection Status: <span>${data.reason || "disconnected"}</span>`
+      : `Connection Status: <strong>${connected ? "ready" : "disconnected"}</strong>${activeAccountId ? ` • Active` : ""}`;
+  }
+
+  if (brokerConnectedBadge) {
+    brokerConnectedBadge.textContent = connected ? "Connected" : "Disconnected";
+    brokerConnectedBadge.classList.toggle("disconnected", !connected);
+  }
+
+  if (brokerAuthorizedText) {
+    brokerAuthorizedText.textContent = activeAccountId
+      ? `Authorized account: ${activeAccountId}`
+      : "Authorized account: none selected";
+  }
+
+  if (brokerAccountCount) {
+    brokerAccountCount.textContent = `${accounts.length} ${accounts.length === 1 ? "Account" : "Accounts"} Found`;
+  }
+
+  if (activeBrokerAccountCard) {
+    activeBrokerAccountCard.innerHTML = activeAccount
+      ? `
+        <div class="broker-active-title">● Active Account</div>
+        <strong>${activeAccount.account_id || "--"}</strong>
+        <span>${activeAccount.broker_name || "cTrader"} • ${(activeAccount.mode || "demo").toUpperCase()}</span>
+        <button id="setActiveCtraderAccountBtn" class="broker-side-btn">Change Active Account</button>
+      `
+      : `
+        <div class="broker-active-title">● Active Account</div>
+        <strong>--</strong>
+        <span>No active account selected</span>
+        <button id="setActiveCtraderAccountBtn" class="broker-side-btn">Change Active Account</button>
+      `;
+  }
+
+  if (brokerAccountSelect) {
+    brokerAccountSelect.innerHTML = accounts.length
+      ? accounts.map((account) => {
+          const accountId = account.account_id || "";
+          return `<option value="${accountId}" ${String(accountId) === String(activeAccountId) ? "selected" : ""}>${getBrokerAccountLabel(account)}</option>`;
+        }).join("")
+      : `<option value="">No accounts loaded</option>`;
+  }
+
+  if (brokerAccountList) {
+    brokerAccountList.innerHTML = accounts.length
+      ? accounts.map((account) => {
+          const accountId = account.account_id || "";
+          const status = getBrokerAccountStatus(account, activeAccountId);
+          const isActive = status === "active";
+          const currency = account.currency || "";
+          const type = String(account.mode || "demo").toUpperCase();
+          const dotClass = account.unavailable ? "unavailable" : isActive ? "active" : "available";
+
+          return `
+            <tr class="${isActive ? "active" : ""} ${account.unavailable ? "unavailable" : ""}" data-account-id="${accountId}">
+              <td>
+                <span class="broker-account-dot ${dotClass}"></span>${accountId || "--"}
+                ${account.reason ? `<div class="broker-row-reason">${account.reason}</div>` : ""}
+              </td>
+              <td>${account.account_number || accountId || "--"}</td>
+              <td>${account.broker_name || "cTrader"}</td>
+              <td><span class="broker-type-pill">${type}</span></td>
+              <td>${formatBrokerMoney(account.balance)}</td>
+              <td>${currency || "--"}</td>
+              <td><span class="broker-status-text ${status}">${status}</span></td>
+              <td>
+                ${isActive
+                  ? `<span class="broker-active-pill">ACTIVE</span>`
+                  : `<button class="broker-row-action" data-set-active="${accountId}" ${account.unavailable ? "disabled" : ""}>Set Active</button>`}
+              </td>
+            </tr>
+          `;
+        }).join("")
+      : `<tr><td colspan="8" class="broker-account-empty">No accounts loaded. Connect or refresh cTrader.</td></tr>`;
+  }
+
+  updateBrokerAccountActionState();
+}
+
+function setBrokerStatusMessage(message, isError = false) {
+  if (!brokerAccountsStatus) return;
+
+  brokerAccountsStatus.textContent = message;
+  brokerAccountsStatus.classList.toggle("error", Boolean(isError));
+}
+
+function updateBrokerAccountActionState() {
+  const selectedAccountId = getSelectedBrokerAccountId();
+  const hasSelection = Boolean(selectedAccountId);
+  const hasAccounts = Array.from(brokerAccountSelect?.options || []).some((option) => option.value);
+
+  if (forgetCtraderAccountBtn) {
+    forgetCtraderAccountBtn.disabled = !hasSelection;
+  }
+
+  if (setActiveCtraderAccountBtn) {
+    setActiveCtraderAccountBtn.disabled = !hasSelection;
+  }
+
+  if (clearAllBrokerAccountsBtn) {
+    clearAllBrokerAccountsBtn.disabled = !hasAccounts;
+  }
+}
+
+async function loadBrokerAccounts(refresh = false) {
+  setBrokerStatusMessage(refresh ? "Connection Status: refreshing accounts..." : "Connection Status: loading accounts...");
+
+  if (refreshCtraderAccountsBtn) {
+    refreshCtraderAccountsBtn.disabled = true;
+    refreshCtraderAccountsBtn.textContent = "↻ Loading...";
+  }
+
+  try {
+    const endpoint = refresh ? "ctrader/accounts/refresh" : "ctrader/accounts";
+    const res = await fetch(`${BASE_URL}/${endpoint}`, {
+      method: "GET",
+      headers: { "Content-Type": "application/json" },
+    });
+    const data = await res.json();
+
+    if (!res.ok || data.ok === false) {
+      setBrokerStatusMessage(`Connection Status: ${data.reason || data.message || "Could not load cTrader accounts"}`, true);
+    }
+
+    renderBrokerAccounts(data);
+    return data;
+  } catch (err) {
+    setBrokerStatusMessage(`Connection Status: ${err.message}`, true);
+    renderBrokerAccounts({
+      ok: false,
+      reason: err.message,
+      accounts: [],
+    });
+    return null;
+  } finally {
+    if (refreshCtraderAccountsBtn) {
+      refreshCtraderAccountsBtn.disabled = false;
+      refreshCtraderAccountsBtn.textContent = "↻ Refresh Accounts";
+    }
+  }
+}
+
+async function postBrokerAccountAction(path, payload = {}) {
+  const res = await fetch(`${BASE_URL}/${path}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+
+  const data = await res.json();
+
+  if (!res.ok || data.ok === false) {
+    setBrokerStatusMessage(`Connection Status: ${data.reason || data.message || "Request failed"}`, true);
+  }
+
+  return data;
+}
+
+function getSelectedBrokerAccountId() {
+  return brokerAccountSelect ? brokerAccountSelect.value : "";
+}
+
+function selectBrokerAccount(accountId) {
+  if (brokerAccountSelect && accountId) {
+    brokerAccountSelect.value = accountId;
+  }
+
+  updateBrokerAccountActionState();
+}
+
+async function setActiveBrokerAccount(accountId) {
+  const selectedAccountId = accountId || getSelectedBrokerAccountId();
+
+  if (!selectedAccountId) {
+    alert("Select an account first.");
+    return;
+  }
+
+  const result = await postBrokerAccountAction("ctrader/accounts/active", {
+    accountId: selectedAccountId,
+  });
+
+  if (!result.ok) {
+    setBrokerStatusMessage(`Connection Status: ${result.reason || "Could not set active account."}`, true);
+    return;
+  }
+
+  await fetchCtraderStatus();
+  await loadBrokerAccounts(true);
+}
+
+function openBrokerAccountsModal() {
+  if (!brokerAccountsModal) return;
+  brokerAccountsModal.classList.remove("hidden");
+  setActiveSettingsPage("broker-accounts");
+  setMainMenuOpen(true);
+  menuSettingsBtn?.setAttribute("aria-expanded", "true");
+  settingsSubmenu?.classList.remove("hidden");
+  loadBrokerAccounts(false);
+}
+
+function closeBrokerAccountsModal() {
+  brokerAccountsModal?.classList.add("hidden");
+  setMainMenuOpen(false);
+}
+
+function handleCtraderOAuthReturn() {
+  const params = new URLSearchParams(window.location.search);
+  const shouldOpenBrokerAccounts = params.get("brokerAccounts") === "1";
+  const oauthPayload = localStorage.getItem("flowsignalCtraderOAuth");
+
+  if (!shouldOpenBrokerAccounts && !oauthPayload) return;
+
+  let oauthResult = null;
+
+  if (oauthPayload) {
+    try {
+      oauthResult = JSON.parse(oauthPayload);
+    } catch {
+      oauthResult = null;
+    }
+    localStorage.removeItem("flowsignalCtraderOAuth");
+  }
+
+  setTimeout(async () => {
+    openBrokerAccountsModal();
+
+    if (oauthResult && oauthResult.ok === false) {
+      setBrokerStatusMessage(`Connection Status: ${oauthResult.reason || "cTrader authorization failed"}`, true);
+    } else if (oauthResult) {
+      setBrokerStatusMessage("Connection Status: cTrader connected. Refreshing accounts...");
+    }
+
+    await fetchCtraderStatus();
+    await loadBrokerAccounts(true);
+  }, 500);
+
+  if (shouldOpenBrokerAccounts && window.history?.replaceState) {
+    window.history.replaceState({}, document.title, window.location.pathname);
   }
 }
 
@@ -5430,6 +6025,47 @@ async function closeLiveTrade(symbol) {
   }
 }
 
+function stabilizePanelSignals(rawData, previousData) {
+  if (!rawData || !previousData) return rawData;
+
+  ["EURUSD", "XAUUSD"].forEach((symbol) => {
+    const incoming = rawData[symbol];
+    const previous = previousData[symbol];
+    const chartCandles = rawData?.candles?.[symbol]?.["5m"] || [];
+    const source = incoming?.signal_data_source || {};
+    const missedFetches = Number(source.missed_fetch_count || 0);
+    const temporarilyUnavailable =
+      chartCandles.length > 0
+      && missedFetches < 3
+      && (
+        String(incoming?.market_condition || "").toUpperCase() === "CTRADER_UNAVAILABLE"
+        || (
+          Number(incoming?.buy_pct || 0) === 0
+          && Number(incoming?.sell_pct || 0) === 0
+          && Number(incoming?.confidence || 0) === 0
+        )
+      );
+
+    if (!temporarilyUnavailable || !previous) return;
+
+    rawData[symbol] = {
+      ...previous,
+      signal_data_source: source,
+      data_temporarily_cached: true,
+      stale_minutes: incoming?.stale_minutes ?? previous?.stale_minutes,
+    };
+
+    console.log("SIGNAL_NO_DATA_DEBUG", {
+      symbol,
+      action: "kept_last_valid_signal",
+      candleCount: chartCandles.length,
+      missedFetchCount: missedFetches,
+    });
+  });
+
+  return rawData;
+}
+
 async function refreshPanel() {
   if (panelRefreshInProgress) {
     console.log("⏭️ refreshPanel skipped: previous request still running");
@@ -5440,7 +6076,9 @@ async function refreshPanel() {
   let badgeSettled = false;
 
   try {
-    setConnectionBadge("loading", "Updating panel data...");
+    if (!lastGoodPanelData) {
+      setConnectionBadge("loading", "Loading initial panel data...");
+    }
 
     console.log("⏳ Fetching panel data from:", API_URL);
 
@@ -5455,7 +6093,10 @@ async function refreshPanel() {
       throw new Error(`HTTP ${res.status}`);
     }
 
-   const rawData = await res.json();
+   const rawData = stabilizePanelSignals(
+     await res.json(),
+     lastGoodPanelData
+   );
 
 const liveCandles = rawData?.candles?.[currentChartSymbol]?.[currentChartTimeframe] || [];
 const lastCandle = liveCandles[liveCandles.length - 1];
@@ -5614,10 +6255,14 @@ updateUTC();
     const currentFeed = rawData?.feed_status?.[currentChartSymbol];
     const feedStaleMinutes = Number(currentFeed?.stale_minutes);
     const dataAgeMs = Date.now() - latestPanelFetchedAt;
+    const staleFeedThresholdMinutes = 12;
     const isDelayed =
       marketClosed ||
       meta?.source === "cache" ||
-      (Number.isFinite(feedStaleMinutes) && feedStaleMinutes >= 1) ||
+      (
+        Number.isFinite(feedStaleMinutes)
+        && feedStaleMinutes >= staleFeedThresholdMinutes
+      ) ||
       dataAgeMs > 60000;
     const updateDetail = `Last updated: ${local}`;
 
@@ -5675,8 +6320,7 @@ let paperSavedScrollY = 0;
 function openPaperPanel() {
   if (!paperModal) return;
 
-  paperSavedScrollY = window.scrollY || document.documentElement.scrollTop || 0;
-
+  closeAllOverlays();
   paperModal.classList.remove("hidden");
   updateExecutionPageUI();
   fetchCtraderStatus();
@@ -5685,14 +6329,8 @@ function openPaperPanel() {
 
   document.documentElement.classList.add("paper-open");
   document.body.classList.add("paper-open");
-
-  document.body.style.position = "fixed";
-  document.body.style.top = `-${paperSavedScrollY}px`;
-  document.body.style.left = "0";
-  document.body.style.right = "0";
-  document.body.style.width = "100%";
-
-  if (sideMenu) sideMenu.classList.add("hidden");
+  setActiveSettingsPage("auto-trade");
+  setMainMenuOpen(true);
 }
 
 function closePaperPanel() {
@@ -5702,14 +6340,8 @@ function closePaperPanel() {
 
   document.documentElement.classList.remove("paper-open");
   document.body.classList.remove("paper-open");
-
-  document.body.style.position = "";
-  document.body.style.top = "";
-  document.body.style.left = "";
-  document.body.style.right = "";
-  document.body.style.width = "";
-
-  window.scrollTo(0, paperSavedScrollY);
+  setActiveSettingsPage(null);
+  setMainMenuOpen(false, { closeAttachedPage: false });
 }
 
 if (menuPaperBtn) {
@@ -6607,6 +7239,7 @@ function renderLiveActiveOrders() {
     const reason = trade.exit_reason || trade.note || trade.reason || "--";
     const protectionLabel = getProfitProtectionLabel(trade);
     const targetWarning = getBrokerTargetWarning(trade);
+    const liveRiskError = getLiveRiskError(trade);
     const displayResult = getTradeDisplayResult(trade);
     const cardSignalText = cardStatus.signal || trade.side || "--";
     const cardLiveAutoText = getTradeDisplayResult(trade);
@@ -6646,6 +7279,7 @@ function renderLiveActiveOrders() {
           </div>
           <div class="live-status-reason">Reason ${reason}</div>
           ${protectionLabel ? `<div class="live-side" style="color:#86efac;">${protectionLabel}</div>` : ""}
+          ${liveRiskError ? `<div class="live-side" style="color:#ff3b30;font-weight:800;">${liveRiskError}</div>` : ""}
           ${targetWarning ? `<div class="live-side" style="color:#fbbf24;">${targetWarning}</div>` : ""}
         </div>
       </details>
@@ -6982,19 +7616,31 @@ function updateChartOverlay(symbol, timeframe, candles) {
   const title = document.getElementById("chartOverlayTitle");
   const ohlc = document.getElementById("chartOverlayOhlc");
 
-  if (!title || !ohlc || !candles || candles.length === 0) return;
-
-  const last = candles[candles.length - 1];
+  if (!title || !ohlc) return;
 
   title.textContent = `${DISPLAY_NAMES[symbol] || symbol} · ${timeframe}`;
 
-  const decimals = symbol === "XAUUSD" ? 2 : 5;
+  if (!candles || candles.length === 0) {
+    ohlc.textContent = "Data unavailable";
+    return;
+  }
+
+  const last = candles[candles.length - 1];
+  const open = formatLivePrice(symbol, last.open);
+  const high = formatLivePrice(symbol, last.high);
+  const low = formatLivePrice(symbol, last.low);
+  const close = formatLivePrice(symbol, last.close);
+
+  if (!open || !high || !low || !close) {
+    ohlc.textContent = "Data unavailable";
+    return;
+  }
 
   ohlc.innerHTML = `
-    O <span>${Number(last.open).toFixed(decimals)}</span>
-    H <span>${Number(last.high).toFixed(decimals)}</span>
-    L <span>${Number(last.low).toFixed(decimals)}</span>
-    C <span>${Number(last.close).toFixed(decimals)}</span>
+    O <span>${open}</span>
+    H <span>${high}</span>
+    L <span>${low}</span>
+    C <span>${close}</span>
   `;
 }
 let structureLineSeries = null;
@@ -7326,7 +7972,10 @@ function renderChartFromPanel(rawData, symbol = currentChartSymbol, timeframe = 
   if (!chart || !candleSeries) return;
 
     let candles = getChartCandles(rawData, symbol, timeframe);
-    if (!candles.length) return;
+    if (!candles.length) {
+      updateChartOverlay(symbol, timeframe, []);
+      return;
+    }
 
     const key = `${symbol}_${timeframe}`;
 
@@ -7393,28 +8042,38 @@ function applyIdleMotionToLastCandle(symbol = currentChartSymbol, timeframe = cu
 
   const last = candles[candles.length - 1];
   if (!last) return;
+  const livePrice = getLiveTickMid(symbol);
+  if (!livePrice) return;
 
-  const prev = candles.length > 1 ? candles[candles.length - 2] : null;
+  const timeframeSeconds = {
+    "5m": 5 * 60,
+    "15m": 15 * 60,
+    "1h": 60 * 60
+  }[timeframe];
+  if (!timeframeSeconds) return;
 
-  let range = Math.abs(last.high - last.low);
-  if (range <= 0 && prev) {
-    range = Math.abs(prev.high - prev.low);
+  const currentBucket = Math.floor(Date.now() / 1000 / timeframeSeconds)
+    * timeframeSeconds;
+  let visualLast;
+
+  if (Number(last.time) < currentBucket) {
+    visualLast = {
+      time: currentBucket,
+      open: Number(last.close),
+      high: Math.max(Number(last.close), livePrice),
+      low: Math.min(Number(last.close), livePrice),
+      close: livePrice
+    };
+    candles.push(visualLast);
+  } else {
+    visualLast = {
+      ...last,
+      close: livePrice,
+      high: Math.max(Number(last.high), livePrice),
+      low: Math.min(Number(last.low), livePrice)
+    };
+    candles[candles.length - 1] = visualLast;
   }
-  if (range <= 0) {
-    range = Math.max(Math.abs(last.close) * 0.0003, 0.0001);
-  }
-
-  const wave = Math.sin((_CHART_IDLE_PHASE + symbol.length) * 0.85);
-  const drift = range * 0.08 * wave;
-
-  const visualClose = Math.max(last.low, Math.min(last.high, last.close + drift));
-
-  const visualLast = {
-    ...last,
-    close: visualClose,
-    high: Math.max(last.high, visualClose),
-    low: Math.min(last.low, visualClose)
-  };
 
   try {
     candleSeries.update(visualLast);
@@ -7533,14 +8192,12 @@ document.querySelectorAll(".chart-timeframes button").forEach((button) => {
 });
 
 function bootMainApp() {
+  syncAttachedPanelGeometry();
   updateUTC();
   updatePnlVisibility();
 
-  const role = localStorage.getItem("flowsignal_role");
-
-  if (menuStatsBtn) {
-    menuStatsBtn.classList.toggle("hidden", role !== "admin");
-  }
+  menuStatsBtn?.classList.remove("hidden");
+  menuPaperBtn?.classList.remove("hidden");
 
   let visitorId = localStorage.getItem("flowsignal_visitor_id");
 
@@ -7571,6 +8228,32 @@ fetch(`${BASE_URL}/track-visit`, {
   applyLanguage(currentLang);
   refreshPanel();
   }
+
+function syncAttachedPanelGeometry() {
+  const topHeader = document.querySelector(".top-header");
+  const liveBadgeRow = document.querySelector(".topbar");
+
+  if (!topHeader || !mainApp) return;
+
+  const headerRect = topHeader.getBoundingClientRect();
+  const liveBadgeRect = liveBadgeRow?.getBoundingClientRect();
+  const headerHeight = Math.max(
+    headerRect.bottom,
+    liveBadgeRect?.top ?? headerRect.bottom
+  );
+  const panelTop = Math.max(0, Math.round(headerHeight));
+
+  document.documentElement.style.setProperty(
+    "--app-sidebar-top",
+    `${panelTop}px`
+  );
+  document.documentElement.style.setProperty(
+    "--app-panel-height",
+    `calc(100dvh - ${panelTop}px)`
+  );
+}
+
+window.addEventListener("resize", syncAttachedPanelGeometry);
 
 // ==============================
 // LOGOUT BUTTON
@@ -7604,6 +8287,8 @@ try {
 
 const role = localStorage.getItem("flowsignal_role");
 updatePnlVisibility();
+applyDashboardPreferences();
+hydrateRiskSettings();
 
 if (access?.granted || role === "user" || role === "admin") {
   if (landingPage) {
@@ -7647,6 +8332,7 @@ _BAR_IDLE_TIMER = setInterval(() => {
 }
 }, 5000);
 const feedbackModal = document.getElementById("feedbackModal");
+const feedbackType = document.getElementById("feedbackType");
 const feedbackInput = document.getElementById("feedbackInput");
 const feedbackCancelBtn = document.getElementById("feedbackCancelBtn");
 const feedbackSendBtn = document.getElementById("feedbackSendBtn");
@@ -7703,7 +8389,7 @@ if (feedbackSendBtn) {
           "Content-Type": "application/json"
         },
         body: JSON.stringify({
-          message,
+          message: `${feedbackType?.value || "Feedback"}: ${message}`,
           user: "anonymous",
           time: new Date().toISOString()
         })
@@ -7734,19 +8420,42 @@ if (feedbackModal) {
   });
 }
 
+function setMainMenuOpen(open, options = {}) {
+  if (!sideMenu) return;
+  menuOpen = Boolean(open);
+
+  if (!menuOpen && options.closeAttachedPage !== false) {
+    closeAttachedMenuPage();
+  }
+
+  sideMenu.classList.toggle("hidden", !menuOpen);
+  sideMenu.classList.toggle("is-open", menuOpen);
+  sideMenu.setAttribute("aria-hidden", menuOpen ? "false" : "true");
+  mainApp?.classList.toggle("menu-drawer-open", menuOpen);
+  document.body.classList.toggle("menu-drawer-open", menuOpen);
+}
+
 if (menuToggleBtn && sideMenu) {
   menuToggleBtn.addEventListener("click", () => {
-    sideMenu.classList.toggle("hidden");
+    setMainMenuOpen(!menuOpen);
   });
 }
+
+menuDashboardBtn?.addEventListener("click", () => {
+  closeAllOverlays();
+  setMainMenuOpen(false);
+  window.scrollTo({ top: 0, behavior: "smooth" });
+});
 
 menuAssistantBtn?.addEventListener("click", (event) => {
   event.preventDefault();
   event.stopPropagation();
+  closeAllOverlays();
   openAssistantPanel();
 });
 
 closeAssistantPanelBtn?.addEventListener("click", closeAssistantPanel);
+document.getElementById("assistantCancelBtn")?.addEventListener("click", closeAssistantPanel);
 
 assistantModal?.addEventListener("click", (event) => {
   if (event.target === assistantModal) {
@@ -7756,10 +8465,327 @@ assistantModal?.addEventListener("click", (event) => {
 
 if (menuFeedbackBtn) {
   menuFeedbackBtn.addEventListener("click", () => {
-    if (sideMenu) sideMenu.classList.add("hidden");
+    closeAllOverlays();
+    setMainMenuOpen(false);
     openFeedbackModal();
   });
 }
+
+menuHistoryBtn?.addEventListener("click", () => {
+  closeAllOverlays();
+  setMainMenuOpen(false);
+  document.querySelector(".history-section")?.scrollIntoView({
+    behavior: "smooth",
+    block: "center",
+  });
+});
+
+menuSettingsBtn?.addEventListener("click", () => {
+  const expanded = settingsSubmenu?.classList.toggle("hidden") === false;
+  menuSettingsBtn.setAttribute("aria-expanded", expanded ? "true" : "false");
+});
+
+menuGeneralSettingsBtn?.addEventListener("click", () => openSettingsPage("general"));
+menuRiskSettingsBtn?.addEventListener("click", () => openSettingsPage("risk"));
+menuNotificationsSettingsBtn?.addEventListener("click", () => openSettingsPage("notifications"));
+menuStrategySettingsBtn?.addEventListener("click", () => openSettingsPage("strategy"));
+
+closeSettingsModalBtn?.addEventListener("click", () => {
+  settingsModal?.classList.add("hidden");
+  setMainMenuOpen(false);
+});
+
+settingsModal?.addEventListener("click", (event) => {
+  if (event.target === settingsModal) {
+    settingsModal.classList.add("hidden");
+    setMainMenuOpen(false);
+  }
+});
+
+document.querySelectorAll("[data-dashboard-pref]").forEach((input) => {
+  input.addEventListener("change", () => {
+    const prefs = loadLocalObject(DASHBOARD_PREFS_KEY, DEFAULT_DASHBOARD_PREFS);
+    prefs[input.dataset.dashboardPref] = input.checked;
+    saveLocalObject(DASHBOARD_PREFS_KEY, prefs);
+    applyDashboardPreferences();
+  });
+});
+
+document.querySelectorAll("[data-risk-pref]").forEach((input) => {
+  input.addEventListener("change", saveRiskSettingsFromInputs);
+  input.addEventListener("input", saveRiskSettingsFromInputs);
+});
+
+document.querySelectorAll("[data-risk-adjust]").forEach((button) => {
+  button.addEventListener("click", () => {
+    const [key, rawDelta] = String(button.dataset.riskAdjust || "").split(":");
+    const input = document.querySelector(`[data-risk-pref="${key}"]`);
+    const delta = Number(rawDelta);
+
+    if (!input || Number.isNaN(delta)) return;
+
+    const current = Number(input.value || 0);
+    const min = input.min === "" ? -Infinity : Number(input.min);
+    const max = input.max === "" ? Infinity : Number(input.max);
+    const next = Math.min(max, Math.max(min, current + delta));
+    input.value = Number.isInteger(delta) ? String(next) : next.toFixed(2);
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+});
+
+document.getElementById("riskResetBtn")?.addEventListener("click", () => {
+  saveLocalObject(RISK_PREFS_KEY, DEFAULT_RISK_PREFS);
+  hydrateRiskSettings();
+});
+
+document.getElementById("riskSaveBtn")?.addEventListener("click", async (event) => {
+  event.preventDefault();
+  event.stopPropagation();
+
+  const settingsBox = settingsModal?.querySelector(".settings-modal-box");
+  const savedScrollTop = settingsBox?.scrollTop || 0;
+
+  const prefs = saveRiskSettingsFromInputs();
+  const saveButton = document.getElementById("riskSaveBtn");
+  if (!saveButton) return;
+
+  saveButton.disabled = true;
+  saveButton.textContent = "Saving...";
+
+  try {
+    const payload = {
+      ...prefs,
+      riskPerTradePct: Number(prefs.riskPerTradePct),
+      maxDailyLoss: prefs.maxDailyLoss === "" ? null : Number(prefs.maxDailyLoss),
+      maxWeeklyLoss: prefs.maxWeeklyLoss === "" ? null : Number(prefs.maxWeeklyLoss),
+      maxOpenTrades: Number(prefs.maxOpenTrades),
+      tp1PercentOfTp2: Number(prefs.tp1PercentOfTp2),
+      protectedSlPercentOfTp2: Number(prefs.protectedSlPercentOfTp2),
+      allowedSymbols: String(prefs.allowedSymbols || "")
+        .split(",")
+        .map((symbol) => symbol.trim().toUpperCase())
+        .filter(Boolean),
+    };
+    const response = await fetch(`${BASE_URL}/settings/risk`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    const data = await response.json();
+
+    if (!response.ok || !data.ok) {
+      throw new Error(data.detail || "Could not save risk settings");
+    }
+  } catch (error) {
+    saveButton.disabled = false;
+    saveButton.textContent = "✓ Save Changes";
+    alert(error.message || "Could not save risk settings");
+    return;
+  }
+
+  // Saving is an in-place action: keep Risk Management attached to the sidebar.
+  settingsModal?.classList.remove("hidden");
+  setActiveSettingsPage("settings:risk");
+  setMainMenuOpen(true);
+  if (settingsBox) settingsBox.scrollTop = savedScrollTop;
+
+  const originalLabel = "✓ Save Changes";
+  saveButton.textContent = "✓ Saved";
+  saveButton.classList.add("is-saved");
+  window.setTimeout(() => {
+    saveButton.textContent = originalLabel;
+    saveButton.classList.remove("is-saved");
+    saveButton.disabled = false;
+  }, 1400);
+});
+
+document.getElementById("riskCancelBtn")?.addEventListener("click", () => {
+  settingsModal?.classList.add("hidden");
+  setMainMenuOpen(false);
+});
+
+menuBrokerAccountsBtn?.addEventListener("click", () => {
+  closeAllOverlays();
+  openBrokerAccountsModal();
+});
+
+closeBrokerAccountsBtn?.addEventListener("click", closeBrokerAccountsModal);
+
+brokerAccountsModal?.addEventListener("click", (event) => {
+  if (event.target === brokerAccountsModal) {
+    closeBrokerAccountsModal();
+  }
+});
+
+brokerAccountsModal?.querySelectorAll("[data-broker-nav]").forEach((button) => {
+  button.addEventListener("click", () => {
+    const target = button.dataset.brokerNav;
+    closeBrokerAccountsModal();
+    closeAllOverlays();
+
+    if (target === "dashboard") {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      return;
+    }
+
+    if (target === "assistant") {
+      openAssistantPanel();
+      return;
+    }
+
+    if (target === "live") {
+      openPaperPanel();
+      return;
+    }
+
+    if (target === "feedback") {
+      openFeedbackModal();
+      return;
+    }
+
+    if (target === "history") {
+      document.querySelector(".history-section")?.scrollIntoView({
+        behavior: "smooth",
+        block: "center",
+      });
+      return;
+    }
+
+    if (target === "performance") {
+      statsModal?.classList.remove("hidden");
+      setActiveSettingsPage("performance");
+      loadAdminStats();
+      return;
+    }
+
+    if (target === "settings-general") openSettingsPage("general");
+    if (target === "settings-risk") openSettingsPage("risk");
+    if (target === "settings-notifications") openSettingsPage("notifications");
+    if (target === "settings-strategy") openSettingsPage("strategy");
+  });
+});
+
+connectCtraderBtn?.addEventListener("click", async () => {
+  setBrokerStatusMessage("Connection Status: opening cTrader login...");
+  connectCtraderBtn.disabled = true;
+
+  try {
+    const res = await fetch(`${BASE_URL}/ctrader/connect`, {
+      method: "GET",
+      headers: { "Content-Type": "application/json" },
+    });
+    const result = await res.json();
+
+    if (!res.ok || result.ok === false || !result.authorization_url) {
+      setBrokerStatusMessage(`Connection Status: ${result.reason || "Could not start cTrader login"}`, true);
+      return;
+    }
+
+    window.location.href = result.authorization_url;
+  } catch (err) {
+    setBrokerStatusMessage(`Connection Status: ${err.message}`, true);
+  } finally {
+    connectCtraderBtn.disabled = false;
+  }
+});
+
+disconnectCtraderBtn?.addEventListener("click", async () => {
+  if (!confirm("Disconnect cTrader and clear FlowSignal broker session?")) return;
+
+  setBrokerStatusMessage("Connection Status: disconnecting...");
+  disconnectCtraderBtn.disabled = true;
+
+  const result = await postBrokerAccountAction("ctrader/disconnect");
+  await fetchCtraderStatus();
+  renderBrokerAccounts({
+    ok: result.ok !== false,
+    active_account_id: "",
+    accounts: [],
+  });
+  setBrokerStatusMessage(result.ok === false
+    ? `Connection Status: ${result.reason || "disconnect failed"}`
+    : "Connection Status: disconnected",
+    result.ok === false
+  );
+  disconnectCtraderBtn.disabled = false;
+});
+
+refreshCtraderAccountsBtn?.addEventListener("click", async () => {
+  await loadBrokerAccounts(true);
+});
+
+setActiveCtraderAccountBtn?.addEventListener("click", async () => {
+  await setActiveBrokerAccount();
+});
+
+brokerAccountList?.addEventListener("click", async (event) => {
+  const row = event.target.closest("tr[data-account-id]");
+  const setActiveButton = event.target.closest("[data-set-active]");
+
+  if (row) {
+    selectBrokerAccount(row.dataset.accountId);
+  }
+
+  if (setActiveButton) {
+    event.preventDefault();
+    await setActiveBrokerAccount(setActiveButton.dataset.setActive);
+  }
+});
+
+activeBrokerAccountCard?.addEventListener("click", async (event) => {
+  if (event.target.closest("#setActiveCtraderAccountBtn")) {
+    await setActiveBrokerAccount();
+  }
+});
+
+forgetCtraderAccountBtn?.addEventListener("click", async () => {
+  const accountId = getSelectedBrokerAccountId();
+
+  if (!accountId) {
+    alert("Select an account first.");
+    return;
+  }
+
+  if (!confirm("Forget this account from FlowSignal only?")) return;
+
+  const result = await postBrokerAccountAction("ctrader/accounts/forget", {
+    accountId,
+  });
+
+  if (result.ok === false) return;
+
+  await fetchCtraderStatus();
+  await loadBrokerAccounts(false);
+});
+
+clearAllBrokerAccountsBtn?.addEventListener("click", async () => {
+  const accountIds = Array.from(brokerAccountSelect?.options || [])
+    .map((option) => option.value)
+    .filter(Boolean);
+
+  if (!accountIds.length) {
+    alert("No accounts to clear.");
+    return;
+  }
+
+  if (!confirm("Clear all saved broker accounts from FlowSignal only?")) return;
+
+  const result = await postBrokerAccountAction("ctrader/accounts/clear");
+
+  if (result.ok === false) return;
+
+  await fetchCtraderStatus();
+  renderBrokerAccounts({
+    ok: true,
+    active_account_id: "",
+    accounts: [],
+  });
+  setBrokerStatusMessage("Connection Status: accounts cleared");
+});
+
+brokerAccountSelect?.addEventListener("change", updateBrokerAccountActionState);
+
+handleCtraderOAuthReturn();
 
 if (menuAdminBtn) {
   menuAdminBtn.addEventListener("click", () => {
@@ -7770,6 +8796,13 @@ if (menuAdminBtn) {
 
 if (menuStatsBtn) {
   menuStatsBtn.addEventListener("click", async () => {
+    closeAllOverlays();
+    setActiveSettingsPage("performance");
+    setMainMenuOpen(true);
+    if (statsModal) statsModal.classList.remove("hidden");
+    const perfUpdated = document.getElementById("perfLastUpdated");
+    if (perfUpdated) perfUpdated.textContent = `Last Updated: ${new Date().toLocaleString()}`;
+
     try {
       const res = await fetch(`${BASE_URL}/admin-stats`);
       const data = await res.json();
@@ -7803,11 +8836,25 @@ if (menuStatsBtn) {
       }
     }
 
-      if (statsModal) statsModal.classList.remove("hidden");
-      if (sideMenu) sideMenu.classList.add("hidden");
+      const totalTrades = document.getElementById("perfTotalTrades")?.textContent || "--";
+      const winsLosses = document.getElementById("perfWinsLosses")?.textContent || "--";
+      const weeklyPnl = document.getElementById("perfWeeklyPnl")?.textContent || dashboardWeeklyPnl?.textContent || "--";
+      const monthlyPnl = document.getElementById("perfMonthlyPnl")?.textContent || "--";
+      const profitFactor = document.getElementById("perfProfitFactor")?.textContent || "--";
+
+      setText("perfTotalTradesSummary", totalTrades);
+      setText("perfWinsLossesSummary", winsLosses);
+      setText("perfWeeklyPnlSummary", weeklyPnl);
+      setText("perfMonthlyPnlSummary", monthlyPnl);
+      setText("perfProfitFactorSummary", profitFactor);
+      setText("perfSummaryTrades", totalTrades);
+      setText("perfSummaryWins", winsLosses);
+      setText("perfSummaryWeekly", weeklyPnl);
+      setText("perfSummaryMonthly", monthlyPnl);
+      setText("perfSummaryFactor", profitFactor);
     } catch (err) {
       console.error(err);
-      alert("Failed to load stats");
+      if (countryStats) countryStats.textContent = "Stats unavailable";
     }
   });
 }
@@ -7815,17 +8862,28 @@ if (menuStatsBtn) {
 if (closeStatsBtn) {
   closeStatsBtn.addEventListener("click", () => {
     if (statsModal) statsModal.classList.add("hidden");
+    setMainMenuOpen(false);
   });
 }
 
+document.getElementById("performanceFooterCloseBtn")?.addEventListener("click", () => {
+  statsModal?.classList.add("hidden");
+  setMainMenuOpen(false);
+});
+
 document.addEventListener("click", (e) => {
   if (!sideMenu || !menuToggleBtn) return;
+  if (!menuOpen) return;
 
   const clickedInsideMenu = sideMenu.contains(e.target);
   const clickedToggle = menuToggleBtn.contains(e.target);
+  const attachedPage = getActiveAttachedPageElement();
+  const clickedInsideAttachedPage = Boolean(
+    attachedPage && attachedPage.contains(e.target)
+  );
 
-  if (!clickedInsideMenu && !clickedToggle) {
-    sideMenu.classList.add("hidden");
+  if (!clickedInsideMenu && !clickedToggle && !clickedInsideAttachedPage) {
+    setMainMenuOpen(false);
   }
 });
 

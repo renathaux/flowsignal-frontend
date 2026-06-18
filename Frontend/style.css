@@ -829,6 +829,1456 @@ body {
   transform: translateY(-1px);
 }
 
+.broker-settings-modal {
+  padding: 0;
+  align-items: stretch;
+  justify-content: stretch;
+  background: #050a10;
+}
+
+.broker-settings-shell {
+  width: 100%;
+  min-height: 100dvh;
+  display: grid;
+  grid-template-columns: 250px minmax(0, 1fr);
+  background:
+    radial-gradient(circle at 65% 12%, rgba(24, 101, 86, 0.11), transparent 28%),
+    linear-gradient(180deg, #060b12 0%, #04080e 100%);
+  color: #f8fafc;
+}
+
+.broker-settings-sidebar {
+  border-right: 1px solid rgba(148, 163, 184, 0.15);
+  background: linear-gradient(180deg, rgba(10, 18, 27, 0.98), rgba(6, 12, 20, 0.98));
+  padding: 24px 12px;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.broker-settings-logo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 12px 34px;
+  font-size: 28px;
+  font-weight: 900;
+}
+
+.broker-settings-logo .logo-wave {
+  color: #22c55e;
+  font-size: 30px;
+}
+
+.broker-settings-nav {
+  display: grid;
+  gap: 8px;
+}
+
+.broker-settings-nav-row {
+  width: 100%;
+  min-height: 42px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #cbd5e1;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 0 14px;
+  font-size: 16px;
+  text-align: left;
+}
+
+.broker-settings-nav-row.active {
+  background: rgba(22, 163, 74, 0.16);
+  color: #4ade80;
+}
+
+.broker-settings-subnav {
+  margin: 8px 0 10px 28px;
+  display: grid;
+  gap: 4px;
+  border-left: 1px solid rgba(148, 163, 184, 0.14);
+  padding-left: 12px;
+}
+
+.broker-settings-subnav span,
+.broker-settings-subnav strong {
+  min-height: 34px;
+  display: flex;
+  align-items: center;
+  padding: 0 14px;
+  border-radius: 7px;
+  color: #cbd5e1;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.broker-settings-subnav strong {
+  color: #4ade80;
+  background: rgba(22, 163, 74, 0.14);
+}
+
+.broker-settings-logout {
+  margin-top: auto;
+  min-height: 42px;
+  border: 0;
+  background: transparent;
+  color: #ff646b;
+  font-size: 16px;
+  text-align: left;
+  padding: 0 14px;
+  cursor: pointer;
+}
+
+.broker-settings-content {
+  min-width: 0;
+  padding: 0 26px 30px;
+  overflow-y: auto;
+}
+
+.broker-settings-topbar {
+  height: 70px;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.12);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.broker-settings-top-actions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.broker-voice-chip,
+.broker-lang-chip,
+.broker-avatar-chip {
+  border: 1px solid rgba(148, 163, 184, 0.24);
+  border-radius: 10px;
+  min-height: 42px;
+  padding: 0 14px;
+  display: inline-flex;
+  align-items: center;
+  color: #f8fafc;
+  background: rgba(8, 14, 23, 0.82);
+  font-weight: 800;
+}
+
+.broker-voice-chip {
+  color: #22ff86;
+  border-color: rgba(34, 197, 94, 0.65);
+}
+
+.broker-avatar-chip {
+  width: 42px;
+  justify-content: center;
+  color: #22c55e;
+}
+
+.broker-settings-header {
+  padding: 26px 0 28px;
+}
+
+.broker-settings-header h2 {
+  margin: 0 0 12px;
+  color: #ffffff;
+  font-size: 30px;
+}
+
+.broker-settings-header p {
+  margin: 0;
+  color: #b9c4d2;
+  font-size: 16px;
+}
+
+.broker-connection-card,
+.broker-accounts-card,
+.broker-active-card,
+.broker-side-actions,
+.broker-about-card {
+  border: 1px solid rgba(148, 163, 184, 0.14);
+  border-radius: 8px;
+  background:
+    radial-gradient(circle at 10% 0%, rgba(35, 80, 120, 0.08), transparent 34%),
+    rgba(9, 16, 25, 0.88);
+  box-shadow: 0 14px 32px rgba(0, 0, 0, 0.22);
+}
+
+.broker-connection-card {
+  min-height: 136px;
+  display: grid;
+  grid-template-columns: minmax(260px, 1fr) minmax(440px, 0.95fr);
+  gap: 18px;
+  align-items: center;
+  padding: 22px;
+  margin-bottom: 28px;
+}
+
+.broker-section-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #f8fafc;
+  font-size: 18px;
+  font-weight: 900;
+}
+
+.broker-connected-badge,
+.broker-count-pill {
+  border-radius: 7px;
+  background: rgba(34, 197, 94, 0.14);
+  color: #22c55e;
+  padding: 5px 10px;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.broker-connected-badge.disconnected {
+  background: rgba(239, 68, 68, 0.12);
+  color: #ff646b;
+}
+
+.broker-account-status,
+.broker-authorized-text {
+  margin-top: 10px;
+  color: #cbd5e1;
+  font-size: 16px;
+}
+
+.broker-account-status strong {
+  color: #4ade80;
+}
+
+.broker-account-status.error {
+  color: #ff646b;
+}
+
+.broker-account-actions {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.broker-action-btn,
+.broker-side-btn,
+.broker-row-action {
+  min-height: 56px;
+  border-radius: 8px;
+  background: rgba(8, 14, 23, 0.78);
+  color: #f8fafc;
+  border: 1px solid rgba(148, 163, 184, 0.24);
+  font-size: 15px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.broker-action-btn.connect-btn {
+  border-color: rgba(34, 197, 94, 0.55);
+}
+
+.broker-action-btn.disconnect-btn {
+  border-color: rgba(239, 68, 68, 0.55);
+}
+
+.broker-action-btn.refresh-btn {
+  border-color: rgba(96, 165, 250, 0.65);
+  color: #93c5fd;
+}
+
+.broker-settings-main {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 300px;
+  gap: 22px;
+}
+
+.broker-accounts-card,
+.broker-about-card {
+  padding: 20px;
+}
+
+.broker-accounts-heading {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.broker-count-pill {
+  background: rgba(148, 163, 184, 0.12);
+  color: #e2e8f0;
+}
+
+.broker-account-label,
+.broker-account-select {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.broker-account-table-wrap {
+  overflow-x: auto;
+  border-radius: 8px;
+  border: 1px solid rgba(148, 163, 184, 0.12);
+}
+
+.broker-account-table {
+  width: 100%;
+  min-width: 850px;
+  border-collapse: collapse;
+  color: #e5e7eb;
+}
+
+.broker-account-table th,
+.broker-account-table td {
+  padding: 18px 14px;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.1);
+  text-align: left;
+  font-size: 15px;
+  vertical-align: middle;
+}
+
+.broker-account-table th {
+  color: #9ca3af;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.broker-account-table tr.active {
+  background: rgba(45, 212, 105, 0.08);
+  box-shadow: inset 3px 0 0 #22c55e;
+}
+
+.broker-account-table tr.unavailable {
+  color: #fca5a5;
+}
+
+.broker-account-dot {
+  width: 9px;
+  height: 9px;
+  display: inline-block;
+  border-radius: 50%;
+  margin-right: 12px;
+  background: #64748b;
+}
+
+.broker-account-dot.active,
+.broker-account-dot.available {
+  background: #22c55e;
+}
+
+.broker-account-dot.unavailable {
+  background: #ff5b62;
+}
+
+.broker-type-pill,
+.broker-active-pill,
+.broker-status-text {
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.broker-type-pill {
+  color: #93c5fd;
+  background: rgba(37, 99, 235, 0.24);
+}
+
+.broker-status-text.available,
+.broker-status-text.active {
+  color: #4ade80;
+  background: transparent;
+}
+
+.broker-status-text.unavailable {
+  color: #ff646b;
+  background: transparent;
+}
+
+.broker-active-pill {
+  color: #22c55e;
+  border: 1px solid rgba(34, 197, 94, 0.32);
+  background: rgba(34, 197, 94, 0.1);
+}
+
+.broker-row-action {
+  min-height: 38px;
+  padding: 0 14px;
+  color: #f8fafc;
+}
+
+.broker-row-action:disabled {
+  opacity: 0.42;
+  cursor: not-allowed;
+}
+
+.broker-row-reason {
+  color: #ff646b;
+  font-size: 13px;
+  padding-top: 8px;
+}
+
+.broker-right-panel {
+  display: grid;
+  gap: 26px;
+  align-content: start;
+}
+
+.broker-active-card,
+.broker-side-actions {
+  padding: 22px;
+}
+
+.broker-active-title {
+  color: #f8fafc;
+  font-size: 18px;
+  font-weight: 900;
+  margin-bottom: 28px;
+}
+
+.broker-active-card strong {
+  display: block;
+  color: #4ade80;
+  font-size: 24px;
+  margin-bottom: 8px;
+}
+
+.broker-active-card span {
+  display: block;
+  color: #cbd5e1;
+  margin-bottom: 24px;
+}
+
+.broker-side-btn {
+  width: 100%;
+}
+
+.broker-side-actions h3 {
+  margin: 0 0 18px;
+  font-size: 20px;
+}
+
+.broker-side-action {
+  width: 100%;
+  min-height: 74px;
+  border-radius: 8px;
+  border: 1px solid rgba(148, 163, 184, 0.13);
+  background: rgba(8, 14, 23, 0.72);
+  color: #f8fafc;
+  text-align: left;
+  padding: 14px;
+  margin-bottom: 10px;
+  cursor: pointer;
+}
+
+.broker-action-btn:disabled,
+.broker-side-btn:disabled,
+.broker-row-action:disabled,
+.broker-side-action:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.broker-side-action strong,
+.broker-side-action span {
+  display: block;
+}
+
+.broker-side-action span {
+  margin-top: 6px;
+  color: #9ca3af;
+}
+
+#clearAllBrokerAccountsBtn strong {
+  color: #ff646b;
+}
+
+.broker-about-card {
+  margin-top: 28px;
+  color: #b9c4d2;
+}
+
+.broker-about-title {
+  color: #93c5fd;
+  font-size: 18px;
+  font-weight: 900;
+  margin-bottom: 14px;
+}
+
+.broker-about-card p {
+  margin: 8px 0 0;
+  font-size: 15px;
+}
+
+/* Broker Accounts layout polish */
+.broker-settings-modal {
+  overflow: auto;
+}
+
+.broker-settings-content {
+  padding: 34px 26px 30px !important;
+}
+
+.broker-settings-topbar {
+  min-height: 48px !important;
+  height: auto !important;
+  margin-bottom: 6px;
+}
+
+.broker-settings-header {
+  padding: 16px 0 26px !important;
+}
+
+.broker-settings-header h2 {
+  font-size: 28px !important;
+  line-height: 1.16 !important;
+}
+
+.broker-settings-main {
+  grid-template-columns: minmax(0, 1fr) 300px !important;
+}
+
+.broker-account-table {
+  min-width: 760px !important;
+  table-layout: fixed;
+}
+
+.broker-account-table th,
+.broker-account-table td {
+  padding: 15px 10px !important;
+  font-size: 14px !important;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.broker-account-table th {
+  font-size: 12px !important;
+}
+
+.broker-account-table th:nth-child(1),
+.broker-account-table td:nth-child(1) {
+  width: 18%;
+}
+
+.broker-account-table th:nth-child(2),
+.broker-account-table td:nth-child(2) {
+  width: 17%;
+}
+
+.broker-account-table th:nth-child(3),
+.broker-account-table td:nth-child(3) {
+  width: 12%;
+}
+
+.broker-account-table th:nth-child(4),
+.broker-account-table td:nth-child(4) {
+  width: 10%;
+}
+
+.broker-account-table th:nth-child(5),
+.broker-account-table td:nth-child(5) {
+  width: 13%;
+}
+
+.broker-account-table th:nth-child(6),
+.broker-account-table td:nth-child(6) {
+  width: 11%;
+}
+
+.broker-account-table th:nth-child(7),
+.broker-account-table td:nth-child(7) {
+  width: 10%;
+}
+
+.broker-account-table th:nth-child(8),
+.broker-account-table td:nth-child(8) {
+  width: 9%;
+}
+
+.broker-account-dot {
+  margin-right: 8px !important;
+}
+
+.broker-action-btn,
+.broker-side-btn,
+.broker-row-action {
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 1100px) {
+  .broker-settings-shell {
+    grid-template-columns: 1fr;
+  }
+
+  .broker-settings-sidebar {
+    min-height: auto;
+    border-right: 0;
+    border-bottom: 1px solid rgba(148, 163, 184, 0.15);
+  }
+
+  .broker-settings-nav {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .broker-settings-group {
+    grid-column: 1 / -1;
+  }
+
+  .broker-settings-subnav {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    margin-right: 8px;
+  }
+
+  .broker-connection-card,
+  .broker-settings-main {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 720px) {
+  .broker-settings-content {
+    padding: 0 12px 18px;
+  }
+
+  .broker-settings-topbar {
+    height: auto;
+    padding: 12px 0;
+  }
+
+  .broker-settings-top-actions {
+    gap: 8px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+
+  .broker-settings-header h2 {
+    font-size: 24px;
+  }
+
+  .broker-connection-card,
+  .broker-accounts-card,
+  .broker-active-card,
+  .broker-side-actions,
+  .broker-about-card {
+    padding: 16px;
+  }
+
+  .broker-account-actions,
+  .broker-settings-nav,
+  .broker-settings-subnav {
+    grid-template-columns: 1fr;
+  }
+
+  .broker-settings-logo {
+    padding-bottom: 18px;
+    font-size: 24px;
+  }
+}
+
+/* Performance — visual treatment only */
+body[data-active-settings-page="performance"] #statsModal {
+  background: rgba(1, 6, 15, 0.82) !important;
+  backdrop-filter: blur(10px);
+}
+
+body[data-active-settings-page="performance"] #statsModal .performance-modal-box {
+  width: min(97vw, 1580px) !important;
+  max-width: 1580px !important;
+  padding: 24px 28px 26px !important;
+  overflow-y: auto !important;
+  border: 1px solid #1b293b !important;
+  border-radius: 14px !important;
+  background:
+    radial-gradient(circle at 48% 0%, rgba(47, 46, 112, 0.11), transparent 36%),
+    linear-gradient(145deg, #07111e 0%, #050d17 58%, #07121f 100%) !important;
+  box-shadow: 0 28px 90px rgba(0, 0, 0, 0.48) !important;
+}
+
+body[data-active-settings-page="performance"] .performance-pro-head {
+  margin-bottom: 18px;
+}
+
+body[data-active-settings-page="performance"] .performance-pro-title > span {
+  width: 48px;
+  height: 48px;
+  border-radius: 11px;
+  background: rgba(99, 48, 210, 0.18);
+  color: #9b5cff;
+  font-size: 27px;
+}
+
+body[data-active-settings-page="performance"] .performance-pro-title .trade-modal-title {
+  font-size: 28px;
+  font-weight: 900;
+  letter-spacing: -0.4px;
+}
+
+body[data-active-settings-page="performance"] .performance-pro-title p {
+  margin-top: 3px;
+  color: #aebbd0;
+  font-size: 15px;
+  font-weight: 550;
+}
+
+body[data-active-settings-page="performance"] .performance-pro-actions span {
+  padding: 11px 15px;
+  border-color: #1b293b;
+  background: rgba(5, 13, 23, 0.8);
+  font-size: 13px;
+}
+
+body[data-active-settings-page="performance"] .performance-pro-actions span::before {
+  content: "⟳";
+  margin-right: 8px;
+  color: #94a3b8;
+}
+
+body[data-active-settings-page="performance"] .performance-pro-actions button {
+  width: 42px;
+  height: 42px;
+  border: 1px solid #26364a;
+  border-radius: 8px;
+  background: #09121f;
+}
+
+body[data-active-settings-page="performance"] .performance-pro-grid {
+  display: grid;
+  grid-template-columns: repeat(20, minmax(0, 1fr));
+  gap: 11px;
+}
+
+body[data-active-settings-page="performance"] .performance-metric {
+  grid-column: span 4;
+  min-height: 150px;
+  padding: 17px 15px 42px 62px;
+  border: 1px solid #1d2a3a;
+  border-radius: 10px;
+  background:
+    radial-gradient(circle at 12% 18%, color-mix(in srgb, currentColor 9%, transparent), transparent 24%),
+    linear-gradient(145deg, #0c1623, #07101b);
+}
+
+body[data-active-settings-page="performance"] .performance-metric:nth-child(n+6):nth-child(-n+9) {
+  grid-column: span 5;
+}
+
+body[data-active-settings-page="performance"] .performance-metric::before {
+  content: attr(data-metric-icon);
+  position: absolute;
+  top: 14px;
+  left: 14px;
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border: 1px solid color-mix(in srgb, currentColor 38%, transparent);
+  border-radius: 10px;
+  background: color-mix(in srgb, currentColor 12%, transparent);
+  color: currentColor;
+  font-size: 21px;
+  font-style: normal;
+  box-shadow: 0 0 18px color-mix(in srgb, currentColor 12%, transparent);
+}
+
+body[data-active-settings-page="performance"] .performance-metric span {
+  color: #c6d0df;
+  font-size: 14px;
+  font-weight: 750;
+}
+
+body[data-active-settings-page="performance"] .performance-metric strong {
+  margin: 6px 0 5px;
+  font-size: 25px;
+  line-height: 1.05;
+}
+
+body[data-active-settings-page="performance"] .performance-metric small {
+  color: color-mix(in srgb, currentColor 78%, #aab6c8);
+  font-size: 11px;
+  font-weight: 650;
+}
+
+body[data-active-settings-page="performance"] .performance-metric i {
+  left: 13px;
+  right: 13px;
+  bottom: 12px;
+  height: 27px;
+  border-radius: 0;
+  opacity: 0.8;
+  background:
+    linear-gradient(180deg, transparent 0%, color-mix(in srgb, currentColor 17%, transparent) 100%),
+    linear-gradient(168deg, transparent 0 42%, currentColor 44% 47%, transparent 49% 58%, currentColor 60% 63%, transparent 65%);
+  clip-path: polygon(0 75%, 9% 65%, 18% 72%, 28% 52%, 38% 59%, 48% 42%, 58% 53%, 68% 34%, 78% 47%, 88% 23%, 100% 10%, 100% 100%, 0 100%);
+}
+
+body[data-active-settings-page="performance"] .performance-symbol-metric {
+  display: none;
+}
+
+body[data-active-settings-page="performance"] .performance-pro-panels {
+  grid-template-columns: 1fr 1fr;
+  gap: 13px;
+  margin-top: 15px;
+}
+
+body[data-active-settings-page="performance"] .performance-pro-panel {
+  padding: 11px 12px 12px;
+  border-radius: 10px;
+  background: linear-gradient(145deg, rgba(10, 18, 33, 0.96), rgba(6, 14, 25, 0.98));
+}
+
+body[data-active-settings-page="performance"] .performance-pro-panel:first-child {
+  border-color: rgba(124, 58, 237, 0.42);
+}
+
+body[data-active-settings-page="performance"] .performance-pro-panel.platform-panel {
+  border-color: rgba(59, 130, 246, 0.42);
+}
+
+body[data-active-settings-page="performance"] .performance-pro-panel h3 {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin: 0 0 10px;
+  color: #dce5f1;
+  font-size: 14px;
+  letter-spacing: 0.15px;
+}
+
+body[data-active-settings-page="performance"] .performance-pro-panel h3 > span {
+  color: #9b5cff;
+  font-size: 18px;
+}
+
+body[data-active-settings-page="performance"] .platform-panel h3 > span {
+  color: #3b82f6;
+}
+
+body[data-active-settings-page="performance"] .performance-pro-panel > div {
+  position: relative;
+  min-height: 54px;
+  margin-top: 5px !important;
+  padding: 8px 12px 8px 54px;
+  align-items: center;
+  border-color: #1b293b;
+  background: rgba(7, 16, 29, 0.72);
+}
+
+body[data-active-settings-page="performance"] .performance-pro-panel > div::before {
+  content: attr(data-panel-icon);
+  position: absolute;
+  left: 9px;
+  top: 8px;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 9px;
+  background: rgba(124, 58, 237, 0.14);
+  color: #a78bfa;
+  font-size: 18px;
+}
+
+body[data-active-settings-page="performance"] .platform-panel > div::before {
+  background: rgba(59, 130, 246, 0.12);
+  color: #60a5fa;
+}
+
+body[data-active-settings-page="performance"] .performance-pro-panel > div > span {
+  color: #eef3f9;
+  font-size: 13px;
+  font-weight: 750;
+}
+
+body[data-active-settings-page="performance"] .performance-pro-panel > div small {
+  display: block;
+  margin-top: 2px;
+  color: #9aa8bc;
+  font-size: 10px;
+  font-weight: 500;
+}
+
+body[data-active-settings-page="performance"] .performance-pro-panel > div strong {
+  color: #995cff;
+  font-size: 19px;
+}
+
+body[data-active-settings-page="performance"] .platform-panel > div strong {
+  color: #3b82f6;
+}
+
+.performance-lower-grid {
+  display: grid;
+  grid-template-columns: 1.22fr 0.98fr;
+  gap: 13px;
+  margin-top: 15px;
+}
+
+.performance-equity-card,
+.performance-summary-card {
+  min-height: 230px;
+  padding: 14px 16px;
+  border: 1px solid #1d2a3a;
+  border-radius: 10px;
+  background: linear-gradient(145deg, rgba(10, 18, 33, 0.96), rgba(6, 14, 25, 0.98));
+}
+
+.performance-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.performance-section-head h3,
+.performance-summary-card h3 {
+  margin: 0;
+  color: #eef3f9;
+  font-size: 14px;
+  text-transform: uppercase;
+}
+
+.performance-section-head > span {
+  padding: 7px 11px;
+  border: 1px solid #26364a;
+  border-radius: 7px;
+  color: #dbe4ef;
+  font-size: 12px;
+}
+
+.performance-equity-chart {
+  position: relative;
+  height: 180px;
+  margin-top: 10px;
+  overflow: hidden;
+}
+
+.equity-grid-lines {
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(to bottom, transparent 0 34px, rgba(148, 163, 184, 0.08) 35px);
+}
+
+.performance-equity-chart svg {
+  position: absolute;
+  inset: 0 0 20px;
+  width: 100%;
+  height: calc(100% - 20px);
+  overflow: visible;
+}
+
+.equity-area {
+  fill: url(#equityArea);
+}
+
+.equity-line {
+  fill: none;
+  stroke: #8b5cf6;
+  stroke-width: 3;
+  filter: drop-shadow(0 0 5px rgba(139, 92, 246, 0.5));
+}
+
+.performance-equity-chart circle {
+  fill: #e9ddff;
+  stroke: #6d28d9;
+  stroke-width: 5;
+}
+
+.equity-axis {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  display: flex;
+  justify-content: space-between;
+  color: #8797ad;
+  font-size: 10px;
+}
+
+.performance-summary-card > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid #172436;
+  color: #aebbd0;
+  font-size: 13px;
+}
+
+.performance-summary-card > div strong {
+  color: #e8edf5;
+}
+
+.performance-footer {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 18px;
+}
+
+.performance-footer button {
+  min-width: 165px;
+  min-height: 48px;
+  border: 1px solid #7133e6;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #5720d5, #7133e6);
+  color: #fff;
+  font-size: 15px;
+  font-weight: 850;
+  cursor: pointer;
+  box-shadow: 0 10px 28px rgba(91, 33, 182, 0.22);
+}
+
+@media (max-width: 1100px) {
+  body[data-active-settings-page="performance"] .performance-pro-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  body[data-active-settings-page="performance"] .performance-metric,
+  body[data-active-settings-page="performance"] .performance-metric:nth-child(n+6):nth-child(-n+9) {
+    grid-column: auto;
+  }
+
+  body[data-active-settings-page="performance"] .performance-pro-panels,
+  .performance-lower-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 650px) {
+  body[data-active-settings-page="performance"] #statsModal .performance-modal-box {
+    padding: 18px 14px 22px !important;
+  }
+
+  body[data-active-settings-page="performance"] .performance-pro-head {
+    align-items: flex-start;
+  }
+
+  body[data-active-settings-page="performance"] .performance-pro-actions span {
+    display: none;
+  }
+
+  body[data-active-settings-page="performance"] .performance-pro-grid {
+    grid-template-columns: 1fr;
+  }
+
+  body[data-active-settings-page="performance"] .performance-metric {
+    min-height: 138px;
+  }
+
+  .performance-footer button {
+    width: 100%;
+  }
+}
+
+/* Flow Assistant — compact, viewport-fitting presentation */
+body[data-active-settings-page="assistant"] #assistantModal {
+  padding: var(--app-sidebar-top) 0 0 var(--app-sidebar-width) !important;
+  align-items: flex-start !important;
+  justify-content: flex-start !important;
+  background: transparent !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+body[data-active-settings-page="assistant"] #assistantModal .assistant-modal-box {
+  position: fixed !important;
+  top: var(--app-sidebar-top) !important;
+  left: var(--app-sidebar-width) !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  width: calc(100vw - var(--app-sidebar-width)) !important;
+  max-width: none !important;
+  height: var(--app-panel-height) !important;
+  min-height: 0 !important;
+  max-height: var(--app-panel-height) !important;
+  padding: 16px 18px 14px !important;
+  overflow: hidden !important;
+  border: 1px solid #1b293b !important;
+  border-left: 0 !important;
+  border-radius: 0 !important;
+  background:
+    radial-gradient(circle at 50% 0%, rgba(60, 40, 140, 0.11), transparent 34%),
+    linear-gradient(145deg, #07111e 0%, #050d17 62%, #07121f 100%) !important;
+  box-shadow: none !important;
+}
+
+body[data-active-settings-page="assistant"] .assistant-panel-head {
+  min-height: 58px;
+  margin: 0 0 10px;
+  padding: 0 2px 10px;
+  align-items: center;
+  border-bottom: 1px solid #172436;
+}
+
+body[data-active-settings-page="assistant"] .assistant-pro-title {
+  gap: 12px;
+}
+
+body[data-active-settings-page="assistant"] .assistant-pro-title > span {
+  width: 44px;
+  height: 44px;
+  border: 2px solid #7141ee;
+  border-radius: 50%;
+  background: rgba(80, 43, 181, 0.13);
+  color: #9a6cff;
+  font-size: 22px;
+}
+
+body[data-active-settings-page="assistant"] #assistantPanelKicker {
+  display: none;
+}
+
+body[data-active-settings-page="assistant"] #assistantModalTitle {
+  margin: 0;
+  color: #f5f7fb;
+  font-size: 24px;
+  font-weight: 900;
+}
+
+body[data-active-settings-page="assistant"] .assistant-pro-title p {
+  margin: 2px 0 0;
+  color: #a9b6ca;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+body[data-active-settings-page="assistant"] .assistant-panel-close {
+  width: 42px;
+  height: 42px;
+  border-radius: 8px;
+  font-size: 25px;
+}
+
+body[data-active-settings-page="assistant"] .assistant-pro-grid {
+  display: grid !important;
+  grid-template-columns: minmax(235px, 0.92fr) minmax(260px, 1.08fr) minmax(285px, 1.2fr) !important;
+  grid-template-rows: minmax(0, 1.55fr) minmax(0, 1fr);
+  grid-template-areas:
+    "voice streamer triggers"
+    "voice behavior advanced";
+  gap: 10px !important;
+  height: calc(100% - 126px);
+  min-height: 0;
+}
+
+body[data-active-settings-page="assistant"] #flowAssistantSettings {
+  grid-area: voice;
+}
+
+body[data-active-settings-page="assistant"] #streamerVoiceMenu {
+  grid-area: streamer;
+}
+
+body[data-active-settings-page="assistant"] .assistant-trigger-card {
+  grid-area: triggers;
+}
+
+body[data-active-settings-page="assistant"] .assistant-behavior-card {
+  grid-area: behavior;
+}
+
+body[data-active-settings-page="assistant"] .assistant-advanced-card {
+  grid-area: advanced;
+}
+
+body[data-active-settings-page="assistant"] .assistant-pro-card {
+  min-width: 0;
+  min-height: 0;
+  padding: 11px 12px !important;
+  overflow: hidden;
+  border: 1px solid #1b293b !important;
+  border-radius: 9px !important;
+  background:
+    radial-gradient(circle at 96% 0%, rgba(80, 43, 181, 0.08), transparent 28%),
+    linear-gradient(145deg, rgba(11, 21, 35, 0.97), rgba(6, 15, 27, 0.98)) !important;
+}
+
+body[data-active-settings-page="assistant"] .assistant-settings-heading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 28px;
+  margin: -1px -2px 8px;
+  padding: 0 2px 7px;
+  border-bottom: 1px solid #172436;
+  color: #9467ff;
+  font-size: 12px;
+  text-transform: uppercase;
+}
+
+body[data-active-settings-page="assistant"] .assistant-settings-heading span {
+  color: #8b5cf6;
+  font-size: 15px;
+}
+
+body[data-active-settings-page="assistant"] .assistant-setting-toggle,
+body[data-active-settings-page="assistant"] .assistant-test-voice,
+body[data-active-settings-page="assistant"] .streamer-voice-edit-btn {
+  min-height: 36px;
+  border-radius: 7px;
+  font-size: 12px;
+}
+
+body[data-active-settings-page="assistant"] .assistant-setting-toggle {
+  margin-bottom: 8px;
+}
+
+body[data-active-settings-page="assistant"] .assistant-setting-field {
+  display: grid;
+  gap: 5px;
+  margin: 5px 0;
+  color: #c8d2e0;
+  font-size: 11px;
+  font-weight: 650;
+}
+
+body[data-active-settings-page="assistant"] .assistant-setting-field > span {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+body[data-active-settings-page="assistant"] .assistant-setting-field select {
+  width: 100%;
+  min-height: 34px;
+  padding: 0 10px;
+  border: 1px solid #26364a;
+  border-radius: 7px;
+  background: #08121f;
+  color: #edf2f8;
+  font-size: 11px;
+}
+
+body[data-active-settings-page="assistant"] .assistant-setting-field input[type="range"] {
+  width: 100%;
+  height: 4px;
+  accent-color: #7c3aed;
+}
+
+body[data-active-settings-page="assistant"] .assistant-popup-setting {
+  min-height: 34px;
+  margin: 5px 0;
+  padding: 0 4px;
+  color: #c8d2e0;
+  font-size: 11px;
+}
+
+body[data-active-settings-page="assistant"] .assistant-popup-setting input,
+body[data-active-settings-page="assistant"] .assistant-trigger-card input {
+  width: 38px;
+  height: 20px;
+  accent-color: #7c3aed;
+}
+
+body[data-active-settings-page="assistant"] .streamer-voice-menu {
+  display: block;
+}
+
+body[data-active-settings-page="assistant"] .streamer-voice-menu > p {
+  margin: 0 0 6px;
+  color: #cbd5e1;
+  font-size: 11px;
+}
+
+body[data-active-settings-page="assistant"] .assistant-preview {
+  max-height: 110px;
+  margin: 8px 0 0;
+  padding: 10px 12px;
+  overflow: hidden;
+  border-radius: 7px;
+  color: #bec9d8;
+  font-size: 10px;
+  line-height: 1.55;
+}
+
+body[data-active-settings-page="assistant"] .streamer-voice-list {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 6px;
+  max-height: 132px;
+  margin-top: 7px;
+  padding-right: 5px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: #7041dc #101a2a;
+}
+
+body[data-active-settings-page="assistant"] .streamer-voice-row {
+  grid-template-columns: 54px minmax(0, 1fr);
+  gap: 8px;
+  min-width: 0;
+  min-height: 36px;
+  padding: 5px 6px;
+  border-color: rgba(148, 163, 184, 0.17);
+}
+
+body[data-active-settings-page="assistant"] .streamer-voice-row kbd {
+  min-width: 48px;
+  min-height: 25px;
+  font-size: 11px;
+}
+
+body[data-active-settings-page="assistant"] .streamer-voice-input {
+  min-height: 27px;
+  padding-inline: 8px;
+  font-size: 11px;
+  font-weight: 650;
+}
+
+body[data-active-settings-page="assistant"] .assistant-trigger-card label {
+  min-height: 31px;
+  padding: 3px 1px;
+  color: #d7e0eb;
+  font-size: 11px;
+  font-weight: 650;
+}
+
+body[data-active-settings-page="assistant"] .assistant-behavior-card .assistant-setting-field,
+body[data-active-settings-page="assistant"] .assistant-behavior-card .assistant-setting-field {
+  margin: 9px 1px;
+}
+
+body[data-active-settings-page="assistant"] .assistant-advanced-card .assistant-setting-field {
+  grid-template-columns: minmax(85px, 0.8fr) minmax(120px, 1fr);
+  align-items: center;
+  gap: 8px;
+  margin: 5px 1px;
+}
+
+body[data-active-settings-page="assistant"] .assistant-advanced-card .assistant-setting-field > span {
+  display: block;
+}
+
+body[data-active-settings-page="assistant"] .assistant-advanced-card .assistant-setting-field select {
+  min-height: 31px;
+}
+
+body[data-active-settings-page="assistant"] .assistant-pro-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 48px;
+  margin: 10px 0 0;
+  padding: 10px 2px 0;
+  border-top: 1px solid #172436;
+}
+
+.assistant-pro-actions-right {
+  display: flex;
+  gap: 9px;
+}
+
+body[data-active-settings-page="assistant"] .assistant-pro-actions button {
+  min-width: 145px;
+  min-height: 38px;
+  padding: 0 16px;
+  border-radius: 7px;
+  font-size: 12px;
+}
+
+body[data-active-settings-page="assistant"] .assistant-save-btn {
+  min-width: 175px !important;
+}
+
+@media (max-width: 920px) {
+  body[data-active-settings-page="assistant"] #assistantModal .assistant-modal-box {
+    overflow-y: auto !important;
+  }
+
+  body[data-active-settings-page="assistant"] .assistant-pro-grid {
+    grid-template-columns: 1fr 1fr !important;
+    grid-template-rows: auto !important;
+    grid-template-areas:
+      "voice triggers"
+      "streamer streamer"
+      "behavior advanced";
+    height: auto;
+  }
+}
+
+/* Keep navigation crisp and freeze the dashboard behind attached menu pages. */
+body.menu-drawer-open[data-active-settings-page] {
+  height: 100dvh !important;
+  overflow: hidden !important;
+  overscroll-behavior: none;
+}
+
+body.menu-drawer-open[data-active-settings-page] #mainApp {
+  height: 100dvh !important;
+  overflow: hidden !important;
+}
+
+body.menu-drawer-open[data-active-settings-page] > #mainApp > #sideMenu,
+body.menu-drawer-open[data-active-settings-page] > #mainApp > #sideMenu .side-menu-inner {
+  filter: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+body[data-active-settings-page="settings:risk"] #settingsModal,
+body[data-active-settings-page="settings:general"] #settingsModal,
+body[data-active-settings-page="settings:notifications"] #settingsModal,
+body[data-active-settings-page="settings:strategy"] #settingsModal,
+body[data-active-settings-page="performance"] #statsModal,
+body[data-active-settings-page="broker-accounts"] #brokerAccountsModal {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+body.fit-mode.menu-drawer-open[data-active-settings-page] #mainApp::after,
+body.fit-mode #mainApp.app.menu-drawer-open[data-active-settings-page]::after {
+  left: var(--app-sidebar-width) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+@media (max-width: 640px) {
+  body[data-active-settings-page="assistant"] #assistantModal {
+    padding: 0 !important;
+  }
+
+  body[data-active-settings-page="assistant"] #assistantModal .assistant-modal-box {
+    top: 0 !important;
+    left: 0 !important;
+    width: 100vw !important;
+    height: 100dvh !important;
+    max-height: 100dvh !important;
+    padding: 12px !important;
+  }
+
+  body[data-active-settings-page="assistant"] .assistant-pro-grid {
+    grid-template-columns: 1fr !important;
+    grid-template-areas:
+      "voice"
+      "streamer"
+      "triggers"
+      "behavior"
+      "advanced";
+  }
+
+  body[data-active-settings-page="assistant"] .assistant-pro-actions,
+  .assistant-pro-actions-right {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+
+  body[data-active-settings-page="assistant"] .assistant-pro-actions > button {
+    grid-column: 1 / -1;
+  }
+
+  body[data-active-settings-page="assistant"] .assistant-pro-actions button {
+    min-width: 0 !important;
+    width: 100%;
+  }
+}
+
 .cancel-btn {
   background: #171c24;
   border: 1px solid #2a313d;
@@ -2702,6 +4152,18 @@ body.fit-mode .main-trade-panel {
   color: #00f28b;
   font-size: 12px;
   font-weight: 800;
+}
+
+.main-candle-debug {
+  margin-top: 4px;
+  color: #7f91a8;
+  font-size: 10px;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.main-candle-debug.is-stale {
+  color: #e3b44b;
 }
 
 .main-signal-box {
@@ -5837,6 +7299,1263 @@ body.paper-open .dashboard-grid {
   -webkit-overflow-scrolling: touch !important;
 }
 
+/* Absolute final Broker Accounts placement override */
+#brokerAccountsModal.trade-modal.broker-settings-modal {
+  padding-top: 76px !important;
+  box-sizing: border-box !important;
+  align-items: flex-start !important;
+  overflow-y: auto !important;
+}
+
+#brokerAccountsModal .broker-settings-shell {
+  min-height: calc(100dvh - 76px) !important;
+}
+
+#brokerAccountsModal .broker-settings-content {
+  padding-top: 22px !important;
+}
+
+#brokerAccountsModal .broker-settings-topbar {
+  display: none !important;
+}
+
+#brokerAccountsModal .broker-settings-header {
+  padding-top: 0 !important;
+}
+
+#brokerAccountsModal .broker-account-table {
+  min-width: 720px !important;
+}
+
+#brokerAccountsModal .broker-account-table th,
+#brokerAccountsModal .broker-account-table td {
+  padding-left: 9px !important;
+  padding-right: 9px !important;
+}
+
+#brokerAccountsModal .broker-account-table th:nth-child(8),
+#brokerAccountsModal .broker-account-table td:nth-child(8) {
+  width: 12% !important;
+  overflow: visible !important;
+  text-overflow: clip !important;
+}
+
+#brokerAccountsModal .broker-active-pill {
+  display: inline-flex !important;
+  max-width: none !important;
+  padding: 6px 8px !important;
+  font-size: 12px !important;
+}
+
+/* Absolute final dashboard menu drawer and P/L spacing override */
+body.fit-mode .app:not(.locked).menu-drawer-open::after {
+  content: "" !important;
+  position: fixed !important;
+  inset: 164px 0 0 0 !important;
+  z-index: 1190 !important;
+  background: rgba(0, 0, 0, 0.58) !important;
+}
+
+body.fit-mode .app:not(.locked) > #sideMenu.side-menu.hidden {
+  display: none !important;
+}
+
+body.fit-mode .app:not(.locked) > #sideMenu.side-menu:not(.hidden) {
+  display: block !important;
+  position: fixed !important;
+  top: 164px !important;
+  right: auto !important;
+  bottom: 0 !important;
+  left: 0 !important;
+  width: 250px !important;
+  height: calc(100dvh - 164px) !important;
+  max-height: none !important;
+  border: 0 !important;
+  border-right: 1px solid #1b2a3b !important;
+  border-radius: 0 !important;
+  background: linear-gradient(180deg, #0a121d 0%, #070c13 58%, #05080d 100%) !important;
+  box-shadow: 18px 0 60px rgba(0, 0, 0, 0.42) !important;
+  overflow-y: auto !important;
+  z-index: 1300 !important;
+}
+
+body.fit-mode .app:not(.locked) > #sideMenu.side-menu .side-menu-inner {
+  min-height: calc(100dvh - 164px) !important;
+  align-items: stretch !important;
+  gap: 9px !important;
+  padding: 28px 12px 18px !important;
+}
+
+body.fit-mode .app:not(.locked) > #sideMenu.side-menu .side-menu-inner::before {
+  content: "≋  FlowSignal" !important;
+  display: block !important;
+  margin: 0 12px 36px !important;
+  color: #f4f7fb !important;
+  font-size: 29px !important;
+  font-weight: 900 !important;
+}
+
+body.fit-mode .app:not(.locked) > .performance-strip {
+  margin: 12px 0 10px 190px !important;
+  width: calc(100% - 190px) !important;
+  max-width: none !important;
+}
+
+body.fit-mode .app:not(.locked) > .topbar {
+  position: absolute !important;
+  display: flex !important;
+  top: 70px !important;
+  left: 16px !important;
+  width: 178px !important;
+  padding: 0 !important;
+  min-height: 0 !important;
+  margin: 0 !important;
+  z-index: 30 !important;
+}
+
+body.fit-mode .app:not(.locked) > .topbar .controls {
+  display: none !important;
+}
+
+body.fit-mode .app:not(.locked) > .topbar .status {
+  min-width: 178px !important;
+  max-width: 178px !important;
+  height: 30px !important;
+  display: flex !important;
+  align-items: center !important;
+}
+
+body.fit-mode .app:not(.locked) > .dashboard-grid {
+  height: calc(100vh - 148px) !important;
+  padding-top: 0 !important;
+}
+
+body.fit-mode .app.menu-drawer-open #settingsModal,
+body.fit-mode .app.menu-drawer-open #statsModal,
+body.fit-mode .app.menu-drawer-open #assistantModal {
+  padding: 164px 24px 24px 250px !important;
+  align-items: flex-start !important;
+  justify-content: flex-start !important;
+  background: rgba(0, 0, 0, 0.58) !important;
+}
+
+body.fit-mode .app.menu-drawer-open #settingsModal .trade-modal-box,
+body.fit-mode .app.menu-drawer-open #statsModal .trade-modal-box,
+body.fit-mode .app.menu-drawer-open #assistantModal .trade-modal-box {
+  width: calc(100vw - 300px) !important;
+  max-width: none !important;
+  min-height: calc(100dvh - 164px) !important;
+  max-height: calc(100dvh - 164px) !important;
+  border-radius: 0 !important;
+  border-left: 0 !important;
+  overflow-y: auto !important;
+}
+
+body.fit-mode .app.menu-drawer-open > #sideMenu.side-menu:not(.hidden) {
+  z-index: 10020 !important;
+}
+
+/* Absolute final dashboard menu drawer and P/L spacing override */
+body.fit-mode .app:not(.locked).menu-drawer-open::after {
+  content: "" !important;
+  position: fixed !important;
+  inset: 164px 0 0 0 !important;
+  z-index: 1190 !important;
+  background: rgba(0, 0, 0, 0.58) !important;
+}
+
+body.fit-mode .app:not(.locked) > #sideMenu.side-menu.hidden {
+  display: none !important;
+}
+
+body.fit-mode .app:not(.locked) > #sideMenu.side-menu:not(.hidden) {
+  display: block !important;
+  position: fixed !important;
+  top: 164px !important;
+  right: auto !important;
+  bottom: 0 !important;
+  left: 0 !important;
+  width: 250px !important;
+  height: calc(100dvh - 164px) !important;
+  max-height: none !important;
+  border: 0 !important;
+  border-right: 1px solid #1b2a3b !important;
+  border-radius: 0 !important;
+  background: linear-gradient(180deg, #0a121d 0%, #070c13 58%, #05080d 100%) !important;
+  box-shadow: 18px 0 60px rgba(0, 0, 0, 0.42) !important;
+  overflow-y: auto !important;
+  z-index: 1300 !important;
+}
+
+body.fit-mode .app:not(.locked) > #sideMenu.side-menu .side-menu-inner {
+  min-height: calc(100dvh - 164px) !important;
+  align-items: stretch !important;
+  gap: 9px !important;
+  padding: 28px 12px 18px !important;
+}
+
+body.fit-mode .app:not(.locked) > #sideMenu.side-menu .side-menu-inner::before {
+  content: "≋  FlowSignal" !important;
+  display: block !important;
+  margin: 0 12px 36px !important;
+  color: #f4f7fb !important;
+  font-size: 29px !important;
+  font-weight: 900 !important;
+}
+
+body.fit-mode .app:not(.locked) > .performance-strip {
+  margin: 12px 0 10px 190px !important;
+  width: calc(100% - 190px) !important;
+  max-width: none !important;
+}
+
+body.fit-mode .app:not(.locked) > .topbar {
+  position: absolute !important;
+  display: flex !important;
+  top: 70px !important;
+  left: 16px !important;
+  width: 178px !important;
+  padding: 0 !important;
+  min-height: 0 !important;
+  margin: 0 !important;
+  z-index: 30 !important;
+}
+
+body.fit-mode .app:not(.locked) > .dashboard-grid {
+  height: calc(100vh - 148px) !important;
+  padding-top: 0 !important;
+}
+
+/* Final dashboard drawer + top bar spacing fix */
+body.fit-mode .app:not(.locked) {
+  padding: 0 16px 10px !important;
+}
+
+body.fit-mode .app:not(.locked).menu-drawer-open::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 1190;
+  background: rgba(0, 0, 0, 0.58);
+}
+
+body.fit-mode .app:not(.locked) > .side-menu.hidden {
+  display: none !important;
+}
+
+body.fit-mode .app:not(.locked) > .side-menu:not(.hidden) {
+  display: block !important;
+  position: fixed !important;
+  inset: 0 auto 0 0 !important;
+  width: 250px !important;
+  max-height: none !important;
+  height: 100dvh !important;
+  border: 0 !important;
+  border-right: 1px solid #1b2a3b !important;
+  border-radius: 0 !important;
+  background: linear-gradient(180deg, #0a121d 0%, #070c13 58%, #05080d 100%) !important;
+  box-shadow: 18px 0 60px rgba(0, 0, 0, 0.42) !important;
+  overflow-y: auto !important;
+  z-index: 1300 !important;
+}
+
+body.fit-mode .app:not(.locked) .side-menu-inner {
+  min-height: 100dvh !important;
+  align-items: stretch !important;
+  gap: 9px !important;
+  padding: 28px 12px 18px !important;
+}
+
+body.fit-mode .app:not(.locked) .side-menu-inner::before {
+  content: "≋  FlowSignal";
+  display: block;
+  margin: 0 12px 36px;
+  color: #f4f7fb;
+  font-size: 29px;
+  font-weight: 900;
+  letter-spacing: 0;
+}
+
+body.fit-mode .app:not(.locked) .menu-row {
+  min-height: 42px !important;
+  padding: 0 14px !important;
+  border-radius: 8px !important;
+  color: #dce6f3 !important;
+  font-size: 16px !important;
+  font-weight: 800 !important;
+  gap: 14px !important;
+}
+
+body.fit-mode .app:not(.locked) .menu-row:hover,
+body.fit-mode .app:not(.locked) #menuSettingsBtn {
+  background: rgba(30, 185, 102, 0.16) !important;
+  color: #62f27b !important;
+}
+
+body.fit-mode .app:not(.locked) .menu-submenu {
+  margin: 4px 0 0 28px !important;
+  padding: 0 0 0 12px !important;
+  border-left: 1px solid #183042 !important;
+}
+
+body.fit-mode .app:not(.locked) .menu-subrow {
+  min-height: 38px !important;
+  padding: 0 14px !important;
+  color: #d3dde9 !important;
+  font-size: 15px !important;
+  font-weight: 800 !important;
+}
+
+body.fit-mode .app:not(.locked) #menuBrokerAccountsBtn {
+  background: rgba(34, 197, 94, 0.14) !important;
+  color: #6cf581 !important;
+}
+
+body.fit-mode .app:not(.locked) .menu-logout-row {
+  margin-top: auto !important;
+  color: #ff646b !important;
+}
+
+body.fit-mode .app:not(.locked) .menu-toggle {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+body.fit-mode .app:not(.locked) .brand-left {
+  visibility: visible !important;
+}
+
+body.fit-mode .app:not(.locked) > .header-frame,
+body.fit-mode .app:not(.locked) > .topbar,
+body.fit-mode .app:not(.locked) > .performance-strip,
+body.fit-mode .app:not(.locked) > .dashboard-grid {
+  margin-left: 0 !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+body.fit-mode .app:not(.locked) > .header-frame {
+  position: relative !important;
+  z-index: 20 !important;
+}
+
+body.fit-mode .app:not(.locked) > .performance-strip {
+  margin: 12px 0 10px !important;
+  width: 100% !important;
+  max-width: none !important;
+}
+
+body.fit-mode .app:not(.locked) > .topbar {
+  position: static !important;
+  display: flex !important;
+  padding: 0 0 12px !important;
+  min-height: 0 !important;
+  margin: 0 !important;
+  z-index: 1 !important;
+}
+
+body.fit-mode .app:not(.locked) > .topbar .status {
+  min-width: 178px !important;
+  max-width: 178px !important;
+}
+
+body.fit-mode .app:not(.locked) > .dashboard-grid {
+  height: calc(100vh - 178px) !important;
+  padding: 0 0 6px !important;
+}
+
+.frontend-error-panel {
+  position: fixed;
+  right: 18px;
+  bottom: 18px;
+  z-index: 10000;
+  width: min(360px, calc(100vw - 36px));
+  display: grid;
+  gap: 7px;
+  padding: 14px;
+  border: 1px solid rgba(255, 85, 99, 0.55);
+  border-radius: 8px;
+  background: rgba(10, 16, 24, 0.96);
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.42);
+  color: #e9eef7;
+  font-size: 13px;
+}
+
+.frontend-error-panel.hidden {
+  display: none;
+}
+
+.frontend-error-panel strong {
+  color: #ff6672;
+  font-size: 14px;
+}
+
+.frontend-error-panel span {
+  color: #b7c3d3;
+  overflow-wrap: anywhere;
+}
+
+.frontend-error-panel button {
+  justify-self: start;
+  height: 30px;
+  padding: 0 12px;
+  border: 1px solid #263446;
+  border-radius: 7px;
+  background: #111a27;
+  color: #f5f8ff;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.health-page {
+  min-height: 100dvh;
+  background: #050a10;
+  color: #f5f8ff;
+}
+
+.health-shell {
+  width: min(900px, calc(100% - 32px));
+  margin: 0 auto;
+  padding: 56px 0;
+}
+
+.health-shell h1 {
+  margin: 0 0 18px;
+  font-size: 30px;
+  letter-spacing: 0;
+}
+
+.health-card {
+  display: grid;
+  gap: 0;
+  overflow: hidden;
+  border: 1px solid #1b2a3c;
+  border-radius: 8px;
+  background: #09111c;
+}
+
+.health-card > div {
+  display: grid;
+  grid-template-columns: minmax(170px, 0.45fr) 1fr;
+  gap: 18px;
+  padding: 16px 18px;
+  border-bottom: 1px solid #132234;
+}
+
+.health-card > div:last-child {
+  border-bottom: 0;
+}
+
+.health-card strong {
+  color: #9bb7d8;
+}
+
+.health-card span {
+  color: #5df082;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 640px) {
+  .health-card > div {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+}
+
+/* Final main navigation: use the Broker Accounts sidebar style everywhere */
+@media (min-width: 901px) {
+  body.fit-mode .app:not(.locked) {
+    padding: 0 16px 10px 0 !important;
+  }
+
+  body.fit-mode .app:not(.locked) > .side-menu,
+  body.fit-mode .app:not(.locked) > .side-menu.hidden {
+    display: block !important;
+    position: fixed !important;
+    inset: 0 auto 0 0 !important;
+    width: 250px !important;
+    max-height: none !important;
+    border: 0 !important;
+    border-right: 1px solid #1b2a3b !important;
+    border-radius: 0 !important;
+    background: linear-gradient(180deg, #0a121d 0%, #070c13 58%, #05080d 100%) !important;
+    box-shadow: none !important;
+    backdrop-filter: none !important;
+    overflow-y: auto !important;
+    z-index: 1200 !important;
+  }
+
+  body.fit-mode .app:not(.locked) .side-menu-inner {
+    min-height: 100dvh !important;
+    align-items: stretch !important;
+    gap: 8px !important;
+    padding: 24px 12px 18px !important;
+  }
+
+  body.fit-mode .app:not(.locked) .side-menu-inner::before {
+    content: "≋  FlowSignal";
+    display: block;
+    margin: 4px 12px 36px;
+    color: #f4f7fb;
+    font-size: 29px;
+    font-weight: 900;
+    letter-spacing: 0;
+  }
+
+  body.fit-mode .app:not(.locked) .menu-row {
+    min-height: 42px !important;
+    padding: 0 14px !important;
+    border-radius: 8px !important;
+    color: #dce6f3 !important;
+    font-size: 16px !important;
+    font-weight: 800 !important;
+    gap: 14px !important;
+  }
+
+  body.fit-mode .app:not(.locked) .menu-row:hover,
+  body.fit-mode .app:not(.locked) #menuSettingsBtn {
+    background: rgba(30, 185, 102, 0.16) !important;
+    color: #62f27b !important;
+  }
+
+  body.fit-mode .app:not(.locked) .menu-row-icon {
+    width: 18px !important;
+    font-size: 14px !important;
+    color: inherit !important;
+  }
+
+  body.fit-mode .app:not(.locked) .menu-settings-group {
+    margin-top: 8px !important;
+  }
+
+  body.fit-mode .app:not(.locked) .menu-submenu {
+    position: relative;
+    margin: 4px 0 0 28px !important;
+    padding: 0 0 0 12px !important;
+    border-left: 1px solid #183042 !important;
+    gap: 0 !important;
+  }
+
+  body.fit-mode .app:not(.locked) .menu-subrow {
+    min-height: 38px !important;
+    padding: 0 14px !important;
+    color: #d3dde9 !important;
+    font-size: 15px !important;
+    font-weight: 800 !important;
+  }
+
+  body.fit-mode .app:not(.locked) .menu-subrow:hover,
+  body.fit-mode .app:not(.locked) #menuBrokerAccountsBtn {
+    background: rgba(34, 197, 94, 0.14) !important;
+    color: #6cf581 !important;
+  }
+
+  body.fit-mode .app:not(.locked) .menu-logout-row {
+    margin-top: auto !important;
+    color: #ff646b !important;
+  }
+
+  body.fit-mode .app:not(.locked) > .header-frame,
+  body.fit-mode .app:not(.locked) > .topbar,
+  body.fit-mode .app:not(.locked) > .performance-strip,
+  body.fit-mode .app:not(.locked) > .dashboard-grid {
+    margin-left: 250px !important;
+    width: calc(100% - 250px) !important;
+    box-sizing: border-box !important;
+  }
+
+  body.fit-mode .app:not(.locked) > .header-frame {
+    border-left: 0 !important;
+    border-radius: 0 !important;
+  }
+
+  body.fit-mode .app:not(.locked) .menu-toggle {
+    display: none !important;
+  }
+
+  body.fit-mode .app:not(.locked) .brand-left {
+    visibility: hidden !important;
+  }
+
+  body.fit-mode .app:not(.locked) > .performance-strip {
+    max-width: none !important;
+  }
+}
+
+.broker-settings-subnav button {
+  display: block;
+  width: 100%;
+  min-height: 34px;
+  border: 0;
+  background: transparent;
+  color: #d3dde9;
+  text-align: left;
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.broker-settings-subnav button:hover {
+  color: #6cf581;
+}
+
+/* 2026-06-17: menu returns to button-open popover, not pinned sidebar */
+@media (min-width: 901px) {
+  body.fit-mode .app:not(.locked) {
+    padding: 0 16px 10px !important;
+  }
+
+  body.fit-mode .app:not(.locked) > .side-menu.hidden {
+    display: none !important;
+  }
+
+  body.fit-mode .app:not(.locked) > .side-menu:not(.hidden) {
+    display: block !important;
+    position: fixed !important;
+    top: 92px !important;
+    left: 14px !important;
+    bottom: auto !important;
+    width: 250px !important;
+    max-height: calc(100dvh - 110px) !important;
+    border: 1px solid #1b2a3b !important;
+    border-radius: 14px !important;
+    background: linear-gradient(180deg, rgba(10, 18, 29, 0.98), rgba(5, 8, 13, 0.98)) !important;
+    box-shadow: 0 22px 60px rgba(0, 0, 0, 0.48) !important;
+    overflow-y: auto !important;
+    z-index: 1200 !important;
+  }
+
+  body.fit-mode .app:not(.locked) .side-menu-inner {
+    min-height: 0 !important;
+    padding: 18px 12px !important;
+    gap: 8px !important;
+  }
+
+  body.fit-mode .app:not(.locked) .side-menu-inner::before {
+    content: "≋  FlowSignal";
+    display: block;
+    margin: 0 10px 22px;
+    color: #f4f7fb;
+    font-size: 25px;
+    font-weight: 900;
+  }
+
+  body.fit-mode .app:not(.locked) > .header-frame,
+  body.fit-mode .app:not(.locked) > .topbar,
+  body.fit-mode .app:not(.locked) > .performance-strip,
+  body.fit-mode .app:not(.locked) > .dashboard-grid {
+    margin-left: 0 !important;
+    width: 100% !important;
+  }
+
+  body.fit-mode .app:not(.locked) .menu-toggle {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+  }
+
+  body.fit-mode .app:not(.locked) .brand-left {
+    visibility: visible !important;
+  }
+}
+
+.settings-modal-box {
+  width: min(96vw, 1480px) !important;
+  max-width: 1480px !important;
+  border-radius: 10px !important;
+}
+
+#riskSettingsPanel {
+  color: #eef2f8;
+}
+
+#riskSettingsPanel .settings-modal-header,
+.risk-pro-alert {
+  margin-bottom: 18px;
+}
+
+.risk-pro-alert {
+  padding: 18px 22px;
+  border: 1px solid rgba(126, 75, 255, 0.35);
+  border-radius: 8px;
+  background: rgba(75, 39, 155, 0.16);
+  color: #bd96ff;
+  font-weight: 800;
+}
+
+.risk-pro-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(220px, 1fr));
+  gap: 18px;
+}
+
+.risk-pro-card {
+  min-height: 230px;
+  padding: 24px;
+  border: 1px solid #1d2a3a;
+  border-radius: 8px;
+  background: linear-gradient(145deg, #0d1623, #07101b);
+}
+
+.risk-pro-card h3 {
+  margin: 0 0 8px;
+  font-size: 23px;
+}
+
+.risk-pro-card p,
+.risk-pro-card small {
+  color: #aebbd0;
+  font-weight: 700;
+}
+
+.risk-stepper {
+  display: grid;
+  grid-template-columns: 72px 1fr 72px;
+  margin: 22px 0;
+  border: 1px solid #1d2a3a;
+  border-radius: 7px;
+  overflow: hidden;
+}
+
+.risk-stepper button,
+.risk-stepper input {
+  height: 66px;
+  border: 0;
+  border-right: 1px solid #1d2a3a;
+  background: #070d15;
+  color: #f7f9fd;
+  text-align: center;
+  font-size: 30px;
+  font-weight: 900;
+}
+
+.risk-stepper button:last-child {
+  border-right: 0;
+}
+
+.risk-stepper input {
+  font-size: 30px;
+}
+
+.risk-bar {
+  height: 7px;
+  margin-bottom: 16px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #172233;
+}
+
+.risk-bar span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #7b3ff2, #9b5cff);
+}
+
+.risk-pro-extra {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+  margin-top: 18px;
+}
+
+.risk-pro-extra label {
+  display: grid;
+  gap: 8px;
+  color: #cbd5e1;
+  font-weight: 800;
+}
+
+.risk-pro-extra input,
+.risk-pro-extra select {
+  min-height: 44px;
+  border: 1px solid #263446;
+  border-radius: 8px;
+  background: #08111d;
+  color: #f8fbff;
+  padding: 0 12px;
+}
+
+.risk-pro-actions,
+.assistant-pro-actions {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 26px;
+  padding-top: 22px;
+  border-top: 1px solid #1a2738;
+}
+
+.risk-pro-actions button,
+.assistant-pro-actions button {
+  min-height: 56px;
+  padding: 0 26px;
+  border: 1px solid #243246;
+  border-radius: 8px;
+  background: #0b1422;
+  color: #f7f9fd;
+  font-size: 17px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+#riskSaveBtn,
+.assistant-save-btn {
+  background: linear-gradient(135deg, #6d28d9, #7c3aed) !important;
+  border-color: #7c3aed !important;
+}
+
+.performance-modal-box {
+  width: min(96vw, 1420px) !important;
+  max-width: 1420px !important;
+  max-height: calc(100dvh - 34px) !important;
+  overflow-y: auto !important;
+  border-radius: 10px !important;
+}
+
+.performance-pro-head,
+.assistant-panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 20px;
+}
+
+.performance-pro-title,
+.assistant-pro-title {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.performance-pro-title > span,
+.assistant-pro-title > span {
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  border-radius: 10px;
+  background: rgba(124, 58, 237, 0.18);
+  color: #9b5cff;
+  font-size: 24px;
+}
+
+.performance-pro-title p,
+.assistant-pro-title p {
+  margin: 4px 0 0;
+  color: #aebbd0;
+  font-weight: 700;
+}
+
+.performance-pro-actions {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.performance-pro-actions span {
+  border: 1px solid #1e2a3b;
+  border-radius: 8px;
+  padding: 10px 14px;
+  color: #d6deeb;
+}
+
+.performance-pro-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(160px, 1fr));
+  gap: 12px;
+}
+
+.performance-metric {
+  min-height: 130px;
+  position: relative;
+  overflow: hidden;
+  padding: 18px;
+  border: 1px solid #1d2a3a;
+  border-radius: 8px;
+  background: linear-gradient(145deg, #0d1623, #07101b);
+}
+
+.performance-metric span,
+.performance-metric small {
+  display: block;
+  color: #b5c0d0;
+  font-weight: 800;
+}
+
+.performance-metric strong {
+  display: block;
+  margin: 8px 0 12px;
+  font-size: 27px;
+}
+
+.performance-metric i {
+  position: absolute;
+  left: 14px;
+  right: 14px;
+  bottom: 12px;
+  height: 26px;
+  border-radius: 50%;
+  opacity: 0.65;
+  background: linear-gradient(90deg, transparent, currentColor, transparent);
+}
+
+.performance-metric.green strong,
+.performance-metric.green { color: #3ee86f; }
+.performance-metric.blue strong,
+.performance-metric.blue { color: #3b82f6; }
+.performance-metric.red strong,
+.performance-metric.red { color: #ff4d57; }
+.performance-metric.amber strong,
+.performance-metric.amber { color: #f59e0b; }
+.performance-metric.purple strong,
+.performance-metric.purple { color: #a855f7; }
+
+.performance-pro-panels {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  margin-top: 16px;
+}
+
+.performance-pro-panel {
+  border: 1px solid #1d2a3a;
+  border-radius: 8px;
+  padding: 16px;
+  background: #08111d;
+}
+
+.performance-pro-panel h3 {
+  margin: 0 0 14px;
+  text-transform: uppercase;
+}
+
+.performance-pro-panel div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid #172437;
+  border-radius: 8px;
+  color: #dbe6f4;
+}
+
+.performance-pro-panel div + div {
+  margin-top: 8px;
+}
+
+#assistantModal {
+  padding: 70px 20px 20px !important;
+}
+
+#assistantModal .assistant-modal-box {
+  width: min(1120px, calc(100vw - 42px)) !important;
+  max-width: 1120px !important;
+  max-height: calc(100dvh - 92px) !important;
+  overflow-y: auto !important;
+  border-radius: 10px !important;
+}
+
+.assistant-pro-grid {
+  display: grid;
+  grid-template-columns: 1.05fr 1fr 1.25fr;
+  gap: 12px;
+}
+
+.assistant-pro-card {
+  border: 1px solid #1d2a3a !important;
+  border-radius: 8px !important;
+  background: linear-gradient(145deg, #0d1623, #07101b) !important;
+  padding: 16px !important;
+}
+
+.assistant-behavior-card,
+.assistant-advanced-card {
+  grid-column: span 1;
+}
+
+.assistant-trigger-card label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 0;
+  border-bottom: 1px solid #172437;
+  color: #dce6f3;
+  font-weight: 800;
+}
+
+.assistant-trigger-card input {
+  width: 42px;
+  height: 22px;
+  accent-color: #7c3aed;
+}
+
+.assistant-preview {
+  margin: 12px 0;
+  padding: 16px;
+  border: 1px solid #1d2a3a;
+  border-radius: 8px;
+  background: #0a1421;
+  color: #cbd5e1;
+  line-height: 1.65;
+}
+
+@media (max-width: 1100px) {
+  .risk-pro-grid,
+  .performance-pro-grid,
+  .assistant-pro-grid,
+  .performance-pro-panels,
+  .risk-pro-extra {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* Navigation + Settings organization */
+.side-menu-inner {
+  min-height: 100%;
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+.menu-settings-group {
+  display: grid;
+  gap: 4px;
+}
+
+.menu-row-caret {
+  margin-left: auto;
+  color: #7dd3fc;
+}
+
+.menu-submenu {
+  display: grid;
+  gap: 3px;
+  padding: 4px 0 8px 34px;
+}
+
+.menu-submenu.hidden {
+  display: none !important;
+}
+
+.menu-subrow {
+  min-height: 33px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: #cbd5e1;
+  text-align: left;
+  padding: 0 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.menu-subrow:hover {
+  background: rgba(34, 197, 94, 0.12);
+  color: #6ee785;
+}
+
+.menu-logout-row {
+  margin-top: auto !important;
+  color: #ff646b !important;
+}
+
+.settings-modal-box {
+  max-width: 880px !important;
+}
+
+.settings-modal-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.settings-close-btn {
+  width: 38px;
+  height: 38px;
+  border-radius: 8px;
+  border: 1px solid rgba(148, 163, 184, 0.24);
+  background: rgba(8, 14, 23, 0.86);
+  color: #e5e7eb;
+  font-size: 24px;
+  cursor: pointer;
+}
+
+.settings-panel.hidden {
+  display: none !important;
+}
+
+.settings-grid,
+.risk-settings-grid,
+.performance-settings-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.settings-grid label,
+.risk-settings-grid label,
+.performance-settings-grid div,
+.settings-placeholder {
+  border: 1px solid rgba(148, 163, 184, 0.14);
+  border-radius: 8px;
+  background: rgba(8, 14, 23, 0.72);
+  color: #e5e7eb;
+  padding: 13px 14px;
+  font-weight: 800;
+}
+
+.settings-grid label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.risk-settings-grid label {
+  display: grid;
+  gap: 8px;
+}
+
+.risk-settings-grid input,
+.risk-settings-grid select,
+.feedback-type-select {
+  width: 100%;
+  border-radius: 8px;
+  border: 1px solid rgba(148, 163, 184, 0.24);
+  background: #07111c;
+  color: #f8fafc;
+  padding: 10px 11px;
+  font-weight: 800;
+}
+
+.settings-inline {
+  grid-template-columns: auto 1fr !important;
+  display: flex !important;
+  align-items: center;
+}
+
+.settings-note {
+  margin-top: 12px;
+  color: #9ca3af;
+  font-size: 13px;
+}
+
+.performance-modal-box {
+  max-width: 900px !important;
+}
+
+.performance-settings-grid {
+  margin-bottom: 16px;
+}
+
+.performance-settings-grid span {
+  display: block;
+  color: #9ca3af;
+  font-size: 12px;
+  margin-bottom: 6px;
+}
+
+.performance-settings-grid strong {
+  color: #f8fafc;
+  font-size: 18px;
+}
+
+.feedback-type-select {
+  margin-bottom: 12px;
+}
+
+body.hide-weekly-pnl .performance-weekly,
+body.hide-floating-pnl .performance-floating,
+body.hide-open-trades-counter .performance-trades,
+body.hide-market-structure-ui .structure-panel,
+body.hide-recent-history-ui .history-section {
+  display: none !important;
+}
+
+body.hide-confidence-ui #eurusd-conf-label,
+body.hide-confidence-ui #gold-conf-label,
+body.hide-confidence-ui .conf-wrap,
+body.hide-confidence-ui .main-metrics > div:nth-child(3) {
+  display: none !important;
+}
+
+body.hide-buy-sell-ui #eurusd-buy-label,
+body.hide-buy-sell-ui #eurusd-sell-label,
+body.hide-buy-sell-ui #gold-buy-label,
+body.hide-buy-sell-ui #gold-sell-label,
+body.hide-buy-sell-ui #eurusd-buy-label + .bar-wrap,
+body.hide-buy-sell-ui #eurusd-sell-label + .bar-wrap,
+body.hide-buy-sell-ui #gold-buy-label + .bar-wrap,
+body.hide-buy-sell-ui #gold-sell-label + .bar-wrap,
+body.hide-buy-sell-ui .main-metrics > div:nth-child(1),
+body.hide-buy-sell-ui .main-metrics > div:nth-child(2) {
+  display: none !important;
+}
+
+body.hide-account-balance-ui #dashboardWeeklyPnl,
+body.hide-account-number-ui #brokerAuthorizedText,
+body.hide-broker-info-ui #brokerConnectedBadge {
+  display: none !important;
+}
+
+@media (max-width: 700px) {
+  .settings-grid,
+  .risk-settings-grid,
+  .performance-settings-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Final Broker Accounts placement override */
+#brokerAccountsModal.trade-modal.broker-settings-modal {
+  padding-top: 76px !important;
+  box-sizing: border-box !important;
+  align-items: flex-start !important;
+  overflow-y: auto !important;
+}
+
+#brokerAccountsModal .broker-settings-shell {
+  min-height: calc(100dvh - 76px) !important;
+}
+
+#brokerAccountsModal .broker-settings-content {
+  padding-top: 22px !important;
+}
+
+#brokerAccountsModal .broker-settings-topbar {
+  display: none !important;
+}
+
+#brokerAccountsModal .broker-settings-header {
+  padding-top: 0 !important;
+}
+
+#brokerAccountsModal .broker-account-table {
+  min-width: 720px !important;
+}
+
+#brokerAccountsModal .broker-account-table th,
+#brokerAccountsModal .broker-account-table td {
+  padding-left: 9px !important;
+  padding-right: 9px !important;
+}
+
+#brokerAccountsModal .broker-account-table th:nth-child(8),
+#brokerAccountsModal .broker-account-table td:nth-child(8) {
+  width: 12% !important;
+  overflow: visible !important;
+  text-overflow: clip !important;
+}
+
+#brokerAccountsModal .broker-active-pill {
+  display: inline-flex !important;
+  max-width: none !important;
+  padding: 6px 8px !important;
+  font-size: 12px !important;
+}
+
 /* Final user-page spacing override. Keep cards clear of the fetch badge. */
 body.fit-mode .app.user-no-performance .dashboard-grid,
 .app.user-no-performance .dashboard-grid {
@@ -6209,4 +8928,888 @@ body.fit-mode .app.user-no-performance .signals-panel,
   overflow-y: auto !important;
   overscroll-behavior: contain !important;
   -webkit-overflow-scrolling: touch !important;
+}
+
+/* Absolute final Broker Accounts placement override */
+#brokerAccountsModal.trade-modal.broker-settings-modal {
+  padding-top: 76px !important;
+  box-sizing: border-box !important;
+  align-items: flex-start !important;
+  overflow-y: auto !important;
+}
+
+#brokerAccountsModal .broker-settings-shell {
+  min-height: calc(100dvh - 76px) !important;
+}
+
+#brokerAccountsModal .broker-settings-content {
+  padding-top: 22px !important;
+}
+
+#brokerAccountsModal .broker-settings-topbar {
+  display: none !important;
+}
+
+#brokerAccountsModal .broker-settings-header {
+  padding-top: 0 !important;
+}
+
+#brokerAccountsModal .broker-account-table {
+  min-width: 720px !important;
+}
+
+#brokerAccountsModal .broker-account-table th,
+#brokerAccountsModal .broker-account-table td {
+  padding-left: 9px !important;
+  padding-right: 9px !important;
+}
+
+#brokerAccountsModal .broker-account-table th:nth-child(8),
+#brokerAccountsModal .broker-account-table td:nth-child(8) {
+  width: 12% !important;
+  overflow: visible !important;
+  text-overflow: clip !important;
+}
+
+#brokerAccountsModal .broker-active-pill {
+  display: inline-flex !important;
+  max-width: none !important;
+  padding: 6px 8px !important;
+  font-size: 12px !important;
+}
+
+/* Absolute final dashboard menu drawer and P/L spacing override */
+body.fit-mode .app:not(.locked).menu-drawer-open::after {
+  content: "" !important;
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 1190 !important;
+  background: rgba(0, 0, 0, 0.58) !important;
+}
+
+body.fit-mode .app:not(.locked) > #sideMenu.side-menu.hidden {
+  display: none !important;
+}
+
+body.fit-mode .app:not(.locked) > #sideMenu.side-menu:not(.hidden) {
+  display: block !important;
+  position: fixed !important;
+  top: 0 !important;
+  right: auto !important;
+  bottom: 0 !important;
+  left: 0 !important;
+  width: 250px !important;
+  height: 100dvh !important;
+  max-height: none !important;
+  border: 0 !important;
+  border-right: 1px solid #1b2a3b !important;
+  border-radius: 0 !important;
+  background: linear-gradient(180deg, #0a121d 0%, #070c13 58%, #05080d 100%) !important;
+  box-shadow: 18px 0 60px rgba(0, 0, 0, 0.42) !important;
+  overflow-y: auto !important;
+  z-index: 1300 !important;
+}
+
+body.fit-mode .app:not(.locked) > #sideMenu.side-menu .side-menu-inner {
+  min-height: 100dvh !important;
+  align-items: stretch !important;
+  gap: 9px !important;
+  padding: 28px 12px 18px !important;
+}
+
+body.fit-mode .app:not(.locked) > #sideMenu.side-menu .side-menu-inner::before {
+  content: "≋  FlowSignal" !important;
+  display: block !important;
+  margin: 0 12px 36px !important;
+  color: #f4f7fb !important;
+  font-size: 29px !important;
+  font-weight: 900 !important;
+}
+
+body.fit-mode .app:not(.locked) > .performance-strip {
+  margin: 12px 0 10px 190px !important;
+  width: calc(100% - 190px) !important;
+  max-width: none !important;
+}
+
+body.fit-mode .app:not(.locked) > .topbar {
+  position: absolute !important;
+  display: flex !important;
+  top: 70px !important;
+  left: 16px !important;
+  width: 178px !important;
+  padding: 0 !important;
+  min-height: 0 !important;
+  margin: 0 !important;
+  z-index: 30 !important;
+}
+
+body.fit-mode .app:not(.locked) > .dashboard-grid {
+  height: calc(100vh - 148px) !important;
+  padding-top: 0 !important;
+}
+
+body.fit-mode #mainApp.app:not(.locked).menu-drawer-open::after {
+  inset: 164px 0 0 0 !important;
+}
+
+body.fit-mode #mainApp.app:not(.locked) > #sideMenu.side-menu:not(.hidden) {
+  top: 164px !important;
+  height: calc(100dvh - 164px) !important;
+}
+
+body.fit-mode #mainApp.app:not(.locked) > #sideMenu.side-menu .side-menu-inner {
+  min-height: calc(100dvh - 164px) !important;
+}
+
+body.fit-mode #mainApp.app.menu-drawer-open #settingsModal,
+body.fit-mode #mainApp.app.menu-drawer-open #statsModal,
+body.fit-mode #mainApp.app.menu-drawer-open #assistantModal {
+  padding: 164px 24px 24px 250px !important;
+  align-items: flex-start !important;
+  justify-content: flex-start !important;
+  background: rgba(0, 0, 0, 0.58) !important;
+}
+
+body.fit-mode #mainApp.app.menu-drawer-open #settingsModal .trade-modal-box,
+body.fit-mode #mainApp.app.menu-drawer-open #statsModal .trade-modal-box,
+body.fit-mode #mainApp.app.menu-drawer-open #assistantModal .trade-modal-box {
+  width: calc(100vw - 300px) !important;
+  max-width: none !important;
+  min-height: calc(100dvh - 164px) !important;
+  max-height: calc(100dvh - 164px) !important;
+  border-radius: 0 !important;
+  border-left: 0 !important;
+  overflow-y: auto !important;
+}
+
+body.fit-mode #mainApp.app.menu-drawer-open > #sideMenu.side-menu:not(.hidden) {
+  z-index: 10020 !important;
+}
+
+body.fit-mode #mainApp.app.menu-drawer-open #settingsModal .settings-modal-box,
+body.fit-mode #mainApp.app.menu-drawer-open #statsModal .performance-modal-box,
+body.fit-mode #mainApp.app.menu-drawer-open #assistantModal .assistant-modal-box {
+  position: fixed !important;
+  top: 164px !important;
+  left: 250px !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  width: calc(100vw - 250px) !important;
+  max-width: none !important;
+  min-height: calc(100dvh - 164px) !important;
+  max-height: calc(100dvh - 164px) !important;
+  border-radius: 0 !important;
+  border-left: 0 !important;
+}
+
+body.fit-mode.menu-drawer-open #settingsModal,
+body.fit-mode.menu-drawer-open #statsModal,
+body.fit-mode.menu-drawer-open #assistantModal {
+  padding: 164px 24px 24px 250px !important;
+  align-items: flex-start !important;
+  justify-content: flex-start !important;
+  background: rgba(0, 0, 0, 0.58) !important;
+}
+
+body.fit-mode.menu-drawer-open #settingsModal .settings-modal-box,
+body.fit-mode.menu-drawer-open #statsModal .performance-modal-box,
+body.fit-mode.menu-drawer-open #assistantModal .assistant-modal-box {
+  position: fixed !important;
+  top: 164px !important;
+  left: 250px !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  width: calc(100vw - 250px) !important;
+  max-width: none !important;
+  min-height: calc(100dvh - 164px) !important;
+  max-height: calc(100dvh - 164px) !important;
+  border-radius: 0 !important;
+  border-left: 0 !important;
+  overflow-y: auto !important;
+}
+
+/* Shared application sidebar: one component and one geometry on every page. */
+:root {
+  --app-sidebar-top: 70px;
+  --app-panel-height: calc(100dvh - var(--app-sidebar-top));
+  --app-sidebar-width: 250px;
+}
+
+body.fit-mode #mainApp.app:not(.locked) > #sideMenu.app-sidebar,
+body.fit-mode #mainApp.app:not(.locked) > #sideMenu.app-sidebar.hidden {
+  display: block !important;
+  position: fixed !important;
+  top: var(--app-sidebar-top) !important;
+  right: auto !important;
+  bottom: 0 !important;
+  left: 0 !important;
+  width: var(--app-sidebar-width) !important;
+  height: var(--app-panel-height) !important;
+  min-height: 0 !important;
+  max-height: none !important;
+  margin: 0 !important;
+  border: 0 !important;
+  border-right: 1px solid #1b2a3b !important;
+  border-radius: 0 !important;
+  background: linear-gradient(180deg, #0a121d 0%, #070c13 58%, #05080d 100%) !important;
+  box-shadow: 18px 0 60px rgba(0, 0, 0, 0.42) !important;
+  overflow: hidden !important;
+  z-index: 10020 !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+  transform: translateX(-100%) !important;
+  transition:
+    transform 180ms ease,
+    opacity 180ms ease,
+    visibility 0s linear 180ms !important;
+}
+
+body.fit-mode #mainApp.app:not(.locked) > #sideMenu.app-sidebar.is-open {
+  opacity: 1 !important;
+  visibility: visible !important;
+  pointer-events: auto !important;
+  transform: translateX(0) !important;
+  transition:
+    transform 180ms ease,
+    opacity 180ms ease !important;
+}
+
+body.fit-mode #mainApp.app:not(.locked) > #sideMenu.app-sidebar .side-menu-inner {
+  width: 100% !important;
+  height: 100% !important;
+  min-height: 0 !important;
+  max-height: none !important;
+  box-sizing: border-box !important;
+  padding: 28px 12px 18px !important;
+  gap: 9px !important;
+  align-items: stretch !important;
+  overflow-y: auto !important;
+  overscroll-behavior: contain !important;
+}
+
+body.fit-mode #mainApp.app:not(.locked) > #sideMenu.app-sidebar .side-menu-inner::before {
+  content: "≋  FlowSignal" !important;
+  display: block !important;
+  flex: 0 0 auto !important;
+  margin: 0 12px 36px !important;
+  color: #f4f7fb !important;
+  font-size: 29px !important;
+  font-weight: 900 !important;
+}
+
+body.fit-mode #mainApp.app:not(.locked).menu-drawer-open::after {
+  content: "" !important;
+  position: fixed !important;
+  inset: var(--app-sidebar-top) 0 0 0 !important;
+  z-index: 1190 !important;
+  background: rgba(0, 0, 0, 0.58) !important;
+}
+
+/* Broker Accounts uses the shared sidebar instead of its former duplicate aside. */
+#brokerAccountsModal.trade-modal.broker-settings-modal {
+  top: var(--app-sidebar-top) !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  left: 0 !important;
+  width: 100vw !important;
+  height: var(--app-panel-height) !important;
+  min-height: 0 !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+  align-items: stretch !important;
+  justify-content: stretch !important;
+  z-index: 1200 !important;
+}
+
+#brokerAccountsModal .broker-settings-shell {
+  width: 100% !important;
+  height: 100% !important;
+  min-height: 0 !important;
+  display: block !important;
+}
+
+#brokerAccountsModal .broker-settings-content {
+  width: 100% !important;
+  height: 100% !important;
+  min-height: 0 !important;
+  box-sizing: border-box !important;
+  padding: 22px 26px 30px !important;
+  overflow-y: auto !important;
+  transition: padding-left 180ms ease !important;
+}
+
+body.menu-drawer-open #brokerAccountsModal .broker-settings-content {
+  padding-left: calc(var(--app-sidebar-width) + 26px) !important;
+}
+
+@media (max-width: 700px) {
+  :root {
+    --app-sidebar-width: min(86vw, 300px);
+  }
+
+  body.menu-drawer-open #brokerAccountsModal .broker-settings-content {
+    padding-left: 18px !important;
+  }
+}
+
+/* Attached pages use the same computed top and height as the shared sidebar. */
+body.fit-mode.menu-drawer-open #settingsModal,
+body.fit-mode.menu-drawer-open #statsModal,
+body.fit-mode.menu-drawer-open #assistantModal {
+  padding:
+    var(--app-sidebar-top)
+    0
+    0
+    var(--app-sidebar-width) !important;
+}
+
+body.fit-mode.menu-drawer-open #settingsModal .settings-modal-box,
+body.fit-mode.menu-drawer-open #statsModal .performance-modal-box,
+body.fit-mode.menu-drawer-open #assistantModal .assistant-modal-box {
+  top: var(--app-sidebar-top) !important;
+  left: var(--app-sidebar-width) !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  width: calc(100vw - var(--app-sidebar-width)) !important;
+  height: var(--app-panel-height) !important;
+  min-height: var(--app-panel-height) !important;
+  max-height: var(--app-panel-height) !important;
+}
+
+#brokerAccountsModal.trade-modal.broker-settings-modal {
+  height: var(--app-panel-height) !important;
+}
+
+/* Win over legacy #mainApp drawer selectors that still contain 164px. */
+body.fit-mode #mainApp.app:not(.locked).menu-drawer-open
+  > #sideMenu.side-menu.app-sidebar.is-open:not(.hidden) {
+  top: var(--app-sidebar-top) !important;
+  bottom: 0 !important;
+  height: var(--app-panel-height) !important;
+  min-height: 0 !important;
+  max-height: none !important;
+}
+
+body.fit-mode #mainApp.app:not(.locked).menu-drawer-open
+  > #sideMenu.side-menu.app-sidebar.is-open:not(.hidden)
+  .side-menu-inner {
+  height: 100% !important;
+  min-height: 0 !important;
+  max-height: none !important;
+}
+
+body.fit-mode #mainApp.app:not(.locked).menu-drawer-open::after {
+  inset: var(--app-sidebar-top) 0 0 0 !important;
+}
+
+/* Final attached-page geometry: Auto Trade, Risk, and Performance */
+body[data-active-settings-page="auto-trade"] #paperModal,
+body[data-active-settings-page^="settings:"] #settingsModal,
+body[data-active-settings-page="performance"] #statsModal {
+  position: fixed !important;
+  inset: 0 !important;
+  padding: var(--app-sidebar-top) 0 0 var(--app-sidebar-width) !important;
+  align-items: flex-start !important;
+  justify-content: flex-start !important;
+  overflow: hidden !important;
+  background: transparent !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  z-index: 1200 !important;
+}
+
+body[data-active-settings-page="auto-trade"] #paperModal .trade-modal-box,
+body[data-active-settings-page^="settings:"] #settingsModal .settings-modal-box,
+body[data-active-settings-page="performance"] #statsModal .performance-modal-box {
+  position: fixed !important;
+  top: var(--app-sidebar-top) !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  left: var(--app-sidebar-width) !important;
+  width: calc(100vw - var(--app-sidebar-width)) !important;
+  max-width: none !important;
+  height: var(--app-panel-height) !important;
+  min-height: 0 !important;
+  max-height: var(--app-panel-height) !important;
+  margin: 0 !important;
+  border: 1px solid #1b293b !important;
+  border-left: 0 !important;
+  border-radius: 0 !important;
+  background:
+    radial-gradient(circle at 50% 0%, rgba(56, 39, 132, 0.10), transparent 34%),
+    linear-gradient(145deg, #07111e 0%, #050d17 62%, #07121f 100%) !important;
+  box-shadow: none !important;
+}
+
+body[data-active-settings-page^="settings:"] #settingsModal .settings-modal-box,
+body[data-active-settings-page="performance"] #statsModal .performance-modal-box {
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+  overscroll-behavior: contain;
+}
+
+body[data-active-settings-page="settings:risk"] #settingsModal .settings-modal-box {
+  padding: 0 !important;
+}
+
+body[data-active-settings-page="settings:risk"] #riskSettingsPanel {
+  min-width: 0;
+}
+
+body[data-active-settings-page="settings:risk"] #riskSaveBtn.is-saved {
+  background: linear-gradient(135deg, #047857, #16a34a) !important;
+  border-color: #22c55e !important;
+}
+
+body[data-active-settings-page="auto-trade"] #paperModal .trade-modal-box {
+  display: flex !important;
+  flex-direction: column !important;
+  padding: 18px 22px !important;
+  overflow: hidden !important;
+}
+
+.auto-trade-attached-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex: 0 0 auto;
+  min-height: 58px;
+  margin-bottom: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #172436;
+}
+
+.auto-trade-attached-head .trade-modal-title {
+  margin: 0;
+  font-size: 25px;
+  font-weight: 900;
+}
+
+.auto-trade-attached-head p {
+  margin: 3px 0 0;
+  color: #9eacc0;
+  font-size: 13px;
+}
+
+body[data-active-settings-page="auto-trade"] #paperAutoSection,
+body[data-active-settings-page="auto-trade"] #liveAutoSection,
+body[data-active-settings-page="auto-trade"] #brokerConnectionStatus,
+body[data-active-settings-page="auto-trade"] .execution-page-tabs,
+body[data-active-settings-page="auto-trade"] #liveActiveOrders {
+  flex: 0 0 auto !important;
+}
+
+body[data-active-settings-page="auto-trade"] #paperAutoSection,
+body[data-active-settings-page="auto-trade"] #liveAutoSection {
+  display: inline-flex;
+  width: auto;
+  margin: 0 8px 8px 0;
+}
+
+body[data-active-settings-page="auto-trade"] #paperAutoToggleBtn,
+body[data-active-settings-page="auto-trade"] #liveAutoToggleBtn {
+  width: auto !important;
+  min-width: 150px !important;
+  height: 38px !important;
+  padding: 0 16px !important;
+  font-size: 12px !important;
+}
+
+body[data-active-settings-page="auto-trade"] .execution-page-tabs {
+  width: min(100%, 620px);
+  margin: 8px 0 12px;
+}
+
+body[data-active-settings-page="auto-trade"] #liveActiveOrders {
+  max-height: 190px;
+  overflow-y: auto;
+}
+
+body[data-active-settings-page="auto-trade"] #paperHistoryList,
+body[data-active-settings-page="auto-trade"] #liveHistoryList {
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+  max-height: none !important;
+  height: auto !important;
+  overflow-y: auto !important;
+  overscroll-behavior: contain;
+}
+
+@media (max-width: 700px) {
+  body[data-active-settings-page="auto-trade"] #paperModal,
+  body[data-active-settings-page^="settings:"] #settingsModal,
+  body[data-active-settings-page="performance"] #statsModal {
+    padding: 0 !important;
+  }
+
+  body[data-active-settings-page="auto-trade"] #paperModal .trade-modal-box,
+  body[data-active-settings-page^="settings:"] #settingsModal .settings-modal-box,
+  body[data-active-settings-page="performance"] #statsModal .performance-modal-box {
+    top: 0 !important;
+    left: 0 !important;
+    width: 100vw !important;
+    height: 100dvh !important;
+    max-height: 100dvh !important;
+  }
+}
+
+/* Risk settings — visual treatment only */
+body[data-active-settings-page="settings:risk"] #settingsModal {
+  background: rgba(1, 6, 15, 0.82) !important;
+  backdrop-filter: blur(10px);
+}
+
+body[data-active-settings-page="settings:risk"] #settingsModal .settings-modal-box {
+  width: min(96vw, 1536px) !important;
+  max-width: 1536px !important;
+  padding: 0 !important;
+  overflow: auto !important;
+  border: 1px solid #1d2b3d !important;
+  border-radius: 14px !important;
+  background:
+    radial-gradient(circle at 50% 0%, rgba(49, 37, 102, 0.12), transparent 35%),
+    linear-gradient(145deg, #07111e 0%, #050d17 58%, #07121f 100%) !important;
+  box-shadow: 0 28px 90px rgba(0, 0, 0, 0.48) !important;
+}
+
+body[data-active-settings-page="settings:risk"] .settings-modal-header {
+  position: relative;
+  min-height: 146px;
+  padding: 36px 96px 28px 128px;
+  align-items: center;
+  border-bottom: 1px solid #172436;
+}
+
+body[data-active-settings-page="settings:risk"] .settings-modal-header::before {
+  content: "✓";
+  position: absolute;
+  left: 38px;
+  top: 36px;
+  display: grid;
+  place-items: center;
+  width: 58px;
+  height: 66px;
+  color: #8b5cf6;
+  font-size: 30px;
+  font-weight: 950;
+  border: 6px solid #7138e8;
+  border-radius: 42% 42% 52% 52% / 25% 25% 62% 62%;
+  box-shadow: inset 0 0 22px rgba(124, 58, 237, 0.22);
+}
+
+body[data-active-settings-page="settings:risk"] #settingsModalTitle {
+  font-size: 34px;
+  line-height: 1.1;
+  font-weight: 900;
+  letter-spacing: -0.7px;
+}
+
+body[data-active-settings-page="settings:risk"] #settingsModalSubtitle {
+  margin-top: 10px;
+  color: #aebbd0;
+  font-size: 20px;
+  line-height: 1.4;
+}
+
+body[data-active-settings-page="settings:risk"] .settings-close-btn {
+  width: 60px;
+  height: 60px;
+  border-radius: 9px;
+  color: #f8fafc;
+  font-size: 34px;
+}
+
+#riskSettingsPanel {
+  padding: 16px 32px 0;
+  color: #eef2f8;
+}
+
+#riskSettingsPanel .risk-pro-alert {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  min-height: 74px;
+  margin: 0 0 22px;
+  padding: 0 26px;
+  border: 1px solid rgba(124, 58, 237, 0.34);
+  border-radius: 10px;
+  background: linear-gradient(90deg, rgba(55, 27, 126, 0.18), rgba(41, 28, 98, 0.13));
+  color: #b896ff;
+  font-size: 18px;
+  font-weight: 750;
+}
+
+.risk-info-icon {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  flex: 0 0 24px;
+  border: 2px solid #8b5cf6;
+  border-radius: 50%;
+  font-family: Georgia, serif;
+  font-size: 15px;
+  font-weight: 900;
+}
+
+#riskSettingsPanel .risk-pro-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  gap: 18px;
+}
+
+#riskSettingsPanel .risk-pro-card {
+  position: relative;
+  min-height: 264px;
+  padding: 25px 22px 22px;
+  border: 1px solid #1c2a3c;
+  border-radius: 11px;
+  background:
+    radial-gradient(circle at 88% 10%, rgba(68, 40, 145, 0.10), transparent 26%),
+    linear-gradient(145deg, rgba(12, 23, 38, 0.96), rgba(6, 15, 27, 0.98));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.015);
+}
+
+#riskSettingsPanel .risk-card-icon {
+  position: absolute;
+  top: 23px;
+  right: 25px;
+  color: #7c3aed;
+  font-size: 37px;
+  line-height: 1;
+}
+
+#riskSettingsPanel .risk-pro-card h3 {
+  max-width: calc(100% - 58px);
+  margin: 0 0 6px;
+  color: #f8fafc;
+  font-size: 21px;
+  line-height: 1.25;
+  font-weight: 850;
+}
+
+#riskSettingsPanel .risk-pro-card p {
+  margin: 0;
+  color: #9eacc2;
+  font-size: 17px;
+  font-weight: 550;
+}
+
+#riskSettingsPanel .risk-stepper {
+  display: grid;
+  grid-template-columns: 70px minmax(0, 1fr) 70px;
+  margin: 22px 0 20px;
+  overflow: hidden;
+  border: 1px solid #1c2a3c;
+  border-radius: 8px;
+  background: #050c15;
+}
+
+#riskSettingsPanel .risk-stepper button,
+#riskSettingsPanel .risk-stepper input {
+  height: 66px;
+  border: 0;
+  border-right: 1px solid #1c2a3c;
+  background: rgba(4, 11, 20, 0.94);
+  color: #f8fafc;
+  text-align: center;
+}
+
+#riskSettingsPanel .risk-stepper button:last-child {
+  border-right: 0;
+}
+
+#riskSettingsPanel .risk-stepper button {
+  font-size: 28px;
+  font-weight: 400;
+  cursor: pointer;
+  transition: background 160ms ease, color 160ms ease;
+}
+
+#riskSettingsPanel .risk-stepper button:hover {
+  background: rgba(124, 58, 237, 0.13);
+  color: #a78bfa;
+}
+
+#riskSettingsPanel .risk-stepper input {
+  appearance: textfield;
+  font-size: 29px;
+  font-weight: 900;
+}
+
+#riskSettingsPanel .risk-stepper input::-webkit-inner-spin-button,
+#riskSettingsPanel .risk-stepper input::-webkit-outer-spin-button {
+  appearance: none;
+  margin: 0;
+}
+
+#riskSettingsPanel .risk-bar {
+  height: 7px;
+  margin: 0 0 14px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #142033;
+}
+
+#riskSettingsPanel .risk-bar span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #6d28d9, #8b5cf6);
+  box-shadow: 0 0 10px rgba(124, 58, 237, 0.35);
+}
+
+#riskSettingsPanel .risk-pro-card small {
+  display: block;
+  color: #aebbd0;
+  text-align: center;
+  font-size: 16px;
+  font-weight: 550;
+}
+
+#riskSettingsPanel .risk-pro-extra {
+  display: none !important;
+}
+
+#riskSettingsPanel .risk-pro-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  margin: 26px -32px 0;
+  padding: 26px 32px 0;
+  border-top: 1px solid #172436;
+}
+
+.risk-pro-actions-right {
+  display: flex;
+  gap: 16px;
+}
+
+#riskSettingsPanel .risk-pro-actions button {
+  min-width: 170px;
+  min-height: 60px;
+  padding: 0 26px;
+  border: 1px solid #243246;
+  border-radius: 9px;
+  background: #0b1422;
+  color: #f7f9fd;
+  font-size: 17px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+#riskSettingsPanel #riskSaveBtn {
+  min-width: 238px;
+  background: linear-gradient(135deg, #5720d5, #7133e6) !important;
+  border-color: #7133e6 !important;
+  box-shadow: 0 10px 30px rgba(91, 33, 182, 0.24);
+}
+
+#riskSettingsPanel .risk-pro-footnote {
+  margin: 24px 0 28px;
+  color: #93a4bc;
+  text-align: center;
+  font-size: 16px;
+}
+
+@media (max-width: 1100px) {
+  #riskSettingsPanel .risk-pro-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+}
+
+@media (max-width: 720px) {
+  body[data-active-settings-page="settings:risk"] .settings-modal-header {
+    min-height: 120px;
+    padding: 26px 70px 22px 82px;
+  }
+
+  body[data-active-settings-page="settings:risk"] .settings-modal-header::before {
+    left: 22px;
+    top: 27px;
+    width: 38px;
+    height: 44px;
+    border-width: 4px;
+    font-size: 20px;
+  }
+
+  body[data-active-settings-page="settings:risk"] #settingsModalTitle {
+    font-size: 26px;
+  }
+
+  body[data-active-settings-page="settings:risk"] #settingsModalSubtitle {
+    font-size: 15px;
+  }
+
+  #riskSettingsPanel {
+    padding-inline: 16px;
+  }
+
+  #riskSettingsPanel .risk-pro-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  #riskSettingsPanel .risk-pro-actions {
+    margin-inline: -16px;
+    padding-inline: 16px;
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .risk-pro-actions-right {
+    display: grid;
+    grid-template-columns: 1fr 1.4fr;
+  }
+
+  #riskSettingsPanel .risk-pro-actions button {
+    width: 100%;
+    min-width: 0;
+  }
+}
+
+/* Attached page overrides must remain last in the cascade. */
+body[data-active-settings-page="auto-trade"] #paperModal,
+body[data-active-settings-page^="settings:"] #settingsModal,
+body[data-active-settings-page="performance"] #statsModal,
+body[data-active-settings-page="assistant"] #assistantModal {
+  position: fixed !important;
+  inset: 0 !important;
+  padding: var(--app-sidebar-top) 0 0 var(--app-sidebar-width) !important;
+  align-items: flex-start !important;
+  justify-content: flex-start !important;
+  overflow: hidden !important;
+  background: transparent !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+body[data-active-settings-page="auto-trade"] #paperModal .trade-modal-box,
+body[data-active-settings-page^="settings:"] #settingsModal .settings-modal-box,
+body[data-active-settings-page="performance"] #statsModal .performance-modal-box,
+body[data-active-settings-page="assistant"] #assistantModal .assistant-modal-box {
+  position: fixed !important;
+  top: var(--app-sidebar-top) !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  left: var(--app-sidebar-width) !important;
+  width: calc(100vw - var(--app-sidebar-width)) !important;
+  max-width: none !important;
+  height: var(--app-panel-height) !important;
+  min-height: 0 !important;
+  max-height: var(--app-panel-height) !important;
+  margin: 0 !important;
+  box-sizing: border-box !important;
+  border: 1px solid #1b293b !important;
+  border-radius: 0 !important;
+  border-left: 0 !important;
+  box-shadow: none !important;
+}
+
+body[data-active-settings-page^="settings:"] #settingsModal .settings-modal-box,
+body[data-active-settings-page="performance"] #statsModal .performance-modal-box {
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
 }
