@@ -10492,4 +10492,69 @@ body[data-active-settings-page="performance"] #statsModal .performance-modal-box
   body.fit-mode #mainApp.app:not(.locked).menu-drawer-open::after {
     inset: 0 !important;
   }
+
+  /* Phone attached pages fill the viewport after the drawer closes. */
+  body[data-active-settings-page="assistant"] #assistantModal,
+  body[data-active-settings-page="auto-trade"] #paperModal,
+  body[data-active-settings-page="performance"] #statsModal,
+  body[data-active-settings-page^="settings:"] #settingsModal,
+  body[data-active-settings-page="broker-accounts"] #brokerAccountsModal {
+    position: fixed !important;
+    inset: 0 !important;
+    width: 100vw !important;
+    height: 100dvh !important;
+    padding: 8px !important;
+    align-items: stretch !important;
+    justify-content: stretch !important;
+    overflow: hidden !important;
+    background: rgba(1, 6, 14, 0.88) !important;
+    backdrop-filter: blur(10px) !important;
+    -webkit-backdrop-filter: blur(10px) !important;
+    z-index: 1200 !important;
+  }
+
+  body[data-active-settings-page="assistant"] #assistantModal .assistant-modal-box,
+  body[data-active-settings-page="auto-trade"] #paperModal .trade-modal-box,
+  body[data-active-settings-page="performance"] #statsModal .performance-modal-box,
+  body[data-active-settings-page^="settings:"] #settingsModal .settings-modal-box {
+    position: relative !important;
+    inset: auto !important;
+    top: auto !important;
+    right: auto !important;
+    bottom: auto !important;
+    left: auto !important;
+    width: 100% !important;
+    max-width: none !important;
+    height: 100% !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    margin: 0 !important;
+    border: 1px solid #1b3047 !important;
+    border-radius: 16px !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    box-shadow: 0 24px 70px rgba(0, 0, 0, 0.52) !important;
+  }
+
+  body[data-active-settings-page="broker-accounts"] #brokerAccountsModal .broker-settings-shell {
+    position: relative !important;
+    width: 100% !important;
+    height: 100% !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    overflow: hidden !important;
+    border: 1px solid #1b3047 !important;
+    border-radius: 16px !important;
+    background: #06101c !important;
+    box-shadow: 0 24px 70px rgba(0, 0, 0, 0.52) !important;
+  }
+
+  body[data-active-settings-page="broker-accounts"] #brokerAccountsModal .broker-settings-content {
+    width: 100% !important;
+    height: 100% !important;
+    min-height: 0 !important;
+    padding: 18px 14px 28px !important;
+    overflow-x: auto !important;
+    overflow-y: auto !important;
+  }
 }

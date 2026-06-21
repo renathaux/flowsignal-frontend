@@ -9139,6 +9139,13 @@ if (closeStatsBtn) {
   });
 }
 
+statsModal?.addEventListener("click", (event) => {
+  if (event.target === statsModal) {
+    statsModal.classList.add("hidden");
+    setActiveSettingsPage(null);
+  }
+});
+
 document.getElementById("performanceFooterCloseBtn")?.addEventListener("click", () => {
   statsModal?.classList.add("hidden");
   setMainMenuOpen(false);
