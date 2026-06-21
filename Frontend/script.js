@@ -8716,6 +8716,17 @@ if (menuToggleBtn && sideMenu) {
   });
 }
 
+sideMenu?.addEventListener("click", (event) => {
+  if (!window.matchMedia("(max-width: 700px)").matches) return;
+
+  const selectedOption = event.target.closest(".menu-row, .menu-subrow");
+  if (!selectedOption || selectedOption === menuSettingsBtn) return;
+
+  window.setTimeout(() => {
+    setMainMenuOpen(false, { closeAttachedPage: false });
+  }, 0);
+});
+
 menuDashboardBtn?.addEventListener("click", () => {
   closeAllOverlays();
   setMainMenuOpen(false);
