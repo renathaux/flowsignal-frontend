@@ -10017,8 +10017,8 @@ body[data-active-settings-page="performance"] #statsModal .performance-modal-box
     display: grid !important;
     grid-template-columns: 1fr 88px !important;
     align-items: center !important;
-    min-height: 75px !important;
-    padding: 11px 0 !important;
+    min-height: 61px !important;
+    padding: 8px 0 !important;
     border: 0 !important;
     border-bottom: 1px solid rgba(73, 111, 148, 0.24) !important;
     border-radius: 0 !important;
@@ -10027,7 +10027,7 @@ body[data-active-settings-page="performance"] #statsModal .performance-modal-box
   }
 
   .performance-strip .performance-card:last-child {
-    min-height: 61px !important;
+    min-height: 49px !important;
     border-bottom: 0 !important;
   }
 
@@ -10038,7 +10038,7 @@ body[data-active-settings-page="performance"] #statsModal .performance-modal-box
   .performance-strip .performance-copy {
     display: flex !important;
     flex-direction: column;
-    gap: 6px;
+    gap: 4px;
     min-width: 0;
   }
 
@@ -10051,21 +10051,21 @@ body[data-active-settings-page="performance"] #statsModal .performance-modal-box
 
   .performance-strip .performance-copy strong {
     color: #d8dfeb !important;
-    font-size: 23px !important;
+    font-size: 20px !important;
     line-height: 1 !important;
     font-weight: 850 !important;
   }
 
   .performance-strip .performance-weekly .performance-copy strong {
     color: var(--phone-green) !important;
-    font-size: 29px !important;
+    font-size: 25px !important;
     text-shadow: 0 0 18px rgba(37, 223, 114, 0.12);
   }
 
   .performance-strip .performance-sparkline {
     display: block !important;
     width: 82px !important;
-    height: 35px !important;
+    height: 29px !important;
     grid-column: 2;
     grid-row: 1;
     stroke: var(--phone-green) !important;
@@ -10110,8 +10110,8 @@ body[data-active-settings-page="performance"] #statsModal .performance-modal-box
     display: block !important;
     width: 100% !important;
     min-height: 0 !important;
-    height: 232px !important;
-    padding: 15px 14px 0 !important;
+    height: 194px !important;
+    padding: 12px 14px 0 !important;
     overflow: hidden !important;
     border: 1px solid rgba(68, 111, 151, 0.55) !important;
     border-radius: 18px !important;
@@ -10128,7 +10128,7 @@ body[data-active-settings-page="performance"] #statsModal .performance-modal-box
 
   .symbol-card .card-header {
     position: static !important;
-    min-height: 30px !important;
+    min-height: 25px !important;
     margin: 0 !important;
     padding: 0 !important;
   }
@@ -10141,7 +10141,7 @@ body[data-active-settings-page="performance"] #statsModal .performance-modal-box
 
   .symbol-card .card-title {
     color: #f5f7fb !important;
-    font-size: 21px !important;
+    font-size: 18px !important;
     font-weight: 850 !important;
     letter-spacing: -0.3px;
   }
@@ -10149,14 +10149,14 @@ body[data-active-settings-page="performance"] #statsModal .performance-modal-box
   .symbol-card .symbol-icon {
     position: static !important;
     width: auto !important;
-    height: 24px !important;
+    height: 21px !important;
     max-width: 48px !important;
     object-fit: contain;
   }
 
   .symbol-card .signal-shell {
     position: absolute !important;
-    top: 56px !important;
+    top: 44px !important;
     left: 14px !important;
     width: calc(55% - 20px) !important;
     height: auto !important;
@@ -10168,7 +10168,7 @@ body[data-active-settings-page="performance"] #statsModal .performance-modal-box
     display: grid !important;
     place-items: center;
     width: 100% !important;
-    height: 84px !important;
+    height: 66px !important;
     margin: 0 !important;
     padding: 0 8px !important;
     border: 1px solid rgba(233, 169, 47, 0.9) !important;
@@ -10178,10 +10178,12 @@ body[data-active-settings-page="performance"] #statsModal .performance-modal-box
   }
 
   .symbol-card .signal-text {
-    font-size: clamp(38px, 12vw, 50px) !important;
+    max-width: 100% !important;
+    font-size: clamp(27px, 8.5vw, 36px) !important;
     line-height: 1 !important;
     font-weight: 900 !important;
-    letter-spacing: -1.5px !important;
+    letter-spacing: -1px !important;
+    white-space: nowrap !important;
   }
 
   .symbol-card .signal-text.wait-text {
@@ -10203,16 +10205,16 @@ body[data-active-settings-page="performance"] #statsModal .performance-modal-box
 
   #eurusd-buy-label,
   #gold-buy-label {
-    top: 39px !important;
+    top: 32px !important;
   }
 
   #eurusd-sell-label,
   #gold-sell-label {
-    top: 78px !important;
+    top: 62px !important;
   }
 
   .symbol-card .metric-label.conf-label {
-    top: 117px !important;
+    top: 92px !important;
   }
 
   .symbol-card .bar-wrap {
@@ -10226,16 +10228,16 @@ body[data-active-settings-page="performance"] #statsModal .performance-modal-box
 
   #eurusd-buy-label + .bar-wrap,
   #gold-buy-label + .bar-wrap {
-    top: 59px !important;
+    top: 49px !important;
   }
 
   #eurusd-sell-label + .bar-wrap,
   #gold-sell-label + .bar-wrap {
-    top: 98px !important;
+    top: 79px !important;
   }
 
   .symbol-card .bar-wrap.conf-wrap {
-    top: 137px !important;
+    top: 109px !important;
   }
 
   .symbol-card .glow-bar {
@@ -10247,7 +10249,7 @@ body[data-active-settings-page="performance"] #statsModal .performance-modal-box
 
   .symbol-card .signal-freshness-note {
     position: absolute !important;
-    top: 143px !important;
+    top: 113px !important;
     left: 15px !important;
     width: calc(55% - 20px);
     font-size: 9px !important;
@@ -10262,21 +10264,21 @@ body[data-active-settings-page="performance"] #statsModal .performance-modal-box
     align-items: center;
     gap: 7px !important;
     width: 100% !important;
-    min-height: 52px;
+    min-height: 43px;
     margin: 0 !important;
-    padding: 9px 14px !important;
+    padding: 6px 14px !important;
     border-top: 1px solid rgba(54, 91, 128, 0.34);
   }
 
   .symbol-card .glow-tag {
     min-width: 0 !important;
-    height: 31px !important;
-    padding: 0 10px !important;
+    height: 27px !important;
+    padding: 0 8px !important;
     border: 1px solid #334154 !important;
     border-radius: 999px !important;
     background: linear-gradient(145deg, #151e2a, #0b121d) !important;
     color: #dbe2ec !important;
-    font-size: 10px !important;
+    font-size: 9px !important;
     font-weight: 800 !important;
     white-space: nowrap;
   }
@@ -10374,7 +10376,7 @@ body[data-active-settings-page="performance"] #statsModal .performance-modal-box
     height: auto !important;
     min-height: 0 !important;
     margin: 12px 0 0 !important;
-    padding: 12px 9px 10px !important;
+    padding: 9px 9px 7px !important;
     overflow: hidden !important;
     border: 1px solid rgba(68, 111, 151, 0.55) !important;
     border-radius: 18px !important;
@@ -10382,9 +10384,9 @@ body[data-active-settings-page="performance"] #statsModal .performance-modal-box
   }
 
   .history-header h2 {
-    margin: 0 0 12px !important;
+    margin: 0 0 7px !important;
     color: #f5f7fb !important;
-    font-size: 20px !important;
+    font-size: 17px !important;
     letter-spacing: -0.35px;
   }
 
@@ -10404,7 +10406,7 @@ body[data-active-settings-page="performance"] #statsModal .performance-modal-box
   .history-table th,
   .history-table td {
     min-width: 0 !important;
-    padding: 8px 2px !important;
+    padding: 6px 2px !important;
     overflow: hidden;
     color: #e9edf4;
     font-size: clamp(8px, 2.5vw, 10px) !important;
