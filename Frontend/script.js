@@ -2206,6 +2206,12 @@ function openAssistantPanel() {
   assistantModal.classList.remove("hidden");
   setActiveSettingsPage("assistant");
   setMainMenuOpen(true);
+
+  if (window.matchMedia("(max-width: 700px)").matches) {
+    window.setTimeout(() => {
+      setMainMenuOpen(false, { closeAttachedPage: false });
+    }, 0);
+  }
 }
 
 function closeAssistantPanel() {
@@ -6599,6 +6605,12 @@ function openPaperPanel() {
   document.body.classList.add("paper-open");
   setActiveSettingsPage("auto-trade");
   setMainMenuOpen(true);
+
+  if (window.matchMedia("(max-width: 700px)").matches) {
+    window.setTimeout(() => {
+      setMainMenuOpen(false, { closeAttachedPage: false });
+    }, 0);
+  }
 }
 
 function closePaperPanel() {
