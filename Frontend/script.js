@@ -1386,9 +1386,9 @@ const ASSISTANT_COPY = {
 };
 
 const VOICE_EVENT_PRIORITY = {
+  MARKET_CLOSED: 140,
   BROKER_DISCONNECTED: 130,
   BROKER_CONNECTED: 125,
-  MARKET_CLOSED: 120,
   WIN: 110,
   LOSS: 110,
   TP2: 100,
@@ -2222,6 +2222,13 @@ function stopAssistantVoice() {
 
 function speakVoiceEvent(event) {
   if (
+    isForexWeekendClosed() &&
+    String(event?.state || "").toUpperCase() !== "MARKET CLOSED"
+  ) {
+    return;
+  }
+
+  if (
     !voiceState.enabled ||
     !event?.message ||
     !speechSynthesisSupported ||
@@ -2493,12 +2500,48 @@ function buildVoiceSnapshot(symbol, data, meta) {
   };
 }
 
-function buildVoiceSystemSnapshot(meta, rawData) {
-  const feedStatuses = Object.values(rawData?.feed_status || {});
-  const marketClosed = Boolean(
-    rawData?.market_closed ||
-    feedStatuses.some((status) => Boolean(status?.market_closed))
+function isForexWeekendClosed(now = new Date()) {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/New_York",
+    weekday: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23"
+  }).formatToParts(now);
+  const values = Object.fromEntries(
+    parts
+      .filter((part) => part.type !== "literal")
+      .map((part) => [part.type, part.value])
   );
+  const day = values.weekday;
+  const minutes = (Number(values.hour) * 60) + Number(values.minute);
+  const closeMinutes = 17 * 60;
+
+  return (
+    day === "Sat" ||
+    (day === "Fri" && minutes >= closeMinutes) ||
+    (day === "Sun" && minutes < closeMinutes)
+  );
+}
+
+function isPanelMarketClosed(rawData) {
+  if (isForexWeekendClosed()) {
+    return true;
+  }
+
+  if (typeof rawData?.market_closed === "boolean") {
+    return rawData.market_closed;
+  }
+
+  const feedStatuses = Object.values(rawData?.feed_status || {});
+  return (
+    feedStatuses.length > 0 &&
+    feedStatuses.every((status) => Boolean(status?.market_closed))
+  );
+}
+
+function buildVoiceSystemSnapshot(meta, rawData) {
+  const marketClosed = isPanelMarketClosed(rawData);
   const brokerKnown = Boolean(meta?.live_account);
   const brokerConnected = brokerKnown
     ? Boolean(meta.live_account.connected)
@@ -2517,6 +2560,17 @@ function buildVoiceSystemEvents(meta, rawData) {
   const events = [];
 
   if (!voiceState.initialized || !previous) {
+    if (next.marketClosed) {
+      events.push({
+        symbol: "SYSTEM",
+        state: "MARKET CLOSED",
+        priority: VOICE_EVENT_PRIORITY.MARKET_CLOSED,
+        fingerprint: "system:market-closed:initial",
+        message: assistantEventMessage("marketClosed")
+      });
+      return { snapshot: next, events };
+    }
+
     events.push({
       symbol: "SYSTEM",
       state: "APP",
@@ -2535,16 +2589,19 @@ function buildVoiceSystemEvents(meta, rawData) {
       });
     }
 
-    if (next.marketClosed) {
+    return { snapshot: next, events };
+  }
+
+  if (next.marketClosed) {
+    if (!previous.marketClosed) {
       events.push({
         symbol: "SYSTEM",
         state: "MARKET CLOSED",
         priority: VOICE_EVENT_PRIORITY.MARKET_CLOSED,
-        fingerprint: "system:market-closed:initial",
+        fingerprint: `system:market-closed:${Date.now()}`,
         message: assistantEventMessage("marketClosed")
       });
     }
-
     return { snapshot: next, events };
   }
 
@@ -2567,16 +2624,6 @@ function buildVoiceSystemEvents(meta, rawData) {
     });
   }
 
-  if (next.marketClosed && !previous.marketClosed) {
-    events.push({
-      symbol: "SYSTEM",
-      state: "MARKET CLOSED",
-      priority: VOICE_EVENT_PRIORITY.MARKET_CLOSED,
-      fingerprint: `system:market-closed:${Date.now()}`,
-      message: assistantEventMessage("marketClosed")
-    });
-  }
-
   return { snapshot: next, events };
 }
 
@@ -2585,6 +2632,17 @@ function processVoiceAnnouncements(data, meta, rawData = null) {
   const nextSnapshots = {};
   const system = buildVoiceSystemEvents(meta, rawData);
   const events = [...system.events];
+
+  if (system.snapshot.marketClosed) {
+    voiceState.snapshots = nextSnapshots;
+    voiceState.systemSnapshot = system.snapshot;
+    voiceState.initialized = true;
+
+    if (events.length) {
+      queueVoiceEvents(events);
+    }
+    return;
+  }
 
   symbols.forEach((symbol) => {
     const next = buildVoiceSnapshot(symbol, data, meta);
@@ -2983,11 +3041,15 @@ function buildSmartExplanation(symbol) {
   const signal = normalizeVoiceSignal(data);
   const blocked = getSmartExplainBlockedStatus(symbol, data);
   const activeTrade = getVerifiedActiveTrade(symbol);
+  const marketClosed = isPanelMarketClosed(latestRawPanelData);
   let message = "";
   let state = signal;
   let details = "";
 
-  if (activeTrade) {
+  if (marketClosed) {
+    state = "MARKET CLOSED";
+    message = assistantEventMessage("marketClosed");
+  } else if (activeTrade) {
     state = "EXECUTED";
     message = assistantEventMessage("activeTrade", {
       symbol: getSpokenSymbol(symbol)
@@ -3120,13 +3182,33 @@ function renderAssistantPopup(message, state = "INFO", options = {}) {
 }
 
 function showAssistantMessage(message, state = "INFO", options = {}) {
-  renderAssistantPopup(message, state, options);
+  const marketClosed = isPanelMarketClosed(latestRawPanelData);
+  const finalMessage = marketClosed
+    ? assistantEventMessage("marketClosed")
+    : message;
+  const finalState = marketClosed
+    ? "MARKET CLOSED"
+    : state;
+  const finalOptions = marketClosed
+    ? {
+        ...options,
+        symbol: "SYSTEM",
+        subtitle:
+          currentLang === "fr"
+            ? "Assistant de marché"
+            : currentLang === "es"
+              ? "Asistente de mercado"
+              : "Market Assistant"
+      }
+    : options;
+
+  renderAssistantPopup(finalMessage, finalState, finalOptions);
 
   speakAssistantMessage(
-    message,
-    Boolean(options.forceSpeech),
-    options.symbol || "SYSTEM",
-    Boolean(options.interaction)
+    finalMessage,
+    Boolean(finalOptions.forceSpeech),
+    finalOptions.symbol || "SYSTEM",
+    Boolean(finalOptions.interaction)
   );
 }
 
@@ -3496,6 +3578,13 @@ if (mainLastSignal) {
       el.textContent = LANG[lang].wait;
     }
   });
+
+  if (statusEl?.dataset.connectionState) {
+    setConnectionBadge(
+      statusEl.dataset.connectionState,
+      statusEl.dataset.fullStatus || ""
+    );
+  }
 }
 
 
@@ -4276,22 +4365,46 @@ function updateUTC() {
   utcLabel.textContent = `UTC ${utc}`;
 }
 
+function getConnectionBadgeLabel(state) {
+  const labels = {
+    en: {
+      loading: "● LIVE loading...",
+      live: "● LIVE connected",
+      closed: "● Market Closed",
+      stale: "● LIVE loading...",
+      error: "● Connection issue"
+    },
+    fr: {
+      loading: "● LIVE chargement...",
+      live: "● LIVE connecté",
+      closed: "● Marché fermé",
+      stale: "● LIVE chargement...",
+      error: "● Problème de connexion"
+    },
+    es: {
+      loading: "● LIVE cargando...",
+      live: "● LIVE conectado",
+      closed: "● Mercado cerrado",
+      stale: "● LIVE cargando...",
+      error: "● Problema de conexión"
+    }
+  };
+
+  return (labels[currentLang] || labels.en)[state] || labels.en.live;
+}
+
 function setConnectionBadge(state = "live", details = "") {
   if (!statusEl) return;
 
-  const normalized = ["loading", "live", "stale", "error"].includes(state)
+  const normalized = ["loading", "live", "closed", "stale", "error"].includes(state)
     ? state
     : "live";
-  const labels = {
-    loading: "● LIVE loading...",
-    live: "● Live",
-    stale: "● LIVE loading...",
-    error: "● Connection issue"
-  };
+  const label = getConnectionBadgeLabel(normalized);
 
-  statusEl.textContent = labels[normalized];
-  statusEl.title = details || labels[normalized];
-  statusEl.dataset.fullStatus = details || labels[normalized];
+  statusEl.textContent = label;
+  statusEl.title = details || label;
+  statusEl.dataset.fullStatus = details || label;
+  statusEl.dataset.mobileLabel = label;
   statusEl.dataset.connectionState = normalized;
   statusEl.className = `status status-${normalized}`;
 }
@@ -4301,6 +4414,8 @@ function setStatus(text, mode = "live") {
 
   if (mode === "error" || upperText.includes("ERROR")) {
     setConnectionBadge("error", text);
+  } else if (upperText.includes("MARKET CLOSED")) {
+    setConnectionBadge("closed", text);
   } else if (upperText.includes("STALE") || upperText.includes("CACHE")) {
     setConnectionBadge("stale", text);
   } else if (upperText.includes("LOADING") || upperText.includes("SENDING")) {
@@ -4315,7 +4430,7 @@ function refreshConnectionBadgeFreshness() {
   if (Date.now() - latestPanelFetchedAt <= 60000) return;
 
   const state = statusEl.dataset.connectionState;
-  if (state === "error" || state === "stale") return;
+  if (state === "error" || state === "stale" || state === "closed") return;
 
   setConnectionBadge(
     "stale",
@@ -6219,7 +6334,9 @@ async function refreshPanel() {
   let badgeSettled = false;
 
   try {
-    if (!lastGoodPanelData) {
+    if (isForexWeekendClosed()) {
+      setConnectionBadge("closed", "Forex market closed until Sunday 5:00 PM New York time");
+    } else if (!lastGoodPanelData) {
       setConnectionBadge("loading", "Loading initial panel data...");
     }
 
@@ -6246,7 +6363,7 @@ const lastCandle = liveCandles[liveCandles.length - 1];
 console.log("LAST CANDLE", currentChartSymbol, lastCandle);
 
 const feedStatus = rawData?.feed_status?.[currentChartSymbol];
-const marketClosed = Boolean(rawData?.market_closed || feedStatus?.market_closed);
+const marketClosed = isPanelMarketClosed(rawData);
 
 MARKET_IS_CLOSED = marketClosed;
 _CHART_IDLE_ENABLED = !marketClosed;
@@ -6411,12 +6528,12 @@ updateUTC();
 
     if (meta?.source === "fallback_cache" && meta?.error) {
       setConnectionBadge("error", `Connection issue: ${meta.error}`);
+    } else if (marketClosed) {
+      setConnectionBadge("closed", `${updateDetail}; market closed`);
     } else if (isDelayed) {
       setConnectionBadge(
         "stale",
-        marketClosed
-          ? `${updateDetail}; market closed`
-          : `${updateDetail}; live loading`
+        `${updateDetail}; live loading`
       );
     } else {
       setConnectionBadge("live", updateDetail);
@@ -6439,10 +6556,18 @@ updateUTC();
   renderChartFromPanel(lastGoodPanelData, currentChartSymbol, currentChartTimeframe);
 }
 
-    setConnectionBadge("error", `Connection issue: ${err.message}; using last successful panel data`);
+    if (isForexWeekendClosed()) {
+      setConnectionBadge("closed", "Forex market closed until Sunday 5:00 PM New York time");
+    } else {
+      setConnectionBadge("error", `Connection issue: ${err.message}; using last successful panel data`);
+    }
     badgeSettled = true;
   } else {
-    setConnectionBadge("error", `Connection issue: ${err.message}`);
+    if (isForexWeekendClosed()) {
+      setConnectionBadge("closed", "Forex market closed until Sunday 5:00 PM New York time");
+    } else {
+      setConnectionBadge("error", `Connection issue: ${err.message}`);
+    }
     badgeSettled = true;
   }
 } finally {
@@ -8432,6 +8557,13 @@ const role = localStorage.getItem("flowsignal_role");
 updatePnlVisibility();
 applyDashboardPreferences();
 hydrateRiskSettings();
+
+if (isForexWeekendClosed()) {
+  setConnectionBadge(
+    "closed",
+    "Forex market closed from Friday 5:00 PM until Sunday 5:00 PM New York time"
+  );
+}
 
 if (access?.granted || role === "user" || role === "admin") {
   if (landingPage) {
