@@ -10554,7 +10554,241 @@ body[data-active-settings-page="performance"] #statsModal .performance-modal-box
     height: 100% !important;
     min-height: 0 !important;
     padding: 18px 14px 28px !important;
-    overflow-x: auto !important;
+    overflow-x: hidden !important;
     overflow-y: auto !important;
+  }
+
+  #brokerAccountsModal .broker-settings-header {
+    position: relative !important;
+    display: flex !important;
+    align-items: flex-start !important;
+    justify-content: space-between !important;
+    gap: 12px !important;
+    padding: 4px 46px 16px 0 !important;
+  }
+
+  #brokerAccountsModal .broker-settings-header h2 {
+    margin-bottom: 7px !important;
+    font-size: 24px !important;
+  }
+
+  #brokerAccountsModal .broker-settings-header p {
+    font-size: 13px !important;
+    line-height: 1.35 !important;
+  }
+
+  .broker-mobile-close {
+    position: absolute;
+    top: 0;
+    right: 0;
+    display: grid !important;
+    place-items: center;
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    border: 1px solid #2b4058;
+    border-radius: 10px;
+    background: #0c1826;
+    color: #e7edf5;
+    font-size: 24px;
+    line-height: 1;
+  }
+
+  #brokerAccountsModal .broker-connection-card {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    min-height: 0 !important;
+    gap: 14px !important;
+    margin-bottom: 12px !important;
+    padding: 15px !important;
+  }
+
+  #brokerAccountsModal .broker-section-title {
+    flex-wrap: wrap !important;
+    font-size: 16px !important;
+  }
+
+  #brokerAccountsModal .broker-account-status,
+  #brokerAccountsModal .broker-authorized-text {
+    margin-top: 7px !important;
+    font-size: 13px !important;
+    overflow-wrap: anywhere;
+  }
+
+  #brokerAccountsModal .broker-account-actions {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    gap: 8px !important;
+  }
+
+  #brokerAccountsModal .broker-action-btn {
+    width: 100% !important;
+    min-height: 44px !important;
+    font-size: 13px !important;
+  }
+
+  #brokerAccountsModal .broker-settings-main {
+    display: flex !important;
+    flex-direction: column !important;
+    grid-template-columns: none !important;
+    width: 100% !important;
+    gap: 12px !important;
+  }
+
+  #brokerAccountsModal .broker-settings-main > main,
+  #brokerAccountsModal .broker-right-panel {
+    display: contents !important;
+  }
+
+  #brokerAccountsModal .broker-accounts-card,
+  #brokerAccountsModal .broker-active-card,
+  #brokerAccountsModal .broker-side-actions,
+  #brokerAccountsModal .broker-about-card {
+    width: 100% !important;
+    min-width: 0 !important;
+    margin: 0 !important;
+    padding: 15px !important;
+  }
+
+  #brokerAccountsModal .broker-accounts-card {
+    order: 1;
+  }
+
+  #brokerAccountsModal .broker-active-card {
+    order: 2;
+  }
+
+  #brokerAccountsModal .broker-side-actions {
+    order: 3;
+  }
+
+  #brokerAccountsModal .broker-about-card {
+    order: 4;
+  }
+
+  #brokerAccountsModal .broker-accounts-heading {
+    align-items: flex-start !important;
+    justify-content: space-between !important;
+    gap: 8px !important;
+    margin-bottom: 12px !important;
+  }
+
+  #brokerAccountsModal .broker-count-pill {
+    flex: 0 0 auto;
+    max-width: 94px;
+    padding: 5px 7px !important;
+    font-size: 9px !important;
+    text-align: center;
+  }
+
+  #brokerAccountsModal .broker-account-table-wrap {
+    width: 100% !important;
+    overflow: visible !important;
+    border: 0 !important;
+  }
+
+  #brokerAccountsModal .broker-account-table {
+    display: block !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    table-layout: auto !important;
+  }
+
+  #brokerAccountsModal .broker-account-table thead {
+    display: none !important;
+  }
+
+  #brokerAccountsModal .broker-account-table tbody,
+  #brokerAccountsModal .broker-account-table tr {
+    display: block !important;
+    width: 100% !important;
+  }
+
+  #brokerAccountsModal .broker-account-table tr {
+    margin-bottom: 10px !important;
+    padding: 8px 10px !important;
+    overflow: hidden;
+    border: 1px solid #1d3045 !important;
+    border-radius: 10px !important;
+    background: #08131f !important;
+  }
+
+  #brokerAccountsModal .broker-account-table td {
+    display: grid !important;
+    grid-template-columns: 72px minmax(0, 1fr) !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    padding: 7px 0 !important;
+    border-bottom: 1px solid rgba(148, 163, 184, 0.09) !important;
+    overflow: visible !important;
+    font-size: 12px !important;
+    white-space: normal !important;
+    text-overflow: clip !important;
+    overflow-wrap: anywhere;
+  }
+
+  #brokerAccountsModal .broker-account-table td:last-child {
+    border-bottom: 0 !important;
+  }
+
+  #brokerAccountsModal .broker-account-table td::before {
+    color: #8796aa;
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+  }
+
+  #brokerAccountsModal .broker-account-table td:nth-child(1)::before { content: "ID"; }
+  #brokerAccountsModal .broker-account-table td:nth-child(2)::before { content: "Number"; }
+  #brokerAccountsModal .broker-account-table td:nth-child(3)::before { content: "Broker"; }
+  #brokerAccountsModal .broker-account-table td:nth-child(4)::before { content: "Type"; }
+  #brokerAccountsModal .broker-account-table td:nth-child(5)::before { content: "Balance"; }
+  #brokerAccountsModal .broker-account-table td:nth-child(6)::before { content: "Currency"; }
+  #brokerAccountsModal .broker-account-table td:nth-child(7)::before { content: "Status"; }
+  #brokerAccountsModal .broker-account-table td:nth-child(8)::before { content: "Active"; }
+
+  #brokerAccountsModal .broker-account-table td[colspan] {
+    display: block !important;
+    padding: 14px 4px !important;
+    text-align: center !important;
+  }
+
+  #brokerAccountsModal .broker-account-table td[colspan]::before {
+    content: none !important;
+  }
+
+  #brokerAccountsModal .broker-active-title {
+    margin-bottom: 14px !important;
+    font-size: 16px !important;
+  }
+
+  #brokerAccountsModal .broker-active-card strong {
+    font-size: 22px !important;
+  }
+
+  #brokerAccountsModal .broker-side-btn {
+    min-height: 44px !important;
+    font-size: 13px !important;
+  }
+
+  #brokerAccountsModal .broker-side-actions h3 {
+    margin-bottom: 12px !important;
+    font-size: 17px !important;
+  }
+
+  #brokerAccountsModal .broker-side-action {
+    min-height: 62px !important;
+    padding: 11px !important;
+    font-size: 12px !important;
+  }
+}
+
+.broker-mobile-close {
+  display: none;
+}
+
+@media (max-width: 700px) {
+  .broker-mobile-close {
+    display: grid !important;
   }
 }
