@@ -297,6 +297,12 @@ body {
   background: rgba(30, 64, 175, 0.18) !important;
 }
 
+.status.status-closed {
+  color: #f4bd48;
+  border-color: rgba(244, 189, 72, 0.5) !important;
+  background: rgba(112, 70, 10, 0.25) !important;
+}
+
 .status.status-stale {
   color: #fbbf24;
   border-color: rgba(245, 158, 11, 0.5) !important;
@@ -9985,8 +9991,14 @@ body[data-active-settings-page="performance"] #statsModal .performance-modal-box
   }
 
   .topbar .status::after {
-    content: "●  LIVE connected";
+    content: attr(data-mobile-label);
     font-size: 12px;
+  }
+
+  .topbar .status.status-closed {
+    border-color: rgba(244, 189, 72, 0.38) !important;
+    background: rgba(88, 56, 10, 0.52) !important;
+    color: #f4bd48 !important;
   }
 
   .topbar .controls {
