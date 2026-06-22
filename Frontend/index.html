@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>nathaux.Fx</title>
-  <link rel="stylesheet" href="style.css?v=46" />
+  <link rel="stylesheet" href="style.css?v=47" />
 </head>
 <body class="fit-mode">
   <div id="landingPage" class="landing-page landing-pro">
@@ -438,6 +438,22 @@
       <div class="smc-row signal-blocker-row hidden" id="main-blocked-by-row"><span>Blocked By</span><span id="main-blocked-by">--</span></div>
       <div class="smc-row signal-blocker-row hidden" id="main-blocked-reason-row"><span>Blocked Reason</span><span id="main-blocked-reason">--</span></div>
     </div>
+
+    <details class="entry-strategy-debug" open>
+      <summary>ENTRY STRATEGY CHECKS</summary>
+      <div class="entry-strategy-debug-grid">
+        <span>15m swing break</span><strong id="strategy-debug-swing-break">NO</strong>
+        <span>15m close confirmed</span><strong id="strategy-debug-15m-close">NO</strong>
+        <span>Saved swing level</span><strong id="strategy-debug-swing-level">--</strong>
+        <span>5m confirmation</span><strong id="strategy-debug-5m-confirm">NO</strong>
+        <span>EMA 15m in favor</span><strong id="strategy-debug-ema">NO</strong>
+        <span>SL valid</span><strong id="strategy-debug-sl">NO</strong>
+        <span>TP1 valid</span><strong id="strategy-debug-tp1">NO</strong>
+        <span>TP2 valid</span><strong id="strategy-debug-tp2">NO</strong>
+        <span>Final entry decision</span><strong id="strategy-debug-decision">WAIT</strong>
+        <span>Block reason</span><strong id="strategy-debug-block-reason">--</strong>
+      </div>
+    </details>
 
     <div class="buttons-row main-buttons-row">
   <div class="button-shell buy-shell">
@@ -1183,7 +1199,7 @@
   <script src="flowAssistant.js?v=1"></script>
   <script src="performance.js?v=1"></script>
   <script src="history.js?v=1"></script>
-  <script src="script.js?v=60"></script>
+  <script src="script.js?v=61"></script>
 </body>
 </html>
   

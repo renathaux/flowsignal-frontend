@@ -4251,6 +4251,76 @@ if (priceEl) {
   document.getElementById("main-invalidation").textContent = tMarketText(data.invalidation || "--");
   document.getElementById("main-reason").textContent = tMarketText(data.plan_reason || "--");
 
+  const strategyDebug = data.entry_strategy_debug || {};
+  const setStrategyCheck = (id, value) => {
+    const element = document.getElementById(id);
+    if (!element) return;
+
+    const passed = value === true;
+    element.textContent = passed ? "YES" : "NO";
+    element.classList.toggle("check-pass", passed);
+    element.classList.toggle("check-fail", !passed);
+  };
+
+  setStrategyCheck(
+    "strategy-debug-swing-break",
+    strategyDebug.fifteen_m_swing_break
+  );
+  setStrategyCheck(
+    "strategy-debug-15m-close",
+    strategyDebug.fifteen_m_candle_close_confirmed
+  );
+  setStrategyCheck(
+    "strategy-debug-5m-confirm",
+    strategyDebug.five_m_confirmation
+  );
+  setStrategyCheck(
+    "strategy-debug-ema",
+    strategyDebug.ema_15m_in_favor
+  );
+  setStrategyCheck("strategy-debug-sl", strategyDebug.sl_valid);
+  setStrategyCheck("strategy-debug-tp1", strategyDebug.tp1_valid);
+  setStrategyCheck("strategy-debug-tp2", strategyDebug.tp2_valid);
+
+  const strategySwingLevel = document.getElementById(
+    "strategy-debug-swing-level"
+  );
+  if (strategySwingLevel) {
+    strategySwingLevel.textContent =
+      strategyDebug.saved_swing_level ?? "--";
+  }
+
+  const strategyDecision = document.getElementById(
+    "strategy-debug-decision"
+  );
+  if (strategyDecision) {
+    const decision = String(
+      strategyDebug.final_entry_decision || "WAIT"
+    ).toUpperCase();
+    strategyDecision.textContent = decision;
+    strategyDecision.classList.remove(
+      "decision-buy",
+      "decision-sell",
+      "decision-wait"
+    );
+    strategyDecision.classList.add(
+      decision === "BUY"
+        ? "decision-buy"
+        : decision === "SELL"
+          ? "decision-sell"
+          : "decision-wait"
+    );
+  }
+
+  const strategyBlockReason = document.getElementById(
+    "strategy-debug-block-reason"
+  );
+  if (strategyBlockReason) {
+    strategyBlockReason.textContent =
+      strategyDebug.block_reason || data.blocked_reason || data.plan_reason || "--";
+    strategyBlockReason.title = strategyBlockReason.textContent;
+  }
+
   // ==============================
 // FVG + SESSION INFO
 // ==============================
