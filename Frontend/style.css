@@ -4868,6 +4868,199 @@ body.fit-mode .structure-panel {
   pointer-events: none !important;
 }
 
+.trade-level-drag-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 45;
+  pointer-events: none;
+}
+
+.trade-level-drag-line {
+  --level-color: #fff;
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 18px;
+  transform: translateY(-50%);
+  pointer-events: auto;
+  cursor: ns-resize;
+  touch-action: none;
+  transition: filter 150ms ease;
+}
+
+.trade-level-drag-line::before {
+  content: "";
+  position: absolute;
+  top: 8px;
+  left: 10px;
+  right: 10px;
+  height: 2px;
+  background: var(--level-color);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--level-color) 65%, transparent);
+  transition: height 120ms ease, box-shadow 120ms ease;
+}
+
+.trade-level-drag-line:hover::before,
+.trade-level-drag-line.is-dragging::before {
+  height: 3px;
+  box-shadow: 0 0 14px var(--level-color);
+}
+
+.trade-level-drag-line.is-locked {
+  cursor: default;
+  pointer-events: none;
+}
+
+.trade-level-handle {
+  position: absolute;
+  top: 3px;
+  width: 12px;
+  height: 12px;
+  border: 2px solid var(--level-color);
+  border-radius: 50%;
+  background: #07101d;
+  box-shadow: 0 0 10px color-mix(in srgb, var(--level-color) 70%, transparent);
+  opacity: 0;
+  transform: scale(.7);
+  transition: opacity 120ms ease, transform 120ms ease;
+}
+
+.trade-level-handle:first-child { left: 8px; }
+.trade-level-handle:nth-child(2) { right: 8px; }
+
+.trade-level-drag-line:hover .trade-level-handle,
+.trade-level-drag-line.is-dragging .trade-level-handle {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.trade-level-label {
+  position: absolute;
+  right: 7px;
+  top: -10px;
+  min-width: 112px;
+  padding: 4px 8px;
+  border: 1px solid var(--level-color);
+  border-radius: 5px;
+  background: color-mix(in srgb, var(--level-color) 18%, #08111f);
+  color: #f8fafc;
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1;
+  text-align: center;
+  box-shadow: 0 5px 16px rgba(0, 0, 0, .3);
+}
+
+.trade-level-preview {
+  position: absolute;
+  left: 14px;
+  bottom: 14px;
+  z-index: 60;
+  display: grid;
+  grid-template-columns: repeat(2, auto);
+  gap: 5px 14px;
+  padding: 9px 11px;
+  border: 1px solid #2f80ff;
+  border-radius: 9px;
+  background: rgba(5, 13, 25, .94);
+  color: #dbeafe;
+  font-size: 11px;
+  font-weight: 700;
+  pointer-events: none;
+  box-shadow: 0 10px 30px rgba(0, 80, 255, .24);
+}
+
+.trade-level-preview strong { color: #fff; }
+
+.trade-level-confirm-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 12000;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(0, 4, 12, .72);
+  backdrop-filter: blur(10px);
+}
+
+.trade-level-confirm-card {
+  width: min(390px, 100%);
+  padding: 22px;
+  border: 1px solid #247cff;
+  border-radius: 20px;
+  background: linear-gradient(145deg, #0b1626, #070d17);
+  box-shadow: 0 24px 80px rgba(0, 75, 255, .3);
+}
+
+.trade-level-confirm-kicker {
+  color: #60a5fa;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: .14em;
+}
+
+.trade-level-confirm-card h3 {
+  margin: 7px 0 5px;
+  color: #f8fafc;
+  font-size: 24px;
+}
+
+.trade-level-confirm-card p {
+  margin: 0 0 14px;
+  color: #9fb0c8;
+}
+
+.trade-level-confirm-metrics {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.trade-level-confirm-metrics span {
+  padding: 9px;
+  border: 1px solid #1e3149;
+  border-radius: 9px;
+  color: #b8c7da;
+  font-size: 12px;
+}
+
+.trade-level-confirm-metrics strong {
+  display: block;
+  margin-top: 3px;
+  color: #fff;
+}
+
+.trade-level-confirm-error {
+  margin-bottom: 12px;
+  color: #ff6b75;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.trade-level-confirm-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.trade-level-confirm-actions button {
+  min-height: 44px;
+  border: 1px solid #304158;
+  border-radius: 11px;
+  background: #101a29;
+  color: #dce7f5;
+  font-weight: 900;
+}
+
+#applyTradeLevelChangeBtn {
+  border-color: #1976ff;
+  background: linear-gradient(135deg, #1269df, #7146e8);
+  color: #fff;
+}
+
+.hidden { display: none !important; }
+
 #chartOverlayTitle {
   font-size: 16px !important;
   font-weight: 800 !important;

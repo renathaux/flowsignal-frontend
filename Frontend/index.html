@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>nathaux.Fx</title>
-  <link rel="stylesheet" href="style.css?v=44" />
+  <link rel="stylesheet" href="style.css?v=46" />
 </head>
 <body class="fit-mode">
   <div id="landingPage" class="landing-page landing-pro">
@@ -484,6 +484,22 @@
   </div>
 
   <div id="chartContainer"></div>
+  <div id="tradeLevelDragLayer" class="trade-level-drag-layer" aria-label="Draggable trade levels"></div>
+  <div id="tradeLevelPreview" class="trade-level-preview hidden" aria-live="polite"></div>
+</div>
+
+<div id="tradeLevelConfirmModal" class="trade-level-confirm-modal hidden">
+  <div class="trade-level-confirm-card" role="dialog" aria-modal="true" aria-labelledby="tradeLevelConfirmTitle">
+    <div class="trade-level-confirm-kicker">ORDER MANAGEMENT</div>
+    <h3 id="tradeLevelConfirmTitle">Apply changes?</h3>
+    <p id="tradeLevelConfirmSummary">Review the updated trade level.</p>
+    <div id="tradeLevelConfirmMetrics" class="trade-level-confirm-metrics"></div>
+    <div id="tradeLevelConfirmError" class="trade-level-confirm-error hidden"></div>
+    <div class="trade-level-confirm-actions">
+      <button id="cancelTradeLevelChangeBtn" type="button">CANCEL</button>
+      <button id="applyTradeLevelChangeBtn" type="button">YES</button>
+    </div>
+  </div>
 </div>
 
 <div class="structure-panel">
@@ -1167,7 +1183,7 @@
   <script src="flowAssistant.js?v=1"></script>
   <script src="performance.js?v=1"></script>
   <script src="history.js?v=1"></script>
-  <script src="script.js?v=57"></script>
+  <script src="script.js?v=59"></script>
 </body>
 </html>
   

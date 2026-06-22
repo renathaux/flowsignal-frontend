@@ -5136,7 +5136,7 @@ paperHistoryList.innerHTML = `
 function updateLivePanel(liveTrades, liveHistory = [], stats = null) {
   activeLiveOrders =
     liveConnectionState.connected
-      ? sanitizeActiveLiveOrders(liveTrades)
+      ? mergeRefreshedLiveOrders(liveTrades)
       : {
           EURUSD: null,
           XAUUSD: null
@@ -5154,8 +5154,7 @@ function updateLivePanel(liveTrades, liveHistory = [], stats = null) {
     };
   }
 
-  clearTradeLines("EURUSD");
-  clearTradeLines("XAUUSD");
+  clearTradeLines(currentChartSymbol);
   clearInactiveTradeVisualLines();
 
   renderLiveTotalTradesCard();
@@ -5406,6 +5405,57 @@ function sanitizeActiveLiveOrders(liveTrades = {}) {
   });
 
   return cleaned;
+}
+
+function mergeRefreshedLiveOrders(liveTrades = {}) {
+  const incoming = sanitizeActiveLiveOrders(liveTrades);
+
+  ["EURUSD", "XAUUSD"].forEach((symbol) => {
+    const current = activeLiveOrders?.[symbol];
+    const refreshed = incoming[symbol];
+    if (!current || !refreshed) return;
+
+    const currentId = getTradeChartIdentity(current, symbol);
+    const refreshedId = getTradeChartIdentity(refreshed, symbol);
+    if (currentId !== refreshedId) return;
+
+    const currentModifiedAt = Number(current.levels_modified_at || 0);
+    const refreshedModifiedAt = Number(refreshed.levels_modified_at || 0);
+    const incomingIsStale = currentModifiedAt > refreshedModifiedAt;
+    const missingEditedLevel = Boolean(
+      current.user_modified_levels &&
+      (
+        refreshed.sl == null ||
+        refreshed.tp1 == null ||
+        refreshed.tp2 == null
+      )
+    );
+    const overwriteBlocked = incomingIsStale || missingEditedLevel;
+
+    console.log("refreshOverwriteBlocked", overwriteBlocked, {
+      symbol,
+      tradeId: currentId,
+      currentModifiedAt,
+      refreshedModifiedAt,
+    });
+
+    if (overwriteBlocked) {
+      incoming[symbol] = {
+        ...refreshed,
+        sl: current.sl,
+        current_sl: current.current_sl ?? current.sl,
+        tp1: current.tp1,
+        take_profit_1: current.take_profit_1 ?? current.tp1,
+        tp2: current.tp2,
+        take_profit_2: current.take_profit_2 ?? current.tp2,
+        take_profit: current.take_profit ?? current.tp2,
+        levels_modified_at: current.levels_modified_at,
+        user_modified_levels: current.user_modified_levels,
+      };
+    }
+  });
+
+  return incoming;
 }
 
 function formatDashboardMoney(value) {
@@ -6651,7 +6701,7 @@ if (meta.live_account) {
     meta.live_account.mode || "broker";
 
   activeLiveOrders =
-    sanitizeActiveLiveOrders(meta.live_active_orders || {});
+    mergeRefreshedLiveOrders(meta.live_active_orders || {});
 
   liveTradeHistory =
     Array.isArray(meta.live_trade_history)
@@ -7986,7 +8036,19 @@ if (adminModal) {
 let chart = null;
 let candleSeries = null;
 let structureLine = null;
-let tradeVisualPriceLines = {};
+let tradeVisualPriceLines = {
+  EURUSD: {},
+  XAUUSD: {},
+};
+let chartLevelDragState = {
+  active: false,
+  pending: false,
+  changedLevel: null,
+  proposedLevels: null,
+  originalLevels: null,
+  trade: null,
+};
+let lastKnownTradeLevels = {};
 let currentChartSymbol = "EURUSD";
 let currentChartTimeframe = "5m";
 let chartRefreshInProgress = false;
@@ -8025,7 +8087,10 @@ function initChart() {
     chart.remove();
     chart = null;
     candleSeries = null;
-    tradeVisualPriceLines = {};
+    tradeVisualPriceLines = {
+      EURUSD: {},
+      XAUUSD: {},
+    };
   }
 
   chart = LightweightCharts.createChart(container, {
@@ -8084,7 +8149,7 @@ function initChart() {
   downColor: "#ef5350",
   borderDownColor: "#ef5350",
   wickDownColor: "#ef5350",
-  priceLineVisible: true,
+  priceLineVisible: false,
   lastValueVisible: true,
 
   priceFormat: {
@@ -8191,24 +8256,59 @@ function clearInactiveTradeVisualLines() {
   });
 }
 
+function getTradeChartIdentity(trade, symbol = currentChartSymbol) {
+  return String(
+    trade?.trade_id ??
+    trade?.position_id ??
+    trade?.broker_position_id ??
+    trade?.order_id ??
+    `active-${normalizeTradeChartSymbol(symbol)}`
+  );
+}
+
+function getTradeLineId(symbol, tradeId, lineType) {
+  return `${normalizeTradeChartSymbol(symbol)}:${tradeId}:${String(lineType).toUpperCase()}`;
+}
+
+function removeTradeVisualLine(symbol, lineType) {
+  const executionSymbol = normalizeTradeExecutionSymbol(symbol);
+  const normalizedType = String(lineType || "").toUpperCase();
+  const symbolLines = tradeVisualPriceLines[executionSymbol] || {};
+  const record = symbolLines[normalizedType];
+
+  if (!record) return;
+
+  if (candleSeries && record.line) {
+    try {
+      candleSeries.removePriceLine(record.line);
+      console.log("removeLine", executionSymbol, record.tradeId, normalizedType);
+    } catch (err) {
+      console.warn("Trade level line cleanup skipped", record.id);
+    }
+  }
+
+  delete symbolLines[normalizedType];
+}
+
 function clearTradeLines(symbol = currentChartSymbol) {
   const executionSymbol = normalizeTradeExecutionSymbol(symbol);
-  const lines = tradeVisualPriceLines[executionSymbol] || [];
+  const symbolLines = tradeVisualPriceLines[executionSymbol] || {};
 
-  if (!candleSeries || !lines.length) {
-    tradeVisualPriceLines[executionSymbol] = [];
+  Object.keys(symbolLines).forEach((lineType) => {
+    removeTradeVisualLine(executionSymbol, lineType);
+  });
+  tradeVisualPriceLines[executionSymbol] = {};
+
+  if (executionSymbol !== normalizeTradeExecutionSymbol(currentChartSymbol)) {
     return;
   }
 
-  lines.forEach((line) => {
-    try {
-      candleSeries.removePriceLine(line);
-    } catch (err) {
-      console.warn("Trade level line cleanup skipped");
+  if (executionSymbol === normalizeTradeExecutionSymbol(currentChartSymbol)) {
+    const dragLayer = document.getElementById("tradeLevelDragLayer");
+    if (dragLayer && !chartLevelDragState.active && !chartLevelDragState.pending) {
+      dragLayer.replaceChildren();
     }
-  });
-
-  tradeVisualPriceLines[executionSymbol] = [];
+  }
 }
 
 function clearTradeVisualLevels() {
@@ -8225,7 +8325,18 @@ function addTradeVisualLine(price, title, color, options = {}) {
 
   if (!candleSeries || !Number.isFinite(numericPrice)) return;
 
-  const executionSymbol = normalizeTradeExecutionSymbol(currentChartSymbol);
+  const executionSymbol = normalizeTradeExecutionSymbol(
+    options.symbol || currentChartSymbol
+  );
+  const lineType = String(options.lineType || title || "LINE").toUpperCase();
+  const tradeId = String(options.tradeId || "unknown");
+  const id = getTradeLineId(executionSymbol, tradeId, lineType);
+  const symbolLines = tradeVisualPriceLines[executionSymbol] || {};
+  const existing = symbolLines[lineType];
+
+  console.log("duplicateLineDetected", Boolean(existing), id);
+  if (existing) removeTradeVisualLine(executionSymbol, lineType);
+
   const line = candleSeries.createPriceLine({
     price: numericPrice,
     color,
@@ -8236,11 +8347,371 @@ function addTradeVisualLine(price, title, color, options = {}) {
   });
 
   if (!tradeVisualPriceLines[executionSymbol]) {
-    tradeVisualPriceLines[executionSymbol] = [];
+    tradeVisualPriceLines[executionSymbol] = {};
   }
 
-  tradeVisualPriceLines[executionSymbol].push(line);
+  tradeVisualPriceLines[executionSymbol][lineType] = {
+    id,
+    line,
+    lineType,
+    tradeId,
+    price: numericPrice,
+  };
+  console.log("drawLine", executionSymbol, tradeId, lineType, numericPrice);
 }
+
+function getTradeLevelPriceStep(symbol = currentChartSymbol) {
+  return normalizeTradeChartSymbol(symbol) === "XAUUSD" ? 0.01 : 0.00001;
+}
+
+function roundTradeLevelPrice(value, symbol = currentChartSymbol) {
+  const decimals = normalizeTradeChartSymbol(symbol) === "XAUUSD" ? 2 : 5;
+  return Number(Number(value).toFixed(decimals));
+}
+
+function getTradeLotSize(trade) {
+  const lots = Number(trade?.lot_size ?? trade?.volume);
+  if (Number.isFinite(lots) && lots > 0) return lots;
+
+  const volumeUnits = Number(trade?.volume_units);
+  return Number.isFinite(volumeUnits) && volumeUnits > 0
+    ? volumeUnits / 10000
+    : 0;
+}
+
+function getTradeLevelMetrics(trade, levels, changedLevel, price) {
+  const symbol = normalizeTradeChartSymbol(trade?.symbol || currentChartSymbol);
+  const entry = Number(levels.entry);
+  const sl = Number(levels.current_sl);
+  const tp2 = Number(levels.tp2);
+  const lotSize = getTradeLotSize(trade);
+  const pipSize = symbol === "XAUUSD" ? 0.01 : 0.0001;
+  const lineDistance = Math.abs(Number(price) - entry);
+  const pips = lineDistance / pipSize;
+  const riskDistance = Math.abs(entry - sl);
+  const rewardDistance = Math.abs(tp2 - entry);
+  const riskReward = riskDistance > 0 ? rewardDistance / riskDistance : 0;
+  const dollarPerPriceUnit = symbol === "XAUUSD"
+    ? lotSize * 100
+    : (lotSize * 10) / pipSize;
+  const dollarRisk = riskDistance * dollarPerPriceUnit;
+  const projectedProfit = rewardDistance * dollarPerPriceUnit;
+
+  return {
+    changedLevel,
+    price: Number(price),
+    pips,
+    riskReward,
+    dollarRisk,
+    projectedProfit,
+    lotSize,
+  };
+}
+
+function validateDraggedTradeLevel(trade, levels, changedLevel, price) {
+  const entry = Number(levels.entry);
+  const side = String(trade?.side || trade?.action || "").toUpperCase();
+  const numericPrice = Number(price);
+
+  if (!Number.isFinite(entry) || !Number.isFinite(numericPrice)) {
+    return "Invalid chart price";
+  }
+  if (side === "BUY") {
+    if (changedLevel === "sl" && numericPrice >= entry) return "BUY stop loss must stay below Entry";
+    if (["tp1", "tp2"].includes(changedLevel) && numericPrice <= entry) return "BUY take profit must stay above Entry";
+  }
+  if (side === "SELL") {
+    if (changedLevel === "sl" && numericPrice <= entry) return "SELL stop loss must stay above Entry";
+    if (["tp1", "tp2"].includes(changedLevel) && numericPrice >= entry) return "SELL take profit must stay below Entry";
+  }
+
+  const nextTp1 = changedLevel === "tp1" ? numericPrice : Number(levels.tp1);
+  const nextTp2 = changedLevel === "tp2" ? numericPrice : Number(levels.tp2);
+  if (Number.isFinite(nextTp1) && Number.isFinite(nextTp2)) {
+    if (side === "BUY" && nextTp1 > nextTp2) return "TP1 cannot be above TP2 on a BUY";
+    if (side === "SELL" && nextTp1 < nextTp2) return "TP1 cannot be below TP2 on a SELL";
+  }
+
+  return "";
+}
+
+function updateTradeLevelPreview(trade, levels, changedLevel, price, error = "") {
+  const preview = document.getElementById("tradeLevelPreview");
+  if (!preview) return;
+
+  const metrics = getTradeLevelMetrics(trade, levels, changedLevel, price);
+  preview.classList.remove("hidden");
+  preview.innerHTML = error
+    ? `<span style="grid-column:1/-1;color:#ff6b75">${error}</span>`
+    : `
+      <span>Distance <strong>${metrics.pips.toFixed(1)} pips</strong></span>
+      <span>R/R <strong>1:${metrics.riskReward.toFixed(2)}</strong></span>
+      <span>Risk <strong>${formatLiveMoney(-metrics.dollarRisk)}</strong></span>
+      <span>Projected <strong>${formatLiveMoney(metrics.projectedProfit)}</strong></span>
+    `;
+}
+
+function hideTradeLevelPreview() {
+  document.getElementById("tradeLevelPreview")?.classList.add("hidden");
+}
+
+function positionTradeLevelDragLine(lineElement, price) {
+  if (!candleSeries || !lineElement) return false;
+
+  const coordinate = candleSeries.priceToCoordinate(Number(price));
+  if (!Number.isFinite(coordinate)) return false;
+
+  lineElement.style.top = `${coordinate}px`;
+  const label = lineElement.querySelector(".trade-level-label");
+  if (label) {
+    const title = lineElement.dataset.title || "";
+    label.textContent = `${title}  ${formatLivePrice(currentChartSymbol, price) || price}`;
+  }
+  return true;
+}
+
+function openTradeLevelConfirmation() {
+  const modal = document.getElementById("tradeLevelConfirmModal");
+  const summary = document.getElementById("tradeLevelConfirmSummary");
+  const metricsBox = document.getElementById("tradeLevelConfirmMetrics");
+  const errorBox = document.getElementById("tradeLevelConfirmError");
+  const state = chartLevelDragState;
+
+  if (!modal || !state.trade || !state.proposedLevels || !state.changedLevel) return;
+
+  const price = Number(state.proposedLevels[
+    state.changedLevel === "sl" ? "current_sl" : state.changedLevel
+  ]);
+  const metrics = getTradeLevelMetrics(
+    state.trade,
+    state.proposedLevels,
+    state.changedLevel,
+    price
+  );
+  const labels = { sl: "Broker SL", tp1: "TP1", tp2: "Broker TP" };
+
+  summary.textContent = `${labels[state.changedLevel]} → ${formatLivePrice(currentChartSymbol, price)}`;
+  metricsBox.innerHTML = `
+    <span>Distance<strong>${metrics.pips.toFixed(1)} pips</strong></span>
+    <span>Risk / Reward<strong>1:${metrics.riskReward.toFixed(2)}</strong></span>
+    <span>Dollar risk<strong>${formatLiveMoney(-metrics.dollarRisk)}</strong></span>
+    <span>Projected profit<strong>${formatLiveMoney(metrics.projectedProfit)}</strong></span>
+  `;
+  errorBox?.classList.add("hidden");
+  modal.classList.remove("hidden");
+}
+
+function closeTradeLevelConfirmation({ restore = false } = {}) {
+  document.getElementById("tradeLevelConfirmModal")?.classList.add("hidden");
+  hideTradeLevelPreview();
+  chartLevelDragState.active = false;
+  chartLevelDragState.pending = false;
+
+  if (restore) drawTradeVisualLevels();
+}
+
+async function applyDraggedTradeLevelChange() {
+  const state = chartLevelDragState;
+  const applyButton = document.getElementById("applyTradeLevelChangeBtn");
+  const errorBox = document.getElementById("tradeLevelConfirmError");
+  const levels = state.proposedLevels;
+  const trade = state.trade;
+  const dragSymbol = normalizeTradeChartSymbol(
+    state.symbol || trade?.symbol || currentChartSymbol
+  );
+  const tradeId = getTradeChartIdentity(trade, dragSymbol);
+
+  if (!levels || !trade || !state.changedLevel) return;
+
+  applyButton.disabled = true;
+  applyButton.textContent = "APPLYING…";
+  errorBox?.classList.add("hidden");
+
+  try {
+    const response = await fetch(`${BASE_URL}/modify-live-position-levels`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        symbol: dragSymbol,
+        position_id: trade.position_id || trade.broker_position_id,
+        changed_level: state.changedLevel,
+        stop_loss: levels.current_sl,
+        tp1: levels.tp1,
+        tp2: levels.tp2,
+      }),
+    });
+    const result = await response.json();
+
+    if (!response.ok || result.ok === false) {
+      throw new Error(result.reason || "The broker rejected this change");
+    }
+
+    activeLiveOrders[dragSymbol] = {
+      ...trade,
+      ...(result.active_order || {}),
+    };
+    lastKnownTradeLevels[`${dragSymbol}:${tradeId}`] = {
+      entry: levels.entry,
+      current_sl: levels.current_sl,
+      tp1: levels.tp1,
+      tp2: levels.tp2,
+    };
+    console.log("backendUpdate", "success", dragSymbol, tradeId, state.changedLevel);
+    closeTradeLevelConfirmation();
+    chartLevelDragState = {
+      active: false,
+      pending: false,
+      changedLevel: null,
+      proposedLevels: null,
+      originalLevels: null,
+      trade: null,
+    };
+    drawTradeVisualLevels();
+  } catch (error) {
+    console.error("backendUpdate", "fail", dragSymbol, tradeId, state.changedLevel, error.message);
+    if (errorBox) {
+      errorBox.textContent = error.message;
+      errorBox.classList.remove("hidden");
+    }
+  } finally {
+    applyButton.disabled = false;
+    applyButton.textContent = "YES";
+  }
+}
+
+function beginTradeLevelDrag(event, lineElement, trade, levels, levelKey) {
+  if (lineElement.classList.contains("is-locked")) return;
+
+  event.preventDefault();
+  lineElement.setPointerCapture?.(event.pointerId);
+  lineElement.classList.add("is-dragging");
+  chartLevelDragState = {
+    active: true,
+    pending: false,
+    changedLevel: levelKey,
+    proposedLevels: { ...levels },
+    originalLevels: { ...levels },
+    trade,
+    symbol: normalizeTradeChartSymbol(currentChartSymbol),
+  };
+
+  const move = (moveEvent) => {
+    const layer = document.getElementById("tradeLevelDragLayer");
+    if (!layer || !candleSeries) return;
+
+    const rect = layer.getBoundingClientRect();
+    const y = Math.max(1, Math.min(rect.height - 1, moveEvent.clientY - rect.top));
+    const rawPrice = candleSeries.coordinateToPrice(y);
+    if (!Number.isFinite(rawPrice)) return;
+
+    const price = roundTradeLevelPrice(rawPrice);
+    const error = validateDraggedTradeLevel(
+      trade,
+      chartLevelDragState.proposedLevels,
+      levelKey,
+      price
+    );
+    const valueKey = levelKey === "sl" ? "current_sl" : levelKey;
+
+    chartLevelDragState.proposedLevels[valueKey] = price;
+    positionTradeLevelDragLine(lineElement, price);
+    updateTradeLevelPreview(
+      trade,
+      chartLevelDragState.proposedLevels,
+      levelKey,
+      price,
+      error
+    );
+    lineElement.dataset.invalid = error ? "true" : "false";
+  };
+
+  const end = () => {
+    lineElement.classList.remove("is-dragging");
+    lineElement.removeEventListener("pointermove", move);
+    lineElement.removeEventListener("pointerup", end);
+    lineElement.removeEventListener("pointercancel", end);
+    chartLevelDragState.active = false;
+    const valueKey = levelKey === "sl" ? "current_sl" : levelKey;
+    console.log(
+      "dragEnd",
+      chartLevelDragState.symbol,
+      getTradeChartIdentity(trade, chartLevelDragState.symbol),
+      levelKey.toUpperCase(),
+      chartLevelDragState.originalLevels?.[valueKey],
+      chartLevelDragState.proposedLevels?.[valueKey]
+    );
+
+    if (lineElement.dataset.invalid === "true") {
+      chartLevelDragState.pending = false;
+      hideTradeLevelPreview();
+      drawTradeVisualLevels();
+      return;
+    }
+
+    chartLevelDragState.pending = true;
+    openTradeLevelConfirmation();
+  };
+
+  lineElement.addEventListener("pointermove", move);
+  lineElement.addEventListener("pointerup", end);
+  lineElement.addEventListener("pointercancel", end);
+}
+
+function renderDraggableTradeLevels(trade, levels) {
+  const layer = document.getElementById("tradeLevelDragLayer");
+  if (!layer || !candleSeries) return;
+
+  layer.replaceChildren();
+  const symbol = normalizeTradeChartSymbol(currentChartSymbol);
+  const tradeId = getTradeChartIdentity(trade, symbol);
+  const lineDefinitions = [
+    { key: "entry", value: levels.entry, title: "Entry", color: "#f8fafc", locked: true },
+    { key: "sl", value: levels.current_sl, title: "Broker SL", color: "#ef4444" },
+    { key: "tp1", value: levels.tp1, title: "TP1", color: "#facc15" },
+    { key: "tp2", value: levels.tp2, title: "Broker TP", color: "#22c55e" },
+  ];
+
+  lineDefinitions.forEach((definition) => {
+    if (!Number.isFinite(Number(definition.value))) return;
+
+    const line = document.createElement("div");
+    line.className = `trade-level-drag-line${definition.locked ? " is-locked" : ""}`;
+    line.dataset.level = definition.key;
+    line.dataset.lineId = getTradeLineId(symbol, tradeId, definition.key);
+    line.dataset.symbol = symbol;
+    line.dataset.tradeId = tradeId;
+    line.dataset.title = definition.title;
+    line.style.setProperty("--level-color", definition.color);
+    line.innerHTML = `
+      <span class="trade-level-handle"></span>
+      <span class="trade-level-handle"></span>
+      <span class="trade-level-label"></span>
+    `;
+    layer.appendChild(line);
+    positionTradeLevelDragLine(line, definition.value);
+
+    if (!definition.locked) {
+      line.addEventListener("pointerdown", (event) => {
+        beginTradeLevelDrag(event, line, trade, levels, definition.key);
+      });
+    }
+  });
+}
+
+document.getElementById("cancelTradeLevelChangeBtn")?.addEventListener("click", () => {
+  closeTradeLevelConfirmation({ restore: true });
+});
+
+document.getElementById("applyTradeLevelChangeBtn")?.addEventListener(
+  "click",
+  applyDraggedTradeLevelChange
+);
+
+document.getElementById("tradeLevelConfirmModal")?.addEventListener("click", (event) => {
+  if (event.target.id === "tradeLevelConfirmModal") {
+    closeTradeLevelConfirmation({ restore: true });
+  }
+});
 
 function getTradeChartLevels(trade, symbol = currentChartSymbol) {
   const raw = trade?.raw && typeof trade.raw === "object" ? trade.raw : {};
@@ -8248,6 +8719,8 @@ function getTradeChartLevels(trade, symbol = currentChartSymbol) {
   const tradeSymbol = normalizeTradeChartSymbol(symbol);
   const signalPlan = latestRawPanelData?.[tradeSymbol] || {};
   const liveBrokerTrade = isLiveBrokerTrade(trade);
+  const tradeId = getTradeChartIdentity(trade, tradeSymbol);
+  const rememberedLevels = lastKnownTradeLevels[`${tradeSymbol}:${tradeId}`] || {};
   const brokerStopLossMissing = Boolean(trade?.broker_stop_loss_missing);
   const brokerStopLossConfirmed = Boolean(trade?.broker_stop_loss_confirmed);
   const brokerStopLoss =
@@ -8256,7 +8729,8 @@ function getTradeChartLevels(trade, symbol = currentChartSymbol) {
     trade?.stop_loss ??
     trade?.stopLoss ??
     raw?.stopLoss ??
-    nestedRaw?.stopLoss;
+    nestedRaw?.stopLoss ??
+    rememberedLevels.current_sl;
   const brokerTakeProfitMissing = Boolean(trade?.broker_take_profit_missing);
   const brokerTakeProfitConfirmed = Boolean(trade?.broker_take_profit_confirmed);
   const brokerTakeProfit =
@@ -8268,7 +8742,8 @@ function getTradeChartLevels(trade, symbol = currentChartSymbol) {
     raw?.tp2 ??
     raw?.takeProfit ??
     nestedRaw?.tp2 ??
-    nestedRaw?.takeProfit;
+    nestedRaw?.takeProfit ??
+    rememberedLevels.tp2;
   const plannedStopLoss =
     trade?.planned_sl ??
     trade?.original_sl ??
@@ -8295,15 +8770,33 @@ function getTradeChartLevels(trade, symbol = currentChartSymbol) {
       brokerStopLoss ??
       plannedStopLoss,
     planned_sl: plannedStopLoss,
-    current_sl: brokerStopLossMissing ? null : brokerStopLoss,
-    broker_stop_loss_confirmed: brokerStopLossConfirmed || (!liveBrokerTrade && brokerStopLoss != null),
-    broker_stop_loss_missing: brokerStopLossMissing || (liveBrokerTrade && !brokerStopLossConfirmed) || brokerStopLoss == null,
-    tp1: brokerTakeProfitMissing ? null : trade?.tp1 ?? trade?.take_profit_1 ?? raw?.tp1 ?? nestedRaw?.tp1,
-    tp2: brokerTakeProfitMissing ? null : brokerTakeProfit,
+    current_sl: brokerStopLoss ?? rememberedLevels.current_sl ?? null,
+    broker_stop_loss_confirmed:
+      brokerStopLossConfirmed ||
+      rememberedLevels.current_sl != null ||
+      (!liveBrokerTrade && brokerStopLoss != null),
+    broker_stop_loss_missing:
+      brokerStopLossMissing &&
+      brokerStopLoss == null &&
+      rememberedLevels.current_sl == null,
+    tp1:
+      trade?.tp1 ??
+      trade?.take_profit_1 ??
+      raw?.tp1 ??
+      nestedRaw?.tp1 ??
+      rememberedLevels.tp1 ??
+      plannedTp1,
+    tp2: brokerTakeProfit ?? rememberedLevels.tp2 ?? plannedTp2,
     planned_tp1: plannedTp1,
     planned_tp2: plannedTp2,
-    broker_take_profit_confirmed: brokerTakeProfitConfirmed || (!liveBrokerTrade && brokerTakeProfit != null),
-    broker_take_profit_missing: brokerTakeProfitMissing || (liveBrokerTrade && !brokerTakeProfitConfirmed) || brokerTakeProfit == null,
+    broker_take_profit_confirmed:
+      brokerTakeProfitConfirmed ||
+      rememberedLevels.tp2 != null ||
+      (!liveBrokerTrade && brokerTakeProfit != null),
+    broker_take_profit_missing:
+      brokerTakeProfitMissing &&
+      brokerTakeProfit == null &&
+      rememberedLevels.tp2 == null,
   };
 }
 
@@ -8315,6 +8808,8 @@ function hasCompleteTradeChartLevels(levels) {
 }
 
 function drawTradeVisualLevels() {
+  if (chartLevelDragState.active || chartLevelDragState.pending) return;
+
   clearTradeVisualLevels();
   clearInactiveTradeVisualLines();
 
@@ -8348,18 +8843,35 @@ function drawTradeVisualLevels() {
     profit_protected: hasConfirmedProfitProtection(trade),
     protected_sl_price: trade?.protected_sl_price,
   };
+  const tradeId = getTradeChartIdentity(trade, symbol);
+  const rememberedKey = `${symbol}:${tradeId}`;
+  const previousRemembered = lastKnownTradeLevels[rememberedKey] || {};
+  const nextRemembered = {
+    entry: Number.isFinite(Number(levels.entry))
+      ? Number(levels.entry)
+      : previousRemembered.entry,
+    current_sl: Number.isFinite(Number(levels.current_sl))
+      ? Number(levels.current_sl)
+      : previousRemembered.current_sl,
+    tp1: Number.isFinite(Number(levels.tp1))
+      ? Number(levels.tp1)
+      : previousRemembered.tp1,
+    tp2: Number.isFinite(Number(levels.tp2))
+      ? Number(levels.tp2)
+      : previousRemembered.tp2,
+  };
+  lastKnownTradeLevels[rememberedKey] = nextRemembered;
 
   console.log("TRADE_VISUAL_LEVELS =", levels);
 
   addTradeVisualLine(levels.entry, "Entry", "#f8fafc", {
     lineStyle: LightweightCharts.LineStyle.Solid,
+    symbol,
+    tradeId,
+    lineType: "ENTRY",
   });
 
   if (levels.hit_tp1 && levels.profit_protected) {
-    addTradeVisualLine(levels.original_sl, "Original SL inactive", "rgba(239, 68, 68, 0.45)", {
-      lineStyle: LightweightCharts.LineStyle.Dotted,
-      lineWidth: 1,
-    });
     addTradeVisualLine(
       levels.protected_sl_price ?? levels.current_sl,
       "Protected SL",
@@ -8367,40 +8879,63 @@ function drawTradeVisualLevels() {
       {
         lineStyle: LightweightCharts.LineStyle.Solid,
         lineWidth: 3,
+        symbol,
+        tradeId,
+        lineType: "SL",
       }
     );
   } else if (levels.broker_stop_loss_confirmed) {
     addTradeVisualLine(levels.current_sl, "Broker SL", "#ef4444", {
       lineStyle: LightweightCharts.LineStyle.Solid,
+      symbol,
+      tradeId,
+      lineType: "SL",
     });
   } else {
     addTradeVisualLine(levels.planned_sl ?? levels.original_sl, "Planned SL inactive", "rgba(248, 113, 113, 0.55)", {
       lineStyle: LightweightCharts.LineStyle.Dotted,
       lineWidth: 1,
+      symbol,
+      tradeId,
+      lineType: "SL",
     });
   }
 
   if (levels.broker_take_profit_confirmed) {
-    addTradeVisualLine(levels.tp1, "TP1 app target", "#facc15", {
+    addTradeVisualLine(levels.tp1, "TP1", "#facc15", {
       lineStyle: levels.hit_tp1
         ? LightweightCharts.LineStyle.Solid
         : LightweightCharts.LineStyle.Dashed,
       lineWidth: levels.hit_tp1 ? 3 : 2,
+      symbol,
+      tradeId,
+      lineType: "TP1",
     });
 
     addTradeVisualLine(levels.tp2, "Broker TP", "#22c55e", {
       lineStyle: LightweightCharts.LineStyle.Solid,
+      symbol,
+      tradeId,
+      lineType: "TP2",
     });
   } else {
     addTradeVisualLine(levels.planned_tp1, "Planned TP1 inactive", "rgba(250, 204, 21, 0.55)", {
       lineStyle: LightweightCharts.LineStyle.Dotted,
       lineWidth: 1,
+      symbol,
+      tradeId,
+      lineType: "TP1",
     });
     addTradeVisualLine(levels.planned_tp2, "Planned TP2 inactive", "rgba(34, 197, 94, 0.55)", {
       lineStyle: LightweightCharts.LineStyle.Dotted,
       lineWidth: 1,
+      symbol,
+      tradeId,
+      lineType: "TP2",
     });
   }
+
+  renderDraggableTradeLevels(trade, levels);
 }
 
 function drawStructureLine(data) {
@@ -8439,8 +8974,8 @@ function drawStructureLine(data) {
     color: type.includes("SELL") ? "#ef4444" : "#22c55e",
     lineWidth: 2,
     lineStyle: LightweightCharts.LineStyle.Dashed,
-    priceLineVisible: true,
-    lastValueVisible: true,
+    priceLineVisible: false,
+    lastValueVisible: false,
   });
 
   structureLineSeries.setData([
@@ -8649,18 +9184,21 @@ async function quickRefreshChart() {
   }
 }
 function switchChart(symbol, timeframe = currentChartTimeframe) {
-  currentChartSymbol = symbol;
+  const previousSymbol = currentChartSymbol;
+  clearTradeLines(previousSymbol);
+  document.getElementById("tradeLevelDragLayer")?.replaceChildren();
+  currentChartSymbol = normalizeTradeChartSymbol(symbol);
   currentChartTimeframe = timeframe;
 
   initChart(); // 🔥 FORCE NEW PRECISION
 
   try {
-    const hasCandles = latestRawPanelData?.candles?.[symbol]?.[timeframe]?.length;
+    const hasCandles = latestRawPanelData?.candles?.[currentChartSymbol]?.[timeframe]?.length;
 
     if (hasCandles) {
-      forceChartRenderFromLatest(symbol, timeframe);
-      updateMainPanel(symbol);
-      console.log(`📈 Chart updated: ${symbol} ${timeframe} at ${new Date().toLocaleTimeString()}`);
+      forceChartRenderFromLatest(currentChartSymbol, timeframe);
+      updateMainPanel(currentChartSymbol);
+      console.log(`📈 Chart updated: ${currentChartSymbol} ${timeframe} at ${new Date().toLocaleTimeString()}`);
     } else {
       applyLanguage(currentLang);
       refreshPanel();
