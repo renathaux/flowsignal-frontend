@@ -435,11 +435,13 @@ const accessCodeInput = document.getElementById("accessCode");
 const accessBtn = document.getElementById("accessBtn");
 const authMsg = document.getElementById("authMsg");
 const mainApp = document.getElementById("mainApp");
+const dashboardDailyPnl = document.getElementById("dashboardDailyPnl");
 const dashboardWeeklyPnl = document.getElementById("dashboardWeeklyPnl");
+const dashboardMonthlyPnl = document.getElementById("dashboardMonthlyPnl");
 const dashboardFloatingPnl = document.getElementById("dashboardFloatingPnl");
 const dashboardOpenTrades = document.getElementById("dashboardOpenTrades");
 const dashboardPerformanceStrip = document.querySelector(".performance-strip");
-const dashboardAdminCards = document.querySelectorAll(".performance-weekly, .performance-floating, .performance-trades");
+const dashboardAdminCards = document.querySelectorAll(".performance-daily, .performance-weekly, .performance-monthly, .performance-floating, .performance-trades");
 const voiceToggleBtn = document.getElementById("voiceToggleBtn");
 const menuAssistantBtn = document.getElementById("menuAssistantBtn");
 const assistantModal = document.getElementById("assistantModal");
@@ -1153,7 +1155,10 @@ let liveTradeStats = {
   closed: 0,
   total_pl: 0,
   total_pnl: 0,
+  daily_realized_pl: 0,
+  daily_total_pl: 0,
   weekly_realized_pl: 0,
+  monthly_realized_pl: 0,
   floating_live_pl: 0,
   weekly_total_pl: 0
 };
@@ -5366,7 +5371,14 @@ function renderLiveTotalTradesCard() {
   const realizedPnl = Number.isFinite(Number(liveTradeStats.weekly_realized_pl))
     ? Number(liveTradeStats.weekly_realized_pl)
     : 0;
-  const weeklyPnl = Number.isFinite(Number(liveTradeStats.weekly_total_pl))
+  const displayStats = calculateLiveDisplayStats();
+  const confirmedClosedTrades = Math.max(
+    0,
+    Number(displayStats.total || 0) - Number(displayStats.running || 0)
+  );
+  const weeklyPnl = confirmedClosedTrades === 0
+    ? floatingPnl
+    : Number.isFinite(Number(liveTradeStats.weekly_total_pl))
     ? Number(liveTradeStats.weekly_total_pl)
     : realizedPnl + floatingPnl;
 
@@ -5399,12 +5411,170 @@ function sanitizeActiveLiveOrders(liveTrades = {}) {
 function formatDashboardMoney(value) {
   const amount = Number(value);
   const safeAmount = Number.isFinite(amount) ? amount : 0;
-  const sign = safeAmount >= 0 ? "+" : "-";
+  if (safeAmount === 0) return "$0.00";
+
+  const sign = safeAmount > 0 ? "+" : "-";
 
   return `${sign}$${Math.abs(safeAmount).toLocaleString("en-US", {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2
   })}`;
+}
+
+function getNewYorkTradingWeekStartTs(now = new Date()) {
+  const formatter = new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/New_York",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    weekday: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hourCycle: "h23"
+  });
+  const parts = Object.fromEntries(
+    formatter.formatToParts(now)
+      .filter((part) => part.type !== "literal")
+      .map((part) => [part.type, part.value])
+  );
+  const weekdayIndex = {
+    Sun: 0,
+    Mon: 1,
+    Tue: 2,
+    Wed: 3,
+    Thu: 4,
+    Fri: 5,
+    Sat: 6
+  }[parts.weekday] ?? 0;
+  const wallDate = new Date(Date.UTC(
+    Number(parts.year),
+    Number(parts.month) - 1,
+    Number(parts.day) - weekdayIndex,
+    17
+  ));
+
+  if (
+    weekdayIndex === 0 &&
+    ((Number(parts.hour) * 60) + Number(parts.minute)) < (17 * 60)
+  ) {
+    wallDate.setUTCDate(wallDate.getUTCDate() - 7);
+  }
+
+  const wallGuess = wallDate.getTime();
+  const guessParts = Object.fromEntries(
+    formatter.formatToParts(new Date(wallGuess))
+      .filter((part) => part.type !== "literal")
+      .map((part) => [part.type, part.value])
+  );
+  const renderedGuess = Date.UTC(
+    Number(guessParts.year),
+    Number(guessParts.month) - 1,
+    Number(guessParts.day),
+    Number(guessParts.hour),
+    Number(guessParts.minute),
+    Number(guessParts.second)
+  );
+
+  return (wallGuess - (renderedGuess - wallGuess)) / 1000;
+}
+
+function getNewYorkTradingDayStartTs(now = new Date()) {
+  const formatter = new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/New_York",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hourCycle: "h23"
+  });
+  const parts = Object.fromEntries(
+    formatter.formatToParts(now)
+      .filter((part) => part.type !== "literal")
+      .map((part) => [part.type, part.value])
+  );
+  const beforeReset =
+    ((Number(parts.hour) * 60) + Number(parts.minute)) < (17 * 60);
+  const wallDate = new Date(Date.UTC(
+    Number(parts.year),
+    Number(parts.month) - 1,
+    Number(parts.day) - (beforeReset ? 1 : 0),
+    17
+  ));
+  const wallGuess = wallDate.getTime();
+  const guessParts = Object.fromEntries(
+    formatter.formatToParts(new Date(wallGuess))
+      .filter((part) => part.type !== "literal")
+      .map((part) => [part.type, part.value])
+  );
+  const renderedGuess = Date.UTC(
+    Number(guessParts.year),
+    Number(guessParts.month) - 1,
+    Number(guessParts.day),
+    Number(guessParts.hour),
+    Number(guessParts.minute),
+    Number(guessParts.second)
+  );
+
+  return (wallGuess - (renderedGuess - wallGuess)) / 1000;
+}
+
+function getVerifiedClosedLivePnl(history, startTimestamp) {
+  if (!Array.isArray(history)) {
+    return { count: 0, pnl: 0, losses: 0 };
+  }
+
+  const seen = new Set();
+  let count = 0;
+  let losses = 0;
+  let pnl = 0;
+
+  history.forEach((trade) => {
+    const status = String(
+      trade?.status || trade?.result || ""
+    ).toUpperCase();
+    const source = String(
+      trade?.source || trade?.history_source || ""
+    ).toLowerCase();
+    const rawTimestamp = Number(trade?.closed_at || 0);
+    const timestamp = rawTimestamp > 10000000000
+      ? rawTimestamp / 1000
+      : rawTimestamp;
+    const identity = String(
+      trade?.deal_id ||
+      trade?.trade_id ||
+      trade?.position_id ||
+      trade?.broker_position_id ||
+      trade?.order_id ||
+      ""
+    );
+    const value = Number(
+      trade?.broker_realized_profit ??
+      trade?.realized_profit ??
+      trade?.closed_profit
+    );
+
+    if (
+      !["WIN", "LOSS", "PROTECTED_WIN", "BROKER_CLOSED", "DISCONNECTED", "CLOSED"].includes(status) ||
+      !(source.includes("broker") || source.includes("ctrader")) ||
+      !Number.isFinite(timestamp) ||
+      timestamp < startTimestamp ||
+      !Number.isFinite(value) ||
+      !identity ||
+      seen.has(identity)
+    ) {
+      return;
+    }
+
+    seen.add(identity);
+    count += 1;
+    pnl += value;
+    if (value < 0) losses += 1;
+  });
+
+  return { count, losses, pnl: Math.round(pnl * 100) / 100 };
 }
 
 function renderDashboardPerformance(meta = {}) {
@@ -5415,24 +5585,83 @@ function renderDashboardPerformance(meta = {}) {
     liveTradeStats.floating_live_pl ??
     0
   );
-  const weeklyPnl = Number(
+  let weeklyPnl = Number(
     meta.weekly_total_pl ??
     liveTradeStats.weekly_total_pl ??
     (
-      Number(
-        meta.weekly_realized_pl ??
-        liveTradeStats.weekly_realized_pl ??
-        0
-      ) + floating
+      Number(meta.weekly_realized_pl ?? liveTradeStats.weekly_realized_pl ?? 0) +
+      floating
     )
   );
+  let dailyPnl = Number(
+    meta.daily_total_pl ??
+    liveTradeStats.daily_total_pl ??
+    (
+      Number(meta.daily_realized_pl ?? liveTradeStats.daily_realized_pl ?? 0) +
+      floating
+    )
+  );
+  const monthlyPnl = Number(
+    meta.monthly_realized_pl ??
+    liveTradeStats.monthly_realized_pl ??
+    0
+  );
+  const calculationVersion =
+    meta.pl_calculation_version ||
+    meta.live_trade_stats?.pl_calculation_version;
+  const displayStats = calculateLiveDisplayStats();
+  const confirmedClosedTrades = Math.max(
+    0,
+    Number(displayStats.total || 0) - Number(displayStats.running || 0)
+  );
+  const verifiedWeek = getVerifiedClosedLivePnl(
+    meta.live_trade_history,
+    getNewYorkTradingWeekStartTs()
+  );
+  const verifiedDay = getVerifiedClosedLivePnl(
+    meta.live_trade_history,
+    getNewYorkTradingDayStartTs()
+  );
+
+  if (calculationVersion !== "closed-windows-v2") {
+    weeklyPnl = verifiedWeek.pnl + floating;
+    dailyPnl = verifiedDay.pnl + floating;
+    console.warn("Legacy P/L payload ignored; rebuilt from verified closed live trades.");
+  } else {
+    const weeklyRealized = weeklyPnl - floating;
+    const dailyRealized = dailyPnl - floating;
+
+    if (verifiedWeek.count === 0 && Math.abs(weeklyRealized) > 0.005) {
+      console.warn("stale weekly P/L cache ignored");
+      weeklyPnl = floating;
+    }
+    if (verifiedDay.count === 0 && Math.abs(dailyRealized) > 0.005) {
+      console.warn("stale daily P/L cache ignored");
+      dailyPnl = floating;
+    }
+    if (weeklyRealized < 0 && verifiedWeek.losses === 0) {
+      console.warn("stale weekly P/L cache ignored");
+      weeklyPnl = floating;
+    }
+    if (dailyRealized < 0 && verifiedDay.losses === 0) {
+      console.warn("stale daily P/L cache ignored");
+      dailyPnl = floating;
+    }
+  }
+
+  if (confirmedClosedTrades === 0) {
+    dailyPnl = floating;
+    weeklyPnl = floating;
+  }
   const activeTrades = Object.values(
     sanitizeActiveLiveOrders(meta.live_active_orders || activeLiveOrders || {})
   ).filter(Boolean);
   const brokerOpenCount = Number(meta.broker_open_positions_count);
 
   [
+    [dashboardDailyPnl, dailyPnl],
     [dashboardWeeklyPnl, weeklyPnl],
+    [dashboardMonthlyPnl, monthlyPnl],
     [dashboardFloatingPnl, floating]
   ].forEach(([element, value]) => {
     if (!element) return;
@@ -6432,7 +6661,25 @@ if (meta.live_account) {
   if (meta.live_trade_stats) {
     liveTradeStats = {
       ...liveTradeStats,
-      ...meta.live_trade_stats
+      ...meta.live_trade_stats,
+      daily_realized_pl: Number(meta.daily_realized_pl ?? 0),
+      daily_total_pl: Number(
+        meta.daily_total_pl ??
+        (
+          Number(meta.daily_realized_pl ?? 0) +
+          Number(meta.floating_live_pl ?? 0)
+        )
+      ),
+      weekly_realized_pl: Number(meta.weekly_realized_pl ?? 0),
+      weekly_total_pl: Number(
+        meta.weekly_total_pl ??
+        (
+          Number(meta.weekly_realized_pl ?? 0) +
+          Number(meta.floating_live_pl ?? 0)
+        )
+      ),
+      monthly_realized_pl: Number(meta.monthly_realized_pl ?? 0),
+      floating_live_pl: Number(meta.floating_live_pl ?? 0)
     };
   }
 

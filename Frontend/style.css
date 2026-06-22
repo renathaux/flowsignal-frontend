@@ -10068,10 +10068,25 @@ body[data-active-settings-page="performance"] #statsModal .performance-modal-box
     font-weight: 850 !important;
   }
 
-  .performance-strip .performance-weekly .performance-copy strong {
+  .performance-strip .performance-weekly .performance-copy strong:not(.neutral):not(.negative) {
     color: var(--phone-green) !important;
     font-size: 25px !important;
     text-shadow: 0 0 18px rgba(37, 223, 114, 0.12);
+  }
+
+  .performance-strip .performance-daily .performance-copy strong:not(.neutral):not(.negative),
+  .performance-strip .performance-monthly .performance-copy strong:not(.neutral):not(.negative),
+  .performance-strip .performance-floating .performance-copy strong:not(.neutral):not(.negative) {
+    color: var(--phone-green) !important;
+  }
+
+  .performance-strip .performance-copy strong.negative {
+    color: var(--phone-red) !important;
+  }
+
+  .performance-strip .performance-copy strong.neutral {
+    color: #aeb9c9 !important;
+    text-shadow: none !important;
   }
 
   .performance-strip .performance-sparkline {
@@ -10810,5 +10825,16 @@ body[data-active-settings-page="performance"] #statsModal .performance-modal-box
 @media (max-width: 700px) {
   .broker-mobile-close {
     display: grid !important;
+  }
+}
+
+@media (min-width: 701px) {
+  body.fit-mode #mainApp.app:not(.locked) > .performance-strip {
+    grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+  }
+
+  .performance-daily,
+  .performance-monthly {
+    grid-template-columns: 34px minmax(116px, 1fr) !important;
   }
 }

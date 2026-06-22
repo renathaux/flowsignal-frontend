@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>nathaux.Fx</title>
-  <link rel="stylesheet" href="style.css?v=41" />
+  <link rel="stylesheet" href="style.css?v=44" />
 </head>
 <body class="fit-mode">
   <div id="landingPage" class="landing-page landing-pro">
@@ -205,6 +205,19 @@
 
     <div class="divider"></div>
     <section class="performance-strip" aria-label="Live trading performance">
+      <article class="performance-card performance-daily">
+        <div class="performance-icon" aria-hidden="true">
+          <svg viewBox="0 0 32 32">
+            <path d="M5 16h22M16 5v22"></path>
+            <circle cx="16" cy="16" r="11"></circle>
+          </svg>
+        </div>
+        <div class="performance-copy">
+          <span>DAILY P/L</span>
+          <strong id="dashboardDailyPnl">$0.00</strong>
+        </div>
+      </article>
+
       <article class="performance-card performance-weekly">
         <div class="performance-icon" aria-hidden="true">
           <svg viewBox="0 0 32 32">
@@ -219,6 +232,19 @@
         <svg class="performance-sparkline" viewBox="0 0 86 40" aria-hidden="true">
           <polyline points="2,34 13,20 21,27 29,15 39,22 49,6 58,14 68,4 76,10 84,2"></polyline>
         </svg>
+      </article>
+
+      <article class="performance-card performance-monthly">
+        <div class="performance-icon" aria-hidden="true">
+          <svg viewBox="0 0 32 32">
+            <rect x="5" y="7" width="22" height="20" rx="3"></rect>
+            <path d="M10 4v6M22 4v6M5 13h22M10 18h4M18 18h4M10 23h4"></path>
+          </svg>
+        </div>
+        <div class="performance-copy">
+          <span>MONTHLY P/L</span>
+          <strong id="dashboardMonthlyPnl">$0.00</strong>
+        </div>
       </article>
 
       <article class="performance-card performance-floating">
@@ -1141,7 +1167,7 @@
   <script src="flowAssistant.js?v=1"></script>
   <script src="performance.js?v=1"></script>
   <script src="history.js?v=1"></script>
-  <script src="script.js?v=49"></script>
+  <script src="script.js?v=57"></script>
 </body>
 </html>
   
