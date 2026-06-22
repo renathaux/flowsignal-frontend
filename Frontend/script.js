@@ -8159,12 +8159,32 @@ function initChart() {
   }
 });
 
+  if (container.dataset.tradeLevelZoomBound !== "true") {
+    container.dataset.tradeLevelZoomBound = "true";
+    container.addEventListener("wheel", scheduleTradeLevelReposition, {
+      passive: true,
+    });
+    container.addEventListener("pointermove", (event) => {
+      if (event.buttons) scheduleTradeLevelReposition();
+    });
+    container.addEventListener("pointerup", scheduleTradeLevelReposition);
+  }
+
+  try {
+    chart.timeScale().subscribeVisibleLogicalRangeChange(
+      scheduleTradeLevelReposition
+    );
+  } catch (error) {
+    console.warn("Chart level zoom subscription unavailable");
+  }
+
   window.addEventListener("resize", () => {
   if (chart && container) {
     chart.applyOptions({
       width: container.clientWidth || 800,
       height: Math.max(container.clientHeight || 420, 320)
     });
+    scheduleTradeLevelReposition();
   }
 });
 }
@@ -8281,12 +8301,12 @@ function removeTradeVisualLine(symbol, lineType) {
   if (candleSeries && record.line) {
     try {
       candleSeries.removePriceLine(record.line);
-      console.log("removeLine", executionSymbol, record.tradeId, normalizedType);
     } catch (err) {
       console.warn("Trade level line cleanup skipped", record.id);
     }
   }
 
+  console.log("removeLine", executionSymbol, record.tradeId, normalizedType);
   delete symbolLines[normalizedType];
 }
 
@@ -8337,25 +8357,18 @@ function addTradeVisualLine(price, title, color, options = {}) {
   console.log("duplicateLineDetected", Boolean(existing), id);
   if (existing) removeTradeVisualLine(executionSymbol, lineType);
 
-  const line = candleSeries.createPriceLine({
-    price: numericPrice,
-    color,
-    lineWidth: options.lineWidth || 2,
-    lineStyle: options.lineStyle ?? LightweightCharts.LineStyle.Dashed,
-    axisLabelVisible: true,
-    title,
-  });
-
   if (!tradeVisualPriceLines[executionSymbol]) {
     tradeVisualPriceLines[executionSymbol] = {};
   }
 
   tradeVisualPriceLines[executionSymbol][lineType] = {
     id,
-    line,
+    line: null,
     lineType,
     tradeId,
     price: numericPrice,
+    title,
+    color,
   };
   console.log("drawLine", executionSymbol, tradeId, lineType, numericPrice);
 }
@@ -8468,6 +8481,31 @@ function positionTradeLevelDragLine(lineElement, price) {
     label.textContent = `${title}  ${formatLivePrice(currentChartSymbol, price) || price}`;
   }
   return true;
+}
+
+function repositionTradeLevelDragLines() {
+  const layer = document.getElementById("tradeLevelDragLayer");
+  if (!layer || !candleSeries) return;
+
+  layer.querySelectorAll(".trade-level-drag-line").forEach((lineElement) => {
+    const price = Number(lineElement.dataset.price);
+    const symbol = normalizeTradeChartSymbol(lineElement.dataset.symbol);
+
+    if (
+      symbol !== normalizeTradeChartSymbol(currentChartSymbol) ||
+      !Number.isFinite(price)
+    ) {
+      return;
+    }
+
+    positionTradeLevelDragLine(lineElement, price);
+  });
+}
+
+function scheduleTradeLevelReposition() {
+  window.requestAnimationFrame(repositionTradeLevelDragLines);
+  window.setTimeout(repositionTradeLevelDragLines, 40);
+  window.setTimeout(repositionTradeLevelDragLines, 120);
 }
 
 function openTradeLevelConfirmation() {
@@ -8614,6 +8652,7 @@ function beginTradeLevelDrag(event, lineElement, trade, levels, levelKey) {
     const valueKey = levelKey === "sl" ? "current_sl" : levelKey;
 
     chartLevelDragState.proposedLevels[valueKey] = price;
+    lineElement.dataset.price = String(price);
     positionTradeLevelDragLine(lineElement, price);
     updateTradeLevelPreview(
       trade,
@@ -8680,6 +8719,7 @@ function renderDraggableTradeLevels(trade, levels) {
     line.dataset.lineId = getTradeLineId(symbol, tradeId, definition.key);
     line.dataset.symbol = symbol;
     line.dataset.tradeId = tradeId;
+    line.dataset.price = String(definition.value);
     line.dataset.title = definition.title;
     line.style.setProperty("--level-color", definition.color);
     line.innerHTML = `
