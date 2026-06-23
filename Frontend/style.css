@@ -11098,3 +11098,66 @@ body[data-active-settings-page="performance"] #statsModal .performance-modal-box
     grid-template-columns: 34px minmax(116px, 1fr) !important;
   }
 }
+
+/* ===== ENTRY STRATEGY CHECKS FIX ===== */
+
+.entry-strategy-debug {
+    margin-top: 10px;
+    padding: 12px;
+    border: 1px solid #203650;
+    border-radius: 12px;
+    background: rgba(7,16,29,.78);
+
+    height: auto !important;
+    min-height: 250px;
+    max-height: none !important;
+    overflow: visible !important;
+}
+
+.entry-strategy-debug-grid {
+    display: grid;
+    grid-template-columns: minmax(0,1fr) auto;
+    gap: 7px 12px;
+
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+}
+
+.entry-strategy-debug-grid strong{
+    white-space: normal !important;
+    overflow: visible !important;
+    text-overflow: unset !important;
+}
+
+/* FORCE CENTER PANEL TO SHOW FULL ENTRY CHECKS */
+.main-trade-panel,
+.main-trade-card {
+  height: auto !important;
+  min-height: 100% !important;
+  max-height: none !important;
+  overflow: visible !important;
+}
+
+body.fit-mode .main-trade-panel {
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  min-height: 0 !important;
+}
+
+body.fit-mode .main-trade-card {
+  padding-bottom: 24px !important;
+}
+
+.main-smc-panel {
+  overflow: visible !important;
+}
+
+.entry-strategy-debug {
+  display: block !important;
+  height: auto !important;
+  min-height: 235px !important;
+  max-height: none !important;
+  overflow: visible !important;
+  margin-bottom: 12px !important;
+}

@@ -689,7 +689,7 @@ const DEFAULT_DASHBOARD_PREFS = {
   showBrokerInfo: true,
 };
 const DEFAULT_RISK_PREFS = {
-  riskPerTradePct: "0.50",
+  riskPerTradePct: "1.00",
   maxDailyLoss: "",
   maxWeeklyLoss: "",
   maxOpenTrades: "1",
@@ -743,6 +743,18 @@ function hydrateRiskSettings() {
   });
 }
 
+function updateRiskSaveStatus(prefs, message = "") {
+  const status = document.getElementById("riskSaveStatus");
+  if (!status) return;
+
+  const risk = Number(prefs?.riskPerTradePct || 0);
+  const riskText = Number.isFinite(risk) ? risk.toFixed(2) : "--";
+
+  status.textContent = message
+    ? `${message} · Current risk: ${riskText}%`
+    : `Current risk: ${riskText}%`;
+}
+
 function saveRiskSettingsFromInputs() {
   const prefs = loadLocalObject(RISK_PREFS_KEY, DEFAULT_RISK_PREFS);
 
@@ -752,6 +764,10 @@ function saveRiskSettingsFromInputs() {
   });
 
   saveLocalObject(RISK_PREFS_KEY, prefs);
+  updateRiskSaveStatus(prefs, "Local saved");
+
+  console.log("RISK_LOCAL_SAVE_DEBUG", prefs);
+
   return prefs;
 }
 
@@ -771,6 +787,10 @@ async function loadRiskSettingsFromBackend() {
     };
     saveLocalObject(RISK_PREFS_KEY, prefs);
     hydrateRiskSettings();
+    updateRiskSaveStatus(prefs, "Loaded backend");
+
+    console.log("RISK_BACKEND_LOAD_DEBUG", prefs);
+    
   } catch (error) {
     console.error("Risk settings load failed:", error);
   }
@@ -860,8 +880,10 @@ function openSettingsPage(page = "general") {
   applyDashboardPreferences();
   hydrateRiskSettings();
   if (page === "risk") {
-    loadRiskSettingsFromBackend();
-  }
+  const localPrefs = loadLocalObject(RISK_PREFS_KEY, DEFAULT_RISK_PREFS);
+  updateRiskSaveStatus(localPrefs, "Loaded local");
+  loadRiskSettingsFromBackend();
+}
   settingsModal.classList.remove("hidden");
   setActiveSettingsPage(`settings:${page}`);
   setMainMenuOpen(true);
@@ -4273,10 +4295,6 @@ if (priceEl) {
   setStrategyCheck(
     "strategy-debug-5m-confirm",
     strategyDebug.five_m_confirmation
-  );
-  setStrategyCheck(
-    "strategy-debug-ema",
-    strategyDebug.ema_15m_in_favor
   );
   setStrategyCheck("strategy-debug-sl", strategyDebug.sl_valid);
   setStrategyCheck("strategy-debug-tp1", strategyDebug.tp1_valid);
@@ -9744,6 +9762,8 @@ document.getElementById("riskSaveBtn")?.addEventListener("click", async (event) 
 
   saveButton.disabled = true;
   saveButton.textContent = "Saving...";
+  updateRiskSaveStatus(prefs, "Saving");
+  console.log("RISK_SAVE_PAYLOAD_DEBUG", prefs);
 
   try {
     const payload = {
