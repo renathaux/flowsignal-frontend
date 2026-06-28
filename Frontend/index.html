@@ -205,19 +205,6 @@
 
     <div class="divider"></div>
     <section class="performance-strip" aria-label="Live trading performance">
-      <article class="performance-card performance-daily">
-        <div class="performance-icon" aria-hidden="true">
-          <svg viewBox="0 0 32 32">
-            <path d="M5 16h22M16 5v22"></path>
-            <circle cx="16" cy="16" r="11"></circle>
-          </svg>
-        </div>
-        <div class="performance-copy">
-          <span>DAILY P/L</span>
-          <strong id="dashboardDailyPnl">$0.00</strong>
-        </div>
-      </article>
-
       <article class="performance-card performance-weekly">
         <div class="performance-icon" aria-hidden="true">
           <svg viewBox="0 0 32 32">
@@ -427,30 +414,24 @@
     <div class="smc-panel main-smc-panel">
       <div class="smc-header">⚡ SMC PLAN</div>
       <div class="smc-row"><span>Type</span><span id="main-plan-type">--</span></div>
-      <div class="smc-row"><span>Bias</span><span id="main-plan-bias">--</span></div>
       <div class="smc-row"><span>Entry</span><span id="main-entry-price">--</span></div>
       <div class="smc-row"><span>SL</span><span id="main-sl">--</span></div>
       <div class="smc-row"><span>TP1</span><span id="main-tp1">--</span></div>
       <div class="smc-row"><span>TP2</span><span id="main-tp2">--</span></div>
       <div class="smc-row"><span>Risk/Reward</span><span id="main-rr">--</span></div>
-      <div class="smc-row"><span>Invalidation</span><span id="main-invalidation">--</span></div>
-      <div class="smc-row"><span>Reason</span><span id="main-reason">--</span></div>
-      <div class="smc-row signal-blocker-row hidden" id="main-blocked-by-row"><span>Blocked By</span><span id="main-blocked-by">--</span></div>
-      <div class="smc-row signal-blocker-row hidden" id="main-blocked-reason-row"><span>Blocked Reason</span><span id="main-blocked-reason">--</span></div>
+      <div class="smc-row signal-blocker-row hidden" id="main-blocked-reason-row"><span>Block Reason</span><span id="main-blocked-reason">--</span></div>
     </div>
 
     <details class="entry-strategy-debug" open>
       <summary>ENTRY STRATEGY CHECKS</summary>
       <div class="entry-strategy-debug-grid">
-        <span>15m swing break</span><strong id="strategy-debug-swing-break">NO</strong>
-        <span>15m close confirmed</span><strong id="strategy-debug-15m-close">NO</strong>
-        <span>Saved swing level</span><strong id="strategy-debug-swing-level">--</strong>
-        <span>5m confirmation</span><strong id="strategy-debug-5m-confirm">NO</strong>
-        <span>SL valid</span><strong id="strategy-debug-sl">NO</strong>
-        <span>TP1 valid</span><strong id="strategy-debug-tp1">NO</strong>
-        <span>TP2 valid</span><strong id="strategy-debug-tp2">NO</strong>
-        <span>Final entry decision</span><strong id="strategy-debug-decision">WAIT</strong>
-        <span>Block reason</span><strong id="strategy-debug-block-reason">--</strong>
+        <span>15m BOS/CHOCH</span><strong id="strategy-debug-smc">NO</strong>
+        <span>Swing break</span><strong id="strategy-debug-swing-break">NO</strong>
+        <span>15m close</span><strong id="strategy-debug-15m-close">NO</strong>
+        <span>5m confirm</span><strong id="strategy-debug-5m-confirm">NO</strong>
+        <span>Swing SL</span><strong id="strategy-debug-swing-sl">NO</strong>
+        <span>Signal</span><strong id="strategy-debug-decision">WAIT</strong>
+        <span class="strategy-debug-reason-label">Reason</span><strong id="strategy-debug-block-reason">--</strong>
       </div>
     </details>
 
@@ -517,65 +498,63 @@
   </div>
 </div>
 
-<div class="structure-panel">
-  <div class="structure-box structure-grid-clean">
-
-    <div class="structure-left">
-  <div class="structure-title">MARKET STRUCTURE (SMC)</div>
-
-  <svg viewBox="0 0 360 150" class="smc-svg-clean" id="smcLiveSvg">
-    <polyline id="smcLiveLine"
-      points="18,98 50,45 82,115 115,55 150,95 185,45 220,90"
-      fill="none" stroke="#22c55e" stroke-width="5"
-      stroke-linecap="round" stroke-linejoin="round" />
-
-    <line id="smcBosLine" x1="58" y1="42" x2="190" y2="42"
-      stroke="#3b82f6" stroke-width="3" stroke-dasharray="8 8" />
-    <text id="smcBosText" x="112" y="24" fill="#3b82f6" font-size="20" font-weight="800">BOS</text>
-
-    <line id="smcChochLine" x1="225" y1="80" x2="310" y2="80"
-      stroke="#ef4444" stroke-width="3" stroke-dasharray="8 8" />
-    <text id="smcChochText" x="238" y="58" fill="#ef4444" font-size="18" font-weight="800">CHOCH</text>
-
-    <g id="smcLiquidityLayer"></g>
-    
-    <polyline id="smcProjectionLine"
-      points="220,90 250,105 280,105 310,75 338,95"
-      fill="none" stroke="#6b7280" stroke-width="5"
-      stroke-linecap="round" stroke-linejoin="round" />
-
-    <text id="smcLowText" x="75" y="138" fill="#ffffff" font-size="16" font-weight="800">HL</text>
-    <text id="smcHighText" x="175" y="120" fill="#ffffff" font-size="16" font-weight="800">HH</text>
-  </svg>
-</div>
-
-<div class="structure-right">
-      <div class="structure-info-row">
-        <span>Trend: 1h</span>
-        <strong id="structure-trend">SIDEWAYS</strong>
+<div class="news-impact-panel">
+  <div class="news-impact-card">
+    <div class="news-impact-header">
+      <div class="news-impact-title">
+        <span class="news-impact-title-icon" aria-hidden="true">▤</span>
+        <span id="news-impact-title">NEWS IMPACT • EURUSD</span>
       </div>
-
-      <div class="structure-info-row">
-        <span>Entry: 15m</span>
-        <strong id="structure-type">NEUTRAL</strong>
-      </div>
-
-      <div class="structure-info-row">
-        <span>5m:</span>
-        <strong id="structure-next">Wait for BOS</strong>
-      </div>
-
-      <div class="structure-info-row">
-        <span>Key Level:</span>
-        <strong class="resistance-text" id="structure-resistance">--</strong>
-      </div>
-
-      <div class="structure-info-row">
-        <span>Key Level:</span>
-        <strong class="support-text" id="structure-support">--</strong>
+      <div class="news-impact-updated">
+        <span id="news-impact-updated">Last update: --</span>
+        <span class="news-impact-refresh" aria-hidden="true">↻</span>
       </div>
     </div>
 
+    <div id="news-impact-empty" class="news-impact-empty">
+      News unavailable.
+    </div>
+
+    <div id="news-impact-content" class="news-impact-content hidden">
+      <div class="news-impact-event">
+        <span>NEXT HIGH-IMPACT NEWS</span>
+        <strong id="news-impact-event-name">--</strong>
+        <em id="news-impact-currency">Currency affected: --</em>
+        <b id="news-impact-time">--</b>
+      </div>
+
+      <div class="news-impact-item">
+        <span>IMPACT</span>
+        <strong id="news-impact-level">--</strong>
+        <div class="news-impact-dots" aria-hidden="true">
+          <i></i><i></i><i></i>
+        </div>
+      </div>
+
+      <div class="news-impact-item">
+        <span>NEWS BIAS</span>
+        <strong id="news-impact-bias">--</strong>
+        <em id="news-impact-bias-note">Waiting for release</em>
+      </div>
+
+      <div class="news-impact-item">
+        <span id="news-impact-effect-label">EFFECT ON EURUSD</span>
+        <strong id="news-impact-effect">--</strong>
+        <em id="news-impact-effect-note">Normal SMC rules active</em>
+      </div>
+
+      <div class="news-impact-score">
+        <span>FINAL NEWS SCORE</span>
+        <strong id="news-impact-score">0</strong>
+        <em>-25 to +25</em>
+      </div>
+
+      <div class="news-impact-decision">
+        <span>TRADE DECISION</span>
+        <strong id="news-impact-decision">WAITING FOR ACTUAL DATA</strong>
+        <em id="news-impact-decision-note">Wait for news to pass</em>
+      </div>
+    </div>
   </div>
 </div>
 <section class="history-section">
@@ -791,11 +770,13 @@
     <section id="generalSettingsPanel" class="settings-panel">
       <div class="settings-grid">
         <label><input type="checkbox" data-dashboard-pref="showWeeklyPnl"> Show Weekly P/L</label>
+        <label><input type="checkbox" data-dashboard-pref="showMonthlyPnl"> Show Monthly P/L</label>
         <label><input type="checkbox" data-dashboard-pref="showFloatingPnl"> Show Floating P/L</label>
         <label><input type="checkbox" data-dashboard-pref="showConfidence"> Show Confidence</label>
         <label><input type="checkbox" data-dashboard-pref="showBuySellPct"> Show Buy/Sell %</label>
+        <label><input type="checkbox" data-dashboard-pref="showManualTradeButtons"> Show Buy/Sell Buttons</label>
         <label><input type="checkbox" data-dashboard-pref="showOpenTradesCounter"> Show Open Trades Counter</label>
-        <label><input type="checkbox" data-dashboard-pref="showMarketStructurePanel"> Show Market Structure Panel</label>
+        <label><input type="checkbox" data-dashboard-pref="showMarketStructurePanel"> Show News Impact Panel</label>
         <label><input type="checkbox" data-dashboard-pref="showRecentSignalHistory"> Show Recent Signal History</label>
         <label><input type="checkbox" data-dashboard-pref="showAccountBalance"> Show Account Balance</label>
         <label><input type="checkbox" data-dashboard-pref="showAccountNumber"> Show Account Number</label>

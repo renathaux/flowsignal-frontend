@@ -2,7 +2,7 @@ const BASE_URL =
   window.location.hostname === "127.0.0.1" ||
   window.location.hostname === "localhost"
     ? "http://127.0.0.1:8001"
-    : "https://api.flowsignalfx.com";
+    : "https://flowsignal-backend-3.onrender.com";
 
 const DISPLAY_NAMES = {
   EURUSD: "EURUSD",
@@ -10,6 +10,9 @@ const DISPLAY_NAMES = {
 };
 
 const API_URL = `${BASE_URL}/panel-data`;
+const NEWS_IMPACT_URL = `${BASE_URL}/news-impact`;
+const NEWS_IMPACT_CACHE = {};
+const NEWS_IMPACT_INFLIGHT = {};
 // ==============================
 // 🌍 LANGUAGE SYSTEM
 // ==============================
@@ -108,8 +111,8 @@ const LANG = {
     reason: "Reason",
     lastSignal: "Last Signal",
 
-    // Structure panel
-    marketStructure: "MARKET STRUCTURE (SMC)",
+    // News panel
+    marketStructure: "NEWS IMPACT",
     trend: "Trend: 1h",
     structure: "Entry: 15m",
     nextStep: "5m:",
@@ -239,7 +242,7 @@ const LANG = {
     lastSignal: "Dernier signal",
 
     // Structure panel
-    marketStructure: "STRUCTURE DU MARCHÉ (SMC)",
+    marketStructure: "IMPACT DES NOUVELLES",
     trend: "Tendance: 1h",
     structure: "Entrée: 15m",
     nextStep: "5m:",
@@ -369,7 +372,7 @@ const LANG = {
     lastSignal: "Última señal",
 
     // Structure panel
-    marketStructure: "ESTRUCTURA DEL MERCADO (SMC)",
+    marketStructure: "IMPACTO DE NOTICIAS",
     trend: "Tendencia: 1h",
     structure: "Entrada: 15m",
     nextStep: "5m:",
@@ -441,7 +444,7 @@ const dashboardMonthlyPnl = document.getElementById("dashboardMonthlyPnl");
 const dashboardFloatingPnl = document.getElementById("dashboardFloatingPnl");
 const dashboardOpenTrades = document.getElementById("dashboardOpenTrades");
 const dashboardPerformanceStrip = document.querySelector(".performance-strip");
-const dashboardAdminCards = document.querySelectorAll(".performance-daily, .performance-weekly, .performance-monthly, .performance-floating, .performance-trades");
+const dashboardAdminCards = document.querySelectorAll(".performance-weekly, .performance-monthly, .performance-floating, .performance-trades");
 const voiceToggleBtn = document.getElementById("voiceToggleBtn");
 const menuAssistantBtn = document.getElementById("menuAssistantBtn");
 const assistantModal = document.getElementById("assistantModal");
@@ -678,9 +681,11 @@ const DASHBOARD_PREFS_KEY = "flowsignal_dashboard_preferences";
 const RISK_PREFS_KEY = "flowsignal_risk_preferences";
 const DEFAULT_DASHBOARD_PREFS = {
   showWeeklyPnl: true,
+  showMonthlyPnl: false,
   showFloatingPnl: true,
   showConfidence: true,
   showBuySellPct: true,
+  showManualTradeButtons: false,
   showOpenTradesCounter: true,
   showMarketStructurePanel: true,
   showRecentSignalHistory: true,
@@ -715,7 +720,9 @@ function saveLocalObject(key, value) {
 function applyDashboardPreferences() {
   const prefs = loadLocalObject(DASHBOARD_PREFS_KEY, DEFAULT_DASHBOARD_PREFS);
   document.body.classList.toggle("hide-weekly-pnl", !prefs.showWeeklyPnl);
+  document.body.classList.toggle("hide-monthly-pnl", !prefs.showMonthlyPnl);
   document.body.classList.toggle("hide-floating-pnl", !prefs.showFloatingPnl);
+  document.body.classList.toggle("hide-manual-trade-buttons", !prefs.showManualTradeButtons);
   document.body.classList.toggle("hide-open-trades-counter", !prefs.showOpenTradesCounter);
   document.body.classList.toggle("hide-confidence-ui", !prefs.showConfidence);
   document.body.classList.toggle("hide-buy-sell-ui", !prefs.showBuySellPct);
@@ -3504,26 +3511,9 @@ if (smcRows[6]) smcRows[6].textContent = LANG[lang].riskReward;
 if (smcRows[7]) smcRows[7].textContent = LANG[lang].invalidation;
 if (smcRows[8]) smcRows[8].textContent = LANG[lang].reason;
 
-// Structure title
-const structureTitle = document.querySelector(".structure-title");
-
-if (structureTitle) {
-const safeSymbol =
-  typeof currentChartSymbol !== "undefined" ? currentChartSymbol : "EURUSD";
-
-const safeTimeframe =
-  typeof currentChartTimeframe !== "undefined" ? currentChartTimeframe : "5m";
-
-const displayName = DISPLAY_NAMES[safeSymbol] || safeSymbol;
-
-structureTitle.textContent =
-  `${LANG[lang].marketStructure} • ${displayName} • ${safeTimeframe}`;
-}
-// Structure labels
-const structureLabels = document.querySelectorAll(".structure-info-row span");
-if (structureLabels[0]) structureLabels[0].textContent = LANG[lang].trend; 
-if (structureLabels[1]) structureLabels[1].textContent = LANG[lang].structure;
-if (structureLabels[2]) structureLabels[2].textContent = LANG[lang].nextStep;
+refreshNewsImpact(
+  typeof currentChartSymbol !== "undefined" ? currentChartSymbol : "EURUSD"
+);
 if (structureLabels[3]) structureLabels[3].textContent = LANG[lang].keyLevel;
 if (structureLabels[4]) structureLabels[4].textContent = LANG[lang].keyLevel;
 
@@ -3706,6 +3696,24 @@ function tSignal(signal) {
   return s;
 }
 
+function getSignalSide(signal) {
+  const s = String(signal || "").trim().toUpperCase();
+  if (s === "BUY" || s === "SELL") return s;
+  return s;
+}
+
+function getVisibleSignal(data) {
+  const displaySignal = String(
+    data?.display_signal
+    || data?.signal_display_state
+    || data?.final_signal
+    || data?.signal
+    || "WAIT"
+  ).trim().toUpperCase();
+
+  return displaySignal;
+}
+
 function tMarketText(text) {
   const s = String(text || "").toUpperCase();
 
@@ -3727,7 +3735,7 @@ function tMarketText(text) {
 
 if (currentLang === "fr") {
   return String(text)
-    .replaceAll("Wait for CHOCH/BOS + retest", "Attendre CHOCH/BOS + retest")
+    .replaceAll("Wait for 15m swing break + close", "Attendre cassure 15m + clôture")
     .replaceAll("STRONG_BEARISH(", "BAISSIER FORT (")
     .replaceAll("STRONG_BULLISH(", "HAUSSIER FORT (")
     .replaceAll("MEDIUM_BEARISH(", "BAISSIER MOYEN (")
@@ -3749,8 +3757,9 @@ if (currentLang === "fr") {
     .replaceAll("STRONG_BULLISH", "HAUSSIER FORT")
     .replaceAll("STRONG BEARISH", "BAISSIER FORT")
     .replaceAll("STRONG_BEARISH", "BAISSIER FORT")
+    .replaceAll("No entry until 15m structure confirms", "Pas d’entrée avant confirmation 15m")
     .replaceAll("No entry until structure confirms", "Pas d’entrée avant confirmation de la structure")
-    .replaceAll("Wait for CHOCH/BOS + retest", "Attendre CHOCH/BOS + retest")
+    .replaceAll("Wait for 15m swing break + close", "Attendre cassure 15m + clôture")
     .replaceAll("LOW_ACTIVITY", "FAIBLE ACTIVITÉ")
     .replaceAll("MEDIUM_BULLISH", "HAUSSIER MOYEN")
     .replaceAll("MEDIUM_BEARISH", "BAISSIER MOYEN")
@@ -3783,7 +3792,8 @@ if (currentLang === "es") {
     "No entry until structure confirms",
     "Sin entrada hasta que la estructura confirme"
   )
-    .replaceAll("Wait for CHOCH/BOS + retest", "Esperar CHOCH/BOS + retest")
+    .replaceAll("No entry until 15m structure confirms", "Sin entrada hasta confirmación 15m")
+    .replaceAll("Wait for 15m swing break + close", "Esperar ruptura 15m + cierre")
     .replaceAll("STRONG_BEARISH(", "BAJISTA FUERTE (")
     .replaceAll("STRONG_BULLISH(", "ALCISTA FUERTE (")
     .replaceAll("MEDIUM_BEARISH(", "BAJISTA MEDIO (")
@@ -3852,10 +3862,11 @@ function formatCandleDebugTime(value) {
 
 function updateCard(symbol, data) {
   const cardPrefix = getCardPrefix(symbol);
-  let signal = String(data.signal || "WAIT").trim().toUpperCase();
-  const buyPct = clampPct(data.buy_pct ?? data.buy_percentage ?? data.buy_percent ?? 0);
-  const sellPct = clampPct(data.sell_pct ?? data.sell_percentage ?? data.sell_percent ?? 0);
-  const confidence = clampPct(data.confidence ?? 0);
+  let signal = getVisibleSignal(data);
+  const displayScores = getFinalDisplayScores(data);
+  const buyPct = displayScores.buy;
+  const sellPct = displayScores.sell;
+  const confidence = displayScores.confidence;
   const marketCondition = String(data.market_condition || "UNKNOWN").trim().toUpperCase();
   const entryQuality = String(data.entry_quality || "WEAK").trim().toUpperCase();
   const entryTiming = String(data.entry_timing || "NEUTRAL").trim().toUpperCase();
@@ -4124,6 +4135,241 @@ function updateSmcVisual(data) {
   }
 }
 
+function renderNewsImpact(symbol, newsData) {
+  const normalizedSymbol = String(symbol || "EURUSD").toUpperCase();
+  const data = newsData && typeof newsData === "object" ? newsData : null;
+
+  const titleEl = document.getElementById("news-impact-title");
+  const updatedEl = document.getElementById("news-impact-updated");
+  const emptyEl = document.getElementById("news-impact-empty");
+  const contentEl = document.getElementById("news-impact-content");
+  const eventEl = document.getElementById("news-impact-event-name");
+  const currencyEl = document.getElementById("news-impact-currency");
+  const timeEl = document.getElementById("news-impact-time");
+  const levelEl = document.getElementById("news-impact-level");
+  const biasEl = document.getElementById("news-impact-bias");
+  const effectLabelEl = document.getElementById("news-impact-effect-label");
+  const effectEl = document.getElementById("news-impact-effect");
+  const scoreEl = document.getElementById("news-impact-score");
+  const decisionEl = document.getElementById("news-impact-decision");
+  const cardEl = document.querySelector(".news-impact-card");
+  const dotsEl = document.querySelector(".news-impact-dots");
+  const biasNoteEl = document.getElementById("news-impact-bias-note");
+  const effectNoteEl = document.getElementById("news-impact-effect-note");
+  const decisionNoteEl = document.getElementById("news-impact-decision-note");
+
+  if (!titleEl) return;
+
+  const displayName = DISPLAY_NAMES[normalizedSymbol] || normalizedSymbol;
+  titleEl.textContent = `NEWS IMPACT • ${displayName}`;
+
+  if (!data || data.unavailable) {
+    if (cardEl) cardEl.className = "news-impact-card news-state-unavailable";
+    if (updatedEl) updatedEl.textContent = "Last update: --";
+    if (emptyEl) {
+      emptyEl.textContent = "News unavailable.";
+      emptyEl.classList.remove("hidden");
+    }
+    if (contentEl) contentEl.classList.add("hidden");
+    return;
+  }
+
+  const hasNews = Boolean(
+    data.event_name
+    || data.next_event
+    || data.news_event
+    || data.event
+  );
+  const rawDecision = String(data.trade_decision || data.decision || "").toUpperCase();
+  const rawEventName = data.event_name || data.next_event || data.news_event || data.event || "--";
+  const isNoNews = rawDecision.includes("NO_MAJOR_NEWS")
+    || rawDecision.includes("NEWS_UNAVAILABLE")
+    || String(rawEventName).toUpperCase().includes("NO MAJOR NEWS")
+    || String(rawEventName).toUpperCase().includes("NEWS UNAVAILABLE");
+  const eventName = rawEventName;
+  const rawImpact = String(data.impact || data.impact_level || "").toUpperCase();
+  const impact = isNoNews || !["HIGH", "MEDIUM", "LOW"].includes(rawImpact)
+    ? "NEUTRAL"
+    : rawImpact;
+  const bias = data.news_bias || data.bias || "Waiting for release";
+  const effect =
+    data.symbol_effect
+    || data.effect_on_symbol
+    || data.effect
+    || `${normalizedSymbol} Neutral`;
+  const decision =
+    data.trade_decision
+    || data.decision
+    || "WAITING FOR ACTUAL DATA";
+  const rawScore = data.final_news_score ?? data.news_score ?? data.score;
+  const score = Number.isFinite(Number(rawScore))
+    ? Math.max(-25, Math.min(25, Number(rawScore)))
+    : 0;
+
+  if (updatedEl) {
+    updatedEl.textContent = `Last update: ${data.last_update || data.updated_at || "--"}`;
+  }
+
+  if (emptyEl) emptyEl.classList.toggle("hidden", hasNews);
+  if (contentEl) contentEl.classList.toggle("hidden", !hasNews);
+
+  if (!hasNews && emptyEl) {
+    emptyEl.textContent = "News unavailable.";
+  }
+  if (!hasNews) return;
+
+  if (eventEl) eventEl.textContent = eventName;
+  if (currencyEl) {
+    currencyEl.textContent = `Currency affected: ${data.currency || data.currency_affected || "--"}`;
+  }
+  if (timeEl) {
+    timeEl.textContent = data.time_until_event || data.time_until || data.event_time || "--";
+  }
+  if (levelEl) {
+    levelEl.textContent = impact;
+    levelEl.className = `news-impact-pill ${impact.toLowerCase()}`;
+  }
+  if (dotsEl) {
+    const dotCount = impact === "HIGH" ? 3 : impact === "MEDIUM" ? 2 : impact === "LOW" ? 1 : 0;
+    dotsEl.className = `news-impact-dots ${impact.toLowerCase()}`;
+    dotsEl.innerHTML = Array.from({ length: dotCount }, () => "<i></i>").join("");
+  }
+  if (biasEl) biasEl.textContent = bias;
+  if (biasNoteEl) {
+    const biasRaw = String(bias).toUpperCase();
+    biasNoteEl.textContent = biasRaw.includes("BULLISH")
+      ? "Currency likely stronger"
+      : biasRaw.includes("BEARISH")
+        ? "Currency likely weaker"
+        : "Waiting for release";
+  }
+  if (effectLabelEl) effectLabelEl.textContent = `EFFECT ON ${displayName}`;
+  if (effectEl) {
+    effectEl.textContent = effect;
+    const effectRaw = String(effect).toUpperCase();
+    effectEl.classList.toggle("effect-buy", effectRaw.includes("BUY"));
+    effectEl.classList.toggle("effect-sell", effectRaw.includes("SELL"));
+    if (effectNoteEl) {
+      effectNoteEl.textContent = effectRaw.includes("SELL")
+        ? `${displayName} may move down`
+        : effectRaw.includes("BUY")
+          ? `${displayName} may move up`
+          : "Normal SMC rules active";
+    }
+  }
+  if (scoreEl) {
+    scoreEl.textContent = `${score > 0 ? "+" : ""}${score}`;
+    scoreEl.classList.toggle("score-positive", score > 0);
+    scoreEl.classList.toggle("score-negative", score < 0);
+  }
+  if (decisionEl) {
+    decisionEl.textContent = String(decision).toUpperCase();
+    const decisionRaw = String(decision).toUpperCase();
+    decisionEl.classList.toggle("decision-supports", decisionRaw.includes("SUPPORTS"));
+    decisionEl.classList.toggle("decision-conflicts", decisionRaw.includes("CONFLICTS"));
+    decisionEl.classList.toggle("decision-block", decisionRaw.includes("BLOCK"));
+    if (decisionNoteEl) {
+      decisionNoteEl.textContent = decisionRaw.includes("CONFLICTS")
+        ? "Be careful - wait for news to pass"
+        : decisionRaw.includes("SUPPORTS")
+          ? "News agrees with current setup"
+          : decisionRaw.includes("BLOCK")
+            ? "Avoid entry during news volatility"
+            : decisionRaw.includes("WAITING")
+              ? "Waiting for actual data"
+              : "Normal SMC rules active";
+    }
+    if (cardEl) {
+      cardEl.className = "news-impact-card";
+      if (decisionRaw.includes("CONFLICTS") || decisionRaw.includes("BLOCK")) {
+        cardEl.classList.add("news-state-alert");
+      } else if (decisionRaw.includes("SUPPORTS")) {
+        cardEl.classList.add("news-state-supports");
+      } else if (decisionRaw.includes("WAITING")) {
+        cardEl.classList.add("news-state-waiting");
+      } else if (isNoNews) {
+        cardEl.classList.add("news-state-neutral");
+      } else {
+        cardEl.classList.add("news-state-neutral");
+      }
+    }
+  }
+}
+
+async function fetchNewsImpact(symbol, options = {}) {
+  const normalizedSymbol = String(symbol || "EURUSD").toUpperCase();
+  const shouldRender = options.render !== false;
+  const force = options.force !== false;
+
+  if (!force && NEWS_IMPACT_CACHE[normalizedSymbol]) {
+    if (
+      shouldRender
+      && typeof currentChartSymbol !== "undefined"
+      && normalizedSymbol === currentChartSymbol
+    ) {
+      renderNewsImpact(normalizedSymbol, NEWS_IMPACT_CACHE[normalizedSymbol]);
+    }
+    return NEWS_IMPACT_CACHE[normalizedSymbol];
+  }
+
+  if (NEWS_IMPACT_INFLIGHT[normalizedSymbol]) {
+    return NEWS_IMPACT_INFLIGHT[normalizedSymbol];
+  }
+
+  NEWS_IMPACT_INFLIGHT[normalizedSymbol] = fetch(
+    `${NEWS_IMPACT_URL}?symbol=${encodeURIComponent(normalizedSymbol)}`,
+    {
+      method: "GET",
+      cache: "no-store"
+    }
+  )
+    .then((res) => {
+      if (!res.ok) {
+        throw new Error(`HTTP ${res.status}`);
+      }
+      return res.json();
+    })
+    .then((data) => {
+      NEWS_IMPACT_CACHE[normalizedSymbol] = data;
+      if (
+        shouldRender
+        && typeof currentChartSymbol !== "undefined"
+        && normalizedSymbol === currentChartSymbol
+      ) {
+        renderNewsImpact(normalizedSymbol, data);
+      }
+      return data;
+    })
+    .catch((err) => {
+      console.warn("News impact unavailable:", err);
+      delete NEWS_IMPACT_CACHE[normalizedSymbol];
+      if (
+        shouldRender
+        && typeof currentChartSymbol !== "undefined"
+        && normalizedSymbol === currentChartSymbol
+      ) {
+        renderNewsImpact(normalizedSymbol, { unavailable: true });
+      }
+      return null;
+    })
+    .finally(() => {
+      delete NEWS_IMPACT_INFLIGHT[normalizedSymbol];
+    });
+
+  return NEWS_IMPACT_INFLIGHT[normalizedSymbol];
+}
+
+function refreshNewsImpact(symbol = currentChartSymbol) {
+  return fetchNewsImpact(symbol, { force: true, render: true });
+}
+
+function refreshAllNewsImpact() {
+  return Promise.all([
+    fetchNewsImpact("EURUSD", { force: true, render: true }),
+    fetchNewsImpact("XAUUSD", { force: true, render: true })
+  ]);
+}
+
 function updateMainPanel(symbol) {
   if (!latestPanelData) return;
 
@@ -4153,11 +4399,12 @@ function updateMainPanel(symbol) {
         : "#35ff8a";
   }
 
-  let signal = String(data.signal || "WAIT").trim().toUpperCase();
+  let signal = getVisibleSignal(data);
 
-  const buyPct = clampPct(data.buy_pct ?? data.buy_percentage ?? data.buy_percent ?? 0);
-  const sellPct = clampPct(data.sell_pct ?? data.sell_percentage ?? data.sell_percent ?? 0);
-  const confidence = clampPct(data.confidence ?? 0);
+  const displayScores = getFinalDisplayScores(data);
+  const buyPct = displayScores.buy;
+  const sellPct = displayScores.sell;
+  const confidence = displayScores.confidence;
 
 
   const liveCandles =
@@ -4242,7 +4489,7 @@ if (priceEl) {
   const mainLocalTime = document.getElementById("main-local-time");
 
   if (mainLastSignal) {
-    mainLastSignal.textContent = `${LANG[currentLang].lastSignal}: ${tSignal(signal)}`;
+    mainLastSignal.textContent = `${LANG[currentLang].lastSignal}: ${tSignal(mainDisplaySignal)}`;
   }
 
   if (mainLocalTime) {
@@ -4251,10 +4498,9 @@ if (priceEl) {
 
   document.getElementById("main-plan-type").textContent = tMarketText(data.plan_type || "--");
   const mainPlanType = document.getElementById("main-plan-type");
-  const mainPlanBias = document.getElementById("main-plan-bias");
   const mainPlanRaw = String(data.plan_type || "").toUpperCase();
 
-  [mainPlanType, mainPlanBias].forEach((el) => {
+  [mainPlanType].forEach((el) => {
     if (!el) return;
 
     el.classList.remove("plan-buy", "plan-sell", "plan-exit", "plan-wait");
@@ -4264,16 +4510,20 @@ if (priceEl) {
     else if (mainPlanRaw.includes("SELL")) el.classList.add("plan-sell");
     else el.classList.add("plan-wait");
   });
-  document.getElementById("main-plan-bias").textContent = tMarketText(data.plan_bias || "--");
   document.getElementById("main-entry-price").textContent = data.entry_price || "--";
   document.getElementById("main-sl").textContent = data.stop_loss || "--";
   document.getElementById("main-tp1").textContent = data.tp1 || "--";
   document.getElementById("main-tp2").textContent = data.tp2 || "--";
-  document.getElementById("main-rr").textContent = data.risk_reward || "--";
-  document.getElementById("main-invalidation").textContent = tMarketText(data.invalidation || "--");
-  document.getElementById("main-reason").textContent = tMarketText(data.plan_reason || "--");
+  const rawRiskReward = String(data.risk_reward || "").trim();
+  const riskRewardLooksValid =
+    rawRiskReward &&
+    rawRiskReward.length <= 12 &&
+    /^[0-9.:/\-\s]+$/.test(rawRiskReward);
+  document.getElementById("main-rr").textContent = riskRewardLooksValid
+    ? rawRiskReward
+    : "--";
 
-  const strategyDebug = data.entry_strategy_debug || {};
+  const strategyDebug = data.strategy_debug || data.entry_strategy_debug || {};
   const setStrategyCheck = (id, value) => {
     const element = document.getElementById(id);
     if (!element) return;
@@ -4285,35 +4535,43 @@ if (priceEl) {
   };
 
   setStrategyCheck(
+    "strategy-debug-smc",
+    Boolean(
+      strategyDebug.bos_detected
+      || strategyDebug.choch_detected
+      || ["BUY", "SELL"].includes(String(strategyDebug.smc_direction || "").toUpperCase())
+    )
+  );
+  setStrategyCheck(
     "strategy-debug-swing-break",
     strategyDebug.fifteen_m_swing_break
   );
   setStrategyCheck(
     "strategy-debug-15m-close",
-    strategyDebug.fifteen_m_candle_close_confirmed
+    strategyDebug.fifteen_m_close_confirmed
+      ?? strategyDebug.fifteen_m_candle_close_confirmed
   );
   setStrategyCheck(
     "strategy-debug-5m-confirm",
     strategyDebug.five_m_confirmation
   );
-  setStrategyCheck("strategy-debug-sl", strategyDebug.sl_valid);
-  setStrategyCheck("strategy-debug-tp1", strategyDebug.tp1_valid);
-  setStrategyCheck("strategy-debug-tp2", strategyDebug.tp2_valid);
-
-  const strategySwingLevel = document.getElementById(
-    "strategy-debug-swing-level"
+  setStrategyCheck(
+    "strategy-debug-swing-sl",
+    Boolean(
+      strategyDebug.selected_swing_sl
+      || strategyDebug.sl_source
+      || strategyDebug.sl_valid
+    )
   );
-  if (strategySwingLevel) {
-    strategySwingLevel.textContent =
-      strategyDebug.saved_swing_level ?? "--";
-  }
 
   const strategyDecision = document.getElementById(
     "strategy-debug-decision"
   );
   if (strategyDecision) {
     const decision = String(
-      strategyDebug.final_entry_decision || "WAIT"
+      strategyDebug.final_signal
+        || strategyDebug.final_entry_decision
+        || "WAIT"
     ).toUpperCase();
     strategyDecision.textContent = decision;
     strategyDecision.classList.remove(
@@ -4334,82 +4592,45 @@ if (priceEl) {
     "strategy-debug-block-reason"
   );
   if (strategyBlockReason) {
+    const blockReason =
+      strategyDebug.blocked_reason
+      || strategyDebug.block_reason
+      || data.blocked_reason
+      || data.block_reason
+      || data.plan_reason
+      || "--";
     strategyBlockReason.textContent =
-      strategyDebug.block_reason || data.blocked_reason || data.plan_reason || "--";
+      signal === "BUY" || signal === "SELL" ? "--" : blockReason;
     strategyBlockReason.title = strategyBlockReason.textContent;
-  }
-
-  // ==============================
-// FVG + SESSION INFO
-// ==============================
-
-  const fvg = data.fvg;
-  const session = data.session || "UNKNOWN";
-  const sessionActive = data.session_active;
-
-  let sessionText = session;
-
-  if (!sessionActive) {
-    sessionText += " • LOW VOLUME";
-  }
-
-  let fvgText = "--";
-
-  if (fvg) {
-    fvgText =
-      `${fvg.type} FVG • ${fvg.low.toFixed(5)} → ${fvg.high.toFixed(5)}`;
-  }
-
-  // Add session to reason
-  const reasonEl = document.getElementById("main-reason");
-
-  if (reasonEl) {
-    const baseReason = tMarketText(String(data.plan_reason || "--"));
-    const scoreCapReason = String(data.score_cap_reason || "").trim();
-
-    const displacement = data.displacement || "UNKNOWN";
-    const displacementScore = data.displacement_score ?? 0;
-    const fakeBreakout = data.fake_breakout || "NONE";
-
-    reasonEl.innerHTML = `
-      ${baseReason}<br>
-      ${scoreCapReason ? `<span style="color:#f59e0b;">SCORE:</span> ${tMarketText(scoreCapReason)}<br>` : ""}
-      <span style="color:#5eead4;">${tMarketText("SESSION")}:</span> ${tMarketText(sessionText)}<br>
-    <span style="color:#facc15;">FVG:</span> ${tMarketText(fvgText)}<br>
-    <span style="color:#60a5fa;">${tMarketText("DISPLACEMENT")}:</span> ${tMarketText(displacement)} (${displacementScore})<br>
-    <span style="color:#fb7185;">${tMarketText("FAKE BREAKOUT")}:</span> ${tMarketText(fakeBreakout)}
-    `;
   }
 
   const showSignalBlocker =
     signal === "WAIT" &&
-    Boolean(data.blocked_by || data.blocked_reason);
-  const blockedByRow = document.getElementById("main-blocked-by-row");
+    Boolean(data.blocked_reason || data.block_reason);
   const blockedReasonRow = document.getElementById("main-blocked-reason-row");
-  const blockedByEl = document.getElementById("main-blocked-by");
   const blockedReasonEl = document.getElementById("main-blocked-reason");
 
-  [blockedByRow, blockedReasonRow].forEach((row) => {
-    if (row) row.classList.toggle("hidden", !showSignalBlocker);
-  });
-
-  if (blockedByEl) {
-    blockedByEl.textContent = showSignalBlocker
-      ? tMarketText(String(data.blocked_by || "--"))
-      : "--";
+  if (blockedReasonRow) {
+    blockedReasonRow.classList.toggle("hidden", !showSignalBlocker);
   }
 
   if (blockedReasonEl) {
     blockedReasonEl.textContent = showSignalBlocker
-      ? tMarketText(String(data.blocked_reason || "--"))
+      ? tMarketText(String(data.blocked_reason || data.block_reason || "--"))
       : "--";
   }
 
-  document.getElementById("structure-trend").textContent = tMarketText(smcData.structure_trend || "--");
-  document.getElementById("structure-type").textContent = tMarketText(smcData.structure_type || "--");
-  document.getElementById("structure-next").textContent = tMarketText(smcData.structure_next || "--");
-  document.getElementById("structure-resistance").textContent = smcData.structure_resistance || "--";
-  document.getElementById("structure-support").textContent = smcData.structure_support || "--";
+  const structureTrendEl = document.getElementById("structure-trend");
+  const structureTypeEl = document.getElementById("structure-type");
+  const structureNextEl = document.getElementById("structure-next");
+  const structureResistanceEl = document.getElementById("structure-resistance");
+  const structureSupportEl = document.getElementById("structure-support");
+
+  if (structureTrendEl) structureTrendEl.textContent = tMarketText(smcData.structure_trend || "--");
+  if (structureTypeEl) structureTypeEl.textContent = tMarketText(smcData.structure_type || "--");
+  if (structureNextEl) structureNextEl.textContent = tMarketText(smcData.structure_next || "--");
+  if (structureResistanceEl) structureResistanceEl.textContent = smcData.structure_resistance || "--";
+  if (structureSupportEl) structureSupportEl.textContent = smcData.structure_support || "--";
   const structureTitle = document.querySelector(".structure-title");
 
   if (structureTitle) {
@@ -4802,6 +5023,33 @@ function normalizePanelData(data) {
     XAUUSD: {}
   };
 }
+
+function getFinalDisplayScores(data) {
+  const signal = getVisibleSignal(data);
+  const signalSide = getSignalSide(signal);
+  let buy = clampPct(data?.final_buy_pct ?? data?.buy_pct ?? data?.buy_percentage ?? data?.buy_percent ?? 0);
+  let sell = clampPct(data?.final_sell_pct ?? data?.sell_pct ?? data?.sell_percentage ?? data?.sell_percent ?? 0);
+  let confidence = clampPct(data?.confidence ?? data?.final_confidence ?? 0);
+
+  if (signalSide === "BUY" && buy <= sell) {
+    const stronger = Math.max(buy, sell, confidence, 60);
+    const weaker = Math.min(buy, sell, 100 - stronger);
+    buy = clampPct(stronger);
+    sell = clampPct(Math.min(weaker, buy - 1));
+  } else if (signalSide === "SELL" && sell <= buy) {
+    const stronger = Math.max(buy, sell, confidence, 60);
+    const weaker = Math.min(buy, sell, 100 - stronger);
+    sell = clampPct(stronger);
+    buy = clampPct(Math.min(weaker, sell - 1));
+  }
+
+  if ((signalSide === "BUY" || signalSide === "SELL") && confidence <= 0) {
+    confidence = signalSide === "BUY" ? buy : sell;
+  }
+
+  return { buy, sell, confidence };
+}
+
 function renderHistory(history) {
   const body = document.getElementById("historyBody");
   if (!body) return;
@@ -6012,6 +6260,10 @@ function getShortAutoTradeReason(item) {
     details.risk_percent_if_minimum ??
     details.minimum_volume_risk_percent;
   const requiredRisk = details.risk_percent ?? details.required_risk_percent ?? 0.5;
+  const allowedRisk =
+    details.allowed_risk_percent ??
+    details.maximum_allowed_risk_percent ??
+    requiredRisk;
 
   if (reasonText.trim().toUpperCase().startsWith("LIVE BLOCKED:")) {
     return reasonText.trim();
@@ -6025,14 +6277,16 @@ function getShortAutoTradeReason(item) {
   ) {
     const finalRiskText = formatRiskPercent(finalRisk);
     const requiredRiskText = formatRiskPercent(requiredRisk) || "0.50%";
+    const allowedRiskText = formatRiskPercent(allowedRisk);
 
     return [
       finalRiskText
         ? `Minimum broker volume would risk ${finalRiskText}.`
         : "Minimum broker volume would exceed the allowed risk.",
       `Required risk: ${requiredRiskText}.`,
+      allowedRiskText ? `Allowed risk: ${allowedRiskText}.` : "",
       "Trade not sent."
-    ].join(" ");
+    ].filter(Boolean).join(" ");
   }
 
   if (typeof item?.reason === "object" || reasonText.trim().startsWith("{") || reasonText.trim().startsWith("[")) {
@@ -6123,6 +6377,22 @@ function formatVolumeSafetyDetails(item) {
     lines.push(`Risk: ${details.risk_percent}%`);
   }
 
+  if (details.allowed_risk_percent ?? details.maximum_allowed_risk_percent) {
+    lines.push(`Allowed risk: ${details.allowed_risk_percent ?? details.maximum_allowed_risk_percent}%`);
+  }
+
+  if (details.final_risk_percent !== undefined && details.final_risk_percent !== null) {
+    lines.push(`Final risk: ${details.final_risk_percent}%`);
+  }
+
+  if (details.risk_money ?? details.risk_amount) {
+    lines.push(`Risk money: ${details.risk_money ?? details.risk_amount}`);
+  }
+
+  if (details.pip_value ?? details.pip_value_per_lot) {
+    lines.push(`Pip value: ${details.pip_value ?? details.pip_value_per_lot}`);
+  }
+
   if (details.stop_loss_pips ?? details.sl_pips) {
     lines.push(`SL pips: ${details.stop_loss_pips ?? details.sl_pips}`);
   }
@@ -6139,6 +6409,10 @@ function formatVolumeSafetyDetails(item) {
     lines.push(`Lot after rounding: ${details.lot_size_after_rounding ?? details.lot_size ?? details.rounded_lots}`);
   }
 
+  if (details.broker_min_lots) {
+    lines.push(`Broker min lots: ${details.broker_min_lots}`);
+  }
+
   if (details.broker_min_volume ?? details.min_volume_units ?? details.minVolume) {
     lines.push(`Broker min volume: ${details.broker_min_volume ?? details.min_volume_units ?? details.minVolume}`);
   }
@@ -6151,6 +6425,10 @@ function formatVolumeSafetyDetails(item) {
     lines.push(`Broker step: ${details.broker_volume_step ?? details.volume_step_units ?? details.stepVolume}`);
   }
 
+  if (details.payload_volume) {
+    lines.push(`Payload volume: ${details.payload_volume}`);
+  }
+
   if (details.final_volume ?? details.volume_in_payload ?? details.volume_units) {
     lines.push(`Final volume: ${details.final_volume ?? details.volume_in_payload ?? details.volume_units}`);
   }
@@ -6159,7 +6437,7 @@ function formatVolumeSafetyDetails(item) {
     lines.push(`Blocked: ${details.blocked_reason || details.broker_rejection_reason}`);
   }
 
-  return lines.slice(0, 10);
+  return lines.slice(0, 14);
 }
 
 function escapeLiveAutoStatusText(value) {
@@ -6764,6 +7042,7 @@ console.log("🔥 Raw panel data:", rawData);
 
 const data = normalizePanelData(rawData);
 latestPanelData = data;
+refreshAllNewsImpact();
 
 const meta = rawData?._meta || {};
 
@@ -9146,6 +9425,7 @@ async function loadChartData(symbol = currentChartSymbol, timeframe = currentCha
     }
 
     candleSeries.setData(candles);
+    refreshNewsImpact(symbol);
   } catch (err) {
     console.error("Real chart data error:", err);
   }
@@ -9154,6 +9434,7 @@ async function loadChartData(symbol = currentChartSymbol, timeframe = currentCha
 function renderChartFromPanel(rawData, symbol = currentChartSymbol, timeframe = currentChartTimeframe) {
   currentChartSymbol = symbol;
   currentChartTimeframe = timeframe;
+  refreshNewsImpact(symbol);
   
   if (!chart || !candleSeries) {
     initChart();
@@ -9317,6 +9598,7 @@ function switchChart(symbol, timeframe = currentChartTimeframe) {
   document.getElementById("tradeLevelDragLayer")?.replaceChildren();
   currentChartSymbol = normalizeTradeChartSymbol(symbol);
   currentChartTimeframe = timeframe;
+  refreshNewsImpact(currentChartSymbol);
 
   initChart(); // 🔥 FORCE NEW PRECISION
 
@@ -10183,30 +10465,28 @@ document.getElementById("closeAdminLoginBtn")?.addEventListener("click", () => {
   document.getElementById("adminLoginBox")?.classList.add("hidden");
 });
 
-function moveStructurePanel() {
-  const structure = document.querySelector(".structure-panel");
+function moveNewsImpactPanel() {
+  const newsPanel = document.querySelector(".news-impact-panel");
   const mainPanel = document.querySelector(".main-trade-card");
   const chartPanel = document.querySelector(".chart-section");
 
-  if (!structure || !mainPanel || !chartPanel) return;
+  if (!newsPanel || !mainPanel || !chartPanel) return;
 
   const smcPanel = mainPanel.querySelector(".main-smc-panel");
 
   if (window.innerWidth <= 850) {
-    // MOVE INTO MAIN PANEL (above SMC PLAN)
-    if (smcPanel && structure.parentNode !== mainPanel) {
-      mainPanel.insertBefore(structure, smcPanel);
+    if (smcPanel && newsPanel.parentNode !== mainPanel) {
+      mainPanel.insertBefore(newsPanel, smcPanel);
     }
   } else {
-    // MOVE BACK UNDER CHART (original position)
     const historySection = chartPanel.querySelector(".history-section");
-    if (structure.parentNode !== chartPanel && historySection) {
-      chartPanel.insertBefore(structure, historySection);
+    if (newsPanel.parentNode !== chartPanel && historySection) {
+      chartPanel.insertBefore(newsPanel, historySection);
     }
   }
 }
 
-moveStructurePanel();
-window.addEventListener("resize", moveStructurePanel);
+moveNewsImpactPanel();
+window.addEventListener("resize", moveNewsImpactPanel);
 
 applyLanguage(currentLang);
