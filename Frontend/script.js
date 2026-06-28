@@ -2803,7 +2803,6 @@ function processVoiceAnnouncements(data, meta, rawData = null) {
     if (
       next.autoState === "BLOCKED" &&
       ["BUY", "SELL"].includes(next.rawSignal) &&
-      !next.activeTradeKey &&
       next.autoFingerprint !== previous.autoFingerprint
     ) {
       events.push({
