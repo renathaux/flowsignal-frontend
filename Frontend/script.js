@@ -5029,7 +5029,7 @@ function getFinalDisplayScores(data) {
   const signalSide = getSignalSide(signal);
   let buy = clampPct(data?.final_buy_pct ?? data?.buy_pct ?? data?.buy_percentage ?? data?.buy_percent ?? 0);
   let sell = clampPct(data?.final_sell_pct ?? data?.sell_pct ?? data?.sell_percentage ?? data?.sell_percent ?? 0);
-  let confidence = clampPct(data?.confidence ?? data?.final_confidence ?? 0);
+  let confidence = clampPct(data?.final_confidence ?? data?.confidence ?? 0);
 
   if (signalSide === "BUY" && buy <= sell) {
     const stronger = Math.max(buy, sell, confidence, 60);
@@ -6035,10 +6035,6 @@ function renderDashboardPerformance(meta = {}) {
     }
   }
 
-  if (confirmedClosedTrades === 0) {
-    dailyPnl = floating;
-    weeklyPnl = floating;
-  }
   const activeTrades = Object.values(
     sanitizeActiveLiveOrders(meta.live_active_orders || activeLiveOrders || {})
   ).filter(Boolean);
@@ -6059,10 +6055,12 @@ function renderDashboardPerformance(meta = {}) {
   });
 
   if (dashboardOpenTrades) {
+    const openTradeCount = Number.isFinite(brokerOpenCount)
+      ? Math.max(brokerOpenCount, activeTrades.length)
+      : activeTrades.length;
+
     dashboardOpenTrades.textContent = String(
-      Number.isFinite(brokerOpenCount)
-        ? brokerOpenCount
-        : activeTrades.length
+      openTradeCount
     );
   }
 
