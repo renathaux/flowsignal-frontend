@@ -1,0 +1,407 @@
+/* Phone-only FlowSignal overrides.
+   Keep mobile fixes here so they cannot affect the PC layout. */
+
+@media (max-width: 700px) {
+  #landingPage.landing-pro {
+    min-height: 100dvh !important;
+    overflow-y: auto !important;
+    padding-bottom: 26px !important;
+  }
+
+  .landing-nav {
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+  }
+
+  .landing-nav-actions {
+    width: 100% !important;
+    display: grid !important;
+    grid-template-columns: 76px 1fr 1fr !important;
+    gap: 8px !important;
+  }
+
+  .landing-login-btn,
+  .landing-get-btn,
+  #openAccessBtn,
+  #openAccessBtnHero {
+    display: inline-flex !important;
+    min-height: 44px !important;
+    align-items: center !important;
+    justify-content: center !important;
+    position: relative !important;
+    z-index: 20 !important;
+    cursor: pointer !important;
+    pointer-events: auto !important;
+    touch-action: manipulation;
+  }
+
+  .hero-actions {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    gap: 10px !important;
+  }
+
+  #accessBox,
+  #adminLoginBox {
+    position: fixed !important;
+    top: 50% !important;
+    left: 50% !important;
+    z-index: 1000000 !important;
+    width: calc(100vw - 28px) !important;
+    max-width: 360px !important;
+    max-height: calc(100dvh - 28px) !important;
+    overflow-y: auto !important;
+    transform: translate(-50%, -50%) !important;
+    pointer-events: auto !important;
+  }
+
+  #accessBox.hidden,
+  #adminLoginBox.hidden {
+    display: none !important;
+  }
+
+  #accessCode,
+  #accessBtn,
+  #closeAccessBtn,
+  #adminLoginBtn,
+  #closeAdminLoginBtn {
+    min-height: 46px !important;
+    font-size: 16px !important;
+    pointer-events: auto !important;
+    touch-action: manipulation;
+  }
+
+  #mainApp:not(.locked):not(.hidden) {
+    display: flex !important;
+  }
+
+  .broker-mobile-close {
+    display: grid !important;
+  }
+
+  .hidden,
+  [aria-hidden="true"],
+  #menuStatsBtn.hidden,
+  #menuRiskSettingsBtn.hidden,
+  #menuBrokerAccountsBtn.hidden,
+  #livePageBtn.hidden,
+  #liveAutoSection.hidden,
+  #brokerConnectionStatus.hidden,
+  #liveActiveOrders.hidden,
+  #liveAutoSymbolStatus.hidden,
+  body:not([data-user-role="admin"]) #menuStatsBtn,
+  body:not([data-user-role="admin"]) #menuRiskSettingsBtn,
+  body:not([data-user-role="admin"]) #menuBrokerAccountsBtn,
+  body:not([data-user-role="admin"]) #livePageBtn,
+  body:not([data-user-role="admin"]) #liveAutoSection,
+  body:not([data-user-role="admin"]) #brokerConnectionStatus,
+  body:not([data-user-role="admin"]) #liveActiveOrders,
+  body:not([data-user-role="admin"]) #liveAutoSymbolStatus {
+    display: none !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+  }
+}
+
+@media (max-width: 700px) {
+  body.fit-mode #mainApp.app:not(.locked) {
+    padding: 10px 8px 58px !important;
+    gap: 0 !important;
+  }
+
+  body.fit-mode #mainApp.app:not(.locked) > .top-header {
+    min-height: 52px !important;
+    grid-template-columns: 38px minmax(0, 1fr) auto auto !important;
+    gap: 7px !important;
+    margin-bottom: 8px !important;
+    padding: 7px !important;
+    border-radius: 15px !important;
+  }
+
+  .top-header .menu-toggle {
+    width: 38px !important;
+    height: 38px !important;
+    border-radius: 11px !important;
+  }
+
+  .top-header .menu-toggle::before {
+    font-size: 18px !important;
+  }
+
+  .top-header .brand-left {
+    justify-content: flex-start !important;
+    font-size: clamp(15px, 4vw, 18px) !important;
+    letter-spacing: -0.4px !important;
+  }
+
+  .app-logo-wave {
+    font-size: 24px !important;
+  }
+
+  .top-header .voice-toggle {
+    height: 36px !important;
+    min-width: 88px !important;
+    padding: 0 8px !important;
+    border-radius: 10px !important;
+  }
+
+  .top-header .voice-toggle::after {
+    content: "Voice";
+    font-size: 10px !important;
+  }
+
+  .top-header #langSelect {
+    width: 47px !important;
+    height: 36px !important;
+    border-radius: 10px !important;
+    font-size: 11px !important;
+  }
+
+  body.fit-mode #mainApp.app:not(.locked) > .topbar {
+    margin-bottom: 8px !important;
+  }
+
+  .topbar .status {
+    min-height: 27px !important;
+    padding: 0 11px !important;
+  }
+
+  .topbar .status::after {
+    font-size: 11px !important;
+  }
+
+  body.fit-mode #mainApp.app:not(.locked) > .performance-strip {
+    margin-bottom: 8px !important;
+    padding: 2px 12px !important;
+    border-radius: 16px !important;
+  }
+
+  body.fit-mode #mainApp.app:not(.locked) > .performance-strip.user-no-pnl {
+    display: none !important;
+  }
+
+  .performance-strip .performance-monthly {
+    display: none !important;
+  }
+
+  .performance-strip .performance-card {
+    grid-template-columns: minmax(0, 1fr) 72px !important;
+    min-height: 49px !important;
+    padding: 6px 0 !important;
+  }
+
+  .performance-strip .performance-card:last-child {
+    min-height: 37px !important;
+  }
+
+  .performance-strip .performance-copy {
+    gap: 2px !important;
+  }
+
+  .performance-strip .performance-copy span {
+    font-size: 9px !important;
+    letter-spacing: 0.25px !important;
+  }
+
+  .performance-strip .performance-copy strong {
+    font-size: 17px !important;
+  }
+
+  .performance-strip .performance-weekly .performance-copy strong:not(.neutral):not(.negative) {
+    font-size: 22px !important;
+  }
+
+  .performance-strip .performance-sparkline {
+    width: 70px !important;
+    height: 23px !important;
+  }
+
+  body.fit-mode #mainApp.app:not(.locked) > .dashboard-grid {
+    gap: 8px !important;
+  }
+
+  .signals-panel .content-grid {
+    gap: 8px !important;
+  }
+
+  body.fit-mode .signals-panel .symbol-card {
+    height: 148px !important;
+    padding: 10px 12px 0 !important;
+    border-radius: 16px !important;
+  }
+
+  .symbol-card .card-header {
+    min-height: 21px !important;
+  }
+
+  .symbol-card .title-wrap {
+    gap: 7px !important;
+  }
+
+  .symbol-card .card-title {
+    font-size: 16px !important;
+    letter-spacing: -0.2px !important;
+  }
+
+  .symbol-card .symbol-icon {
+    height: 18px !important;
+    max-width: 42px !important;
+  }
+
+  .symbol-card .signal-shell {
+    top: 39px !important;
+    left: 12px !important;
+    width: calc(54% - 16px) !important;
+  }
+
+  .symbol-card .signal-box {
+    height: 55px !important;
+    border-radius: 14px !important;
+  }
+
+  .symbol-card .signal-text {
+    font-size: clamp(25px, 7.6vw, 33px) !important;
+    letter-spacing: -0.8px !important;
+  }
+
+  .symbol-card .metric-label {
+    left: 56% !important;
+    width: calc(44% - 12px) !important;
+    font-size: 10px !important;
+    line-height: 1 !important;
+  }
+
+  #eurusd-buy-label,
+  #gold-buy-label {
+    top: 29px !important;
+  }
+
+  #eurusd-sell-label,
+  #gold-sell-label {
+    top: 54px !important;
+  }
+
+  .symbol-card .metric-label.conf-label {
+    top: 79px !important;
+  }
+
+  .symbol-card .bar-wrap {
+    left: 56% !important;
+    width: calc(44% - 12px) !important;
+    height: 7px !important;
+  }
+
+  #eurusd-buy-label + .bar-wrap,
+  #gold-buy-label + .bar-wrap {
+    top: 42px !important;
+  }
+
+  #eurusd-sell-label + .bar-wrap,
+  #gold-sell-label + .bar-wrap {
+    top: 67px !important;
+  }
+
+  .symbol-card .bar-wrap.conf-wrap {
+    top: 92px !important;
+  }
+
+  .symbol-card .glow-bar {
+    height: 7px !important;
+  }
+
+  .symbol-card .signal-freshness-note {
+    top: 98px !important;
+    left: 12px !important;
+    width: calc(54% - 16px) !important;
+    font-size: 8px !important;
+  }
+
+  .symbol-card .tags-row {
+    min-height: 34px !important;
+    gap: 6px !important;
+    padding: 5px 12px !important;
+  }
+
+  .symbol-card .glow-tag {
+    height: 23px !important;
+    padding: 0 7px !important;
+    font-size: 8px !important;
+  }
+
+  .chart-section .chart-controls {
+    min-height: 36px !important;
+    padding: 6px 7px 0 !important;
+    border-radius: 16px 16px 0 0 !important;
+  }
+
+  .chart-controls .chart-symbols,
+  .chart-controls .chart-timeframes {
+    gap: 4px !important;
+  }
+
+  .chart-controls button {
+    height: 25px !important;
+    padding: 0 7px !important;
+    border-radius: 7px !important;
+    font-size: 8.5px !important;
+  }
+
+  body.fit-mode .chart-panel .chart-box {
+    height: 216px !important;
+    min-height: 216px !important;
+    border-radius: 0 0 16px 16px !important;
+  }
+
+  body.fit-mode .chart-box #chartContainer {
+    height: 216px !important;
+    min-height: 216px !important;
+  }
+
+  .chart-overlay-header {
+    top: 7px !important;
+    left: 9px !important;
+  }
+
+  #chartOverlayTitle {
+    font-size: 15px !important;
+  }
+
+  #chartOverlayOhlc {
+    margin-top: 5px !important;
+    font-size: 8.5px !important;
+  }
+
+  .news-impact-panel {
+    display: none !important;
+  }
+
+  .history-section,
+  body.fit-mode .history-section {
+    margin-top: 8px !important;
+    padding: 8px 8px 6px !important;
+    border-radius: 16px !important;
+  }
+
+  .history-header h2 {
+    margin-bottom: 5px !important;
+    font-size: 15px !important;
+  }
+
+  .history-table th,
+  .history-table td {
+    padding: 5px 1px !important;
+    font-size: clamp(7.5px, 2.25vw, 9px) !important;
+  }
+
+  .history-table .history-badge,
+  .history-table .badge {
+    padding: 3px 4px !important;
+    font-size: 7.5px !important;
+  }
+
+  .mobile-domain-pill {
+    height: 34px !important;
+    min-width: 158px !important;
+    font-size: 12px !important;
+  }
+}

@@ -4,7 +4,98 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>nathaux.Fx</title>
-  <link rel="stylesheet" href="style.css?v=47" />
+  <link rel="stylesheet" href="style.css?v=52" />
+  <link rel="stylesheet" href="desktop.css?v=1" media="(min-width: 701px)" />
+  <link rel="stylesheet" href="phone.css?v=4" media="(max-width: 700px)" />
+  <script>
+    window.openFlowSignalAccess = function (event) {
+      if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+        event.stopImmediatePropagation?.();
+      }
+      document.getElementById("adminLoginBox")?.classList.add("hidden");
+      document.getElementById("accessBox")?.classList.remove("hidden");
+      window.setTimeout(function () {
+        document.getElementById("accessCode")?.focus();
+      }, 50);
+    };
+
+    window.closeFlowSignalAccess = function (event) {
+      if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+        event.stopImmediatePropagation?.();
+      }
+      document.getElementById("accessBox")?.classList.add("hidden");
+    };
+
+    window.openFlowSignalAdminLogin = function (event) {
+      if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+        event.stopImmediatePropagation?.();
+      }
+      document.getElementById("accessBox")?.classList.add("hidden");
+      document.getElementById("adminLoginBox")?.classList.remove("hidden");
+      window.setTimeout(function () {
+        document.getElementById("adminEmailInput")?.focus();
+      }, 50);
+    };
+
+    window.enterFlowSignalAccess = function (event) {
+      if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+        event.stopImmediatePropagation?.();
+      }
+      var codeInput = document.getElementById("accessCode");
+      var authMsg = document.getElementById("authMsg");
+      var code = (codeInput?.value || "").trim();
+
+      if (!code) {
+        if (authMsg) {
+          authMsg.textContent = "Enter access code";
+          authMsg.style.color = "#ff8f8f";
+        }
+        return;
+      }
+
+      if (code !== "FLOWTEST") {
+        if (authMsg) {
+          authMsg.textContent = "Invalid code";
+          authMsg.style.color = "#ff8f8f";
+        }
+        return;
+      }
+
+      localStorage.setItem("flowsignal_access", JSON.stringify({
+        granted: true,
+        time: Date.now()
+      }));
+      localStorage.setItem("flowsignal_role", "user");
+      localStorage.removeItem("flowsignal_admin");
+      document.getElementById("accessBox")?.classList.add("hidden");
+      document.getElementById("adminLoginBox")?.classList.add("hidden");
+      var landing = document.getElementById("landingPage");
+      if (landing) {
+        landing.classList.add("hidden");
+        landing.style.display = "none";
+      }
+      var app = document.getElementById("mainApp");
+      if (app) {
+        app.classList.remove("hidden");
+        app.classList.remove("locked");
+        app.style.display = "flex";
+      }
+      if (typeof window.applyRoleVisibility === "function") {
+        window.applyRoleVisibility();
+      }
+      if (typeof window.bootMainApp === "function") {
+        window.bootMainApp();
+      }
+    };
+  </script>
 </head>
 <body class="fit-mode">
   <div id="landingPage" class="landing-page landing-pro">
@@ -27,8 +118,8 @@
        <option value="ES">ES</option>
       </select>
 
-      <button id="openAdminLoginBtn" class="landing-login-btn">Login</button>
-      <button id="openAccessBtn" class="landing-get-btn">Get Started</button>
+      <button id="openAdminLoginBtn" class="landing-login-btn" type="button" onclick="openFlowSignalAdminLogin(event)">Login</button>
+      <button id="openAccessBtn" class="landing-get-btn" type="button" data-open-access="true" onclick="openFlowSignalAccess(event)">Get Started</button>
     </div>
   </nav>
 
@@ -50,7 +141,7 @@
       </p>
 
       <div class="hero-actions">
-        <button id="openAccessBtnHero" class="hero-primary">Start Trading Now →</button>
+        <button id="openAccessBtnHero" class="hero-primary" type="button" data-open-access="true" onclick="openFlowSignalAccess(event)">Start Trading Now →</button>
         <button class="hero-secondary">View Features</button>
       </div>
 
@@ -108,8 +199,8 @@
   <input type="text" id="accessCode" placeholder="Enter access code" />
 
   <div class="auth-actions">
-    <button id="accessBtn">Enter</button>
-    <button id="closeAccessBtn">Back</button>
+    <button id="accessBtn" onclick="enterFlowSignalAccess(event)">Enter</button>
+    <button id="closeAccessBtn" onclick="closeFlowSignalAccess(event)">Back</button>
   </div>
 
   <div id="authMsg" class="auth-msg"></div>
@@ -846,7 +937,19 @@
     </section>
 
     <section id="notificationsSettingsPanel" class="settings-panel hidden">
-      <div class="settings-placeholder">Notification settings will appear here when alert channels are connected.</div>
+      <div class="notification-settings-card">
+        <label class="notification-toggle-row">
+          <span>
+            <strong>Signal alerts</strong>
+            <small>Play sound and show a desktop notification when EURUSD or XAUUSD changes to BUY or SELL.</small>
+          </span>
+          <input type="checkbox" id="signalAlertsToggle">
+        </label>
+        <div class="notification-actions">
+          <button id="testSignalAlertBtn" type="button">Test Alert</button>
+          <span id="notificationPermissionStatus">Browser permission: --</span>
+        </div>
+      </div>
     </section>
 
     <section id="strategySettingsPanel" class="settings-panel hidden">
@@ -963,7 +1066,7 @@
     <div class="auto-trade-attached-head">
       <div>
         <div class="trade-modal-title">Auto Trade</div>
-        <p>Manage paper and live automated trading.</p>
+        <p id="autoTradePanelSubtitle">Manage paper and live automated trading.</p>
       </div>
       <button id="closePaperBtn" class="assistant-panel-close" type="button" aria-label="Close Auto Trade">×</button>
     </div>
@@ -1171,6 +1274,7 @@
 
   </div>
 </div>
+<audio id="alertSound" src="alert.mp3" preload="auto"></audio>
 <script src="https://unpkg.com/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
   <script src="apiClient.js?v=1"></script>
   <script src="state.js?v=1"></script>
@@ -1180,7 +1284,8 @@
   <script src="flowAssistant.js?v=1"></script>
   <script src="performance.js?v=1"></script>
   <script src="history.js?v=1"></script>
-  <script src="script.js?v=61"></script>
+  <script src="responsiveLayout.js?v=1"></script>
+  <script src="script.js?v=71"></script>
 </body>
 </html>
   

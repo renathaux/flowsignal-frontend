@@ -491,11 +491,6 @@ if (landingLang) {
     );
   });
 }
-if (openAccessBtn) {
-  openAccessBtn.addEventListener("click", () => {
-    if (accessBox) accessBox.classList.remove("hidden");
-  });
-}
 const openAdminLoginBtn = document.getElementById("openAdminLoginBtn");
 const adminLoginBox = document.getElementById("adminLoginBox");
 const adminEmailInput = document.getElementById("adminEmailInput");
@@ -506,6 +501,18 @@ const adminLoginMsg = document.getElementById("adminLoginMsg");
 const closeAccessBtn = document.getElementById("closeAccessBtn");
 const accessBox = document.getElementById("accessBox");
 const landingPage = document.getElementById("landingPage");
+
+function openUserAccessBox() {
+  if (adminLoginBox) adminLoginBox.classList.add("hidden");
+  if (accessBox) accessBox.classList.remove("hidden");
+  setTimeout(() => accessCodeInput?.focus(), 50);
+}
+
+function openAdminLoginBox() {
+  if (accessBox) accessBox.classList.add("hidden");
+  if (adminLoginBox) adminLoginBox.classList.remove("hidden");
+  setTimeout(() => adminEmailInput?.focus(), 50);
+}
 
 const accessModal = document.getElementById("accessModal");
 const menuToggleBtn = document.getElementById("menuToggleBtn");
@@ -676,9 +683,13 @@ const generalSettingsPanel = document.getElementById("generalSettingsPanel");
 const riskSettingsPanel = document.getElementById("riskSettingsPanel");
 const notificationsSettingsPanel = document.getElementById("notificationsSettingsPanel");
 const strategySettingsPanel = document.getElementById("strategySettingsPanel");
+const signalAlertsToggle = document.getElementById("signalAlertsToggle");
+const testSignalAlertBtn = document.getElementById("testSignalAlertBtn");
+const notificationPermissionStatus = document.getElementById("notificationPermissionStatus");
 
 const DASHBOARD_PREFS_KEY = "flowsignal_dashboard_preferences";
 const RISK_PREFS_KEY = "flowsignal_risk_preferences";
+const SIGNAL_ALERTS_KEY = "soundEnabled";
 const DEFAULT_DASHBOARD_PREFS = {
   showWeeklyPnl: true,
   showMonthlyPnl: false,
@@ -715,6 +726,49 @@ function loadLocalObject(key, defaults) {
 
 function saveLocalObject(key, value) {
   localStorage.setItem(key, JSON.stringify(value));
+}
+
+function signalAlertsEnabled() {
+  return localStorage.getItem(SIGNAL_ALERTS_KEY) !== "false";
+}
+
+function setSignalAlertsEnabled(enabled) {
+  localStorage.setItem(SIGNAL_ALERTS_KEY, enabled ? "true" : "false");
+  if (alertsToggle) alertsToggle.checked = enabled;
+  if (signalAlertsToggle) signalAlertsToggle.checked = enabled;
+  updateNotificationPermissionStatus();
+}
+
+function updateNotificationPermissionStatus() {
+  if (!notificationPermissionStatus) return;
+
+  if (!("Notification" in window)) {
+    notificationPermissionStatus.textContent = "Browser permission: not supported";
+    return;
+  }
+
+  notificationPermissionStatus.textContent =
+    `Browser permission: ${Notification.permission}`;
+}
+
+function requestSignalNotificationPermission() {
+  if (!("Notification" in window)) return Promise.resolve("unsupported");
+  if (Notification.permission !== "default") {
+    updateNotificationPermissionStatus();
+    return Promise.resolve(Notification.permission);
+  }
+
+  return Notification.requestPermission().then((permission) => {
+    updateNotificationPermissionStatus();
+    return permission;
+  });
+}
+
+function initializeSignalAlertSettings() {
+  const enabled = signalAlertsEnabled();
+  if (alertsToggle) alertsToggle.checked = enabled;
+  if (signalAlertsToggle) signalAlertsToggle.checked = enabled;
+  updateNotificationPermissionStatus();
 }
 
 function applyDashboardPreferences() {
@@ -861,6 +915,9 @@ function closeAllOverlays() {
 
 function openSettingsPage(page = "general") {
   if (!settingsModal) return;
+  if (page === "risk" && !isAdminAccount()) {
+    page = "general";
+  }
   closeAllOverlays();
 
   const panels = {
@@ -886,6 +943,9 @@ function openSettingsPage(page = "general") {
 
   applyDashboardPreferences();
   hydrateRiskSettings();
+  if (page === "notifications") {
+    initializeSignalAlertSettings();
+  }
   if (page === "risk") {
   const localPrefs = loadLocalObject(RISK_PREFS_KEY, DEFAULT_RISK_PREFS);
   updateRiskSaveStatus(localPrefs, "Loaded local");
@@ -908,8 +968,7 @@ if (closeAccessBtn) {
 const ACCESS_CODE = "FLOWTEST";
 if (openAdminLoginBtn) {
   openAdminLoginBtn.addEventListener("click", () => {
-    if (accessBox) accessBox.classList.add("hidden");
-    if (adminLoginBox) adminLoginBox.classList.remove("hidden");
+    openAdminLoginBox();
   });
 }
 
@@ -948,6 +1007,7 @@ if (adminLoginBtn) {
         }));
         localStorage.setItem("flowsignal_role", "admin");
         updatePnlVisibility();
+        applyRoleVisibility();
 
 
       if (menuStatsBtn) {
@@ -986,7 +1046,7 @@ if (adminLoginBtn) {
 
 if (closeAccessBtn) {
   closeAccessBtn.addEventListener("click", () => {
-    if (accessModal) accessModal.classList.add("hidden");
+    if (accessBox) accessBox.classList.add("hidden");
     setAuthMessage("");
   });
 }
@@ -1012,7 +1072,9 @@ if (accessBtn) {
     time: Date.now()
   }));
   localStorage.setItem("flowsignal_role", "user");
+  localStorage.removeItem("flowsignal_admin");
   updatePnlVisibility();
+  applyRoleVisibility();
 
   setAuthMessage("");
 
@@ -1032,6 +1094,7 @@ if (accessBtn) {
     mainApp.classList.remove("locked");
     mainApp.style.display = "flex";
   }
+  applyRoleVisibility();
 
   setTimeout(() => {
     bootMainApp();
@@ -1144,6 +1207,57 @@ function isAdminAccount() {
   return localStorage.getItem("flowsignal_role") === "admin";
 }
 
+function applyRoleVisibility() {
+  const admin = isAdminAccount();
+  const autoTradeLabel = menuPaperBtn?.querySelector(".menu-row-text");
+  const autoTradePanelSubtitle = document.getElementById("autoTradePanelSubtitle");
+  if (document.body) {
+    document.body.dataset.userRole = admin ? "admin" : "user";
+  }
+  const setAdminOnlyVisible = (element, visible) => {
+    if (!element) return;
+    element.classList.toggle("hidden", !visible);
+    element.setAttribute("aria-hidden", visible ? "false" : "true");
+  };
+
+  if (menuPaperBtn) {
+    menuPaperBtn.classList.remove("hidden");
+    menuPaperBtn.title = admin ? "Live Trading" : "Paper Auto Trade";
+  }
+
+  if (autoTradeLabel) {
+    autoTradeLabel.textContent = admin ? "Live Trading" : "Paper Auto";
+  }
+
+  if (autoTradePanelSubtitle) {
+    autoTradePanelSubtitle.textContent = admin
+      ? "Manage paper and live automated trading."
+      : "Manage paper automated trading.";
+  }
+
+  setAdminOnlyVisible(menuStatsBtn, admin);
+  setAdminOnlyVisible(menuRiskSettingsBtn, admin);
+  setAdminOnlyVisible(menuBrokerAccountsBtn, admin);
+  setAdminOnlyVisible(livePageBtn, admin);
+  setAdminOnlyVisible(liveAutoSection, admin);
+  setAdminOnlyVisible(brokerConnectionStatus, admin);
+  setAdminOnlyVisible(document.getElementById("liveActiveOrders"), admin);
+  setAdminOnlyVisible(document.getElementById("liveAutoSymbolStatus"), admin);
+
+  if (!admin && executionPage === "live") {
+    executionPage = "paper";
+  }
+
+  if (!admin && settingsModal && !settingsModal.classList.contains("hidden")) {
+    const activePage = document.body.dataset.activeSettingsPage || "";
+    if (activePage === "settings:risk") {
+      openSettingsPage("general");
+    }
+  }
+}
+
+window.applyRoleVisibility = applyRoleVisibility;
+
 function updatePnlVisibility() {
   const showPnl = isAdminAccount();
 
@@ -1153,6 +1267,12 @@ function updatePnlVisibility() {
 
   if (dashboardPerformanceStrip) {
     dashboardPerformanceStrip.classList.toggle("user-no-pnl", !showPnl);
+    dashboardPerformanceStrip.setAttribute("aria-hidden", showPnl ? "false" : "true");
+    if (showPnl) {
+      dashboardPerformanceStrip.style.removeProperty("display");
+    } else {
+      dashboardPerformanceStrip.style.setProperty("display", "none", "important");
+    }
   }
 
   if (mainApp) {
@@ -3849,14 +3969,36 @@ function formatLivePrice(symbol, value) {
 function formatCandleDebugTime(value) {
   if (!value || value === "--") return "--";
 
-  const numericValue = Number(value);
-  const date = Number.isFinite(numericValue)
-    ? new Date(numericValue > 100000000000 ? numericValue : numericValue * 1000)
-    : new Date(value);
+  const date = parseCandleDebugDate(value);
 
   return Number.isNaN(date.getTime())
     ? String(value)
     : date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+}
+
+function parseCandleDebugDate(value) {
+  const numericValue = Number(value);
+  return Number.isFinite(numericValue)
+    ? new Date(numericValue > 100000000000 ? numericValue : numericValue * 1000)
+    : new Date(value);
+}
+
+function formatCandleAgeDebug(value) {
+  if (!value || value === "--") return "";
+
+  const date = parseCandleDebugDate(value);
+
+  if (Number.isNaN(date.getTime())) return "";
+
+  const ageMinutes = Math.floor((Date.now() - date.getTime()) / 60000);
+
+  if (!Number.isFinite(ageMinutes) || ageMinutes < 7) return "";
+  if (ageMinutes < 120) return ` (${ageMinutes}m old)`;
+
+  const ageHours = Math.floor(ageMinutes / 60);
+  const remainingMinutes = ageMinutes % 60;
+
+  return ` (${ageHours}h ${remainingMinutes}m old)`;
 }
 
 function updateCard(symbol, data) {
@@ -4429,14 +4571,15 @@ if (priceEl) {
   const missedFetches = Number(candleSource.missed_fetch_count || 0);
 
   if (candleDebugEl) {
+    const candleAgeDebug = formatCandleAgeDebug(lastCandleTime);
     candleDebugEl.textContent =
-      `Candle: ${formatCandleDebugTime(lastCandleTime)} · `
+      `Candle: ${formatCandleDebugTime(lastCandleTime)}${candleAgeDebug} · `
       + `Source: ${String(candleSource.candle_source || candleSource.tf_5m_source || "cache")} · `
       + `Last fetch: ${formatCandleDebugTime(lastFetch)} · `
       + `Misses: ${missedFetches}`;
     candleDebugEl.classList.toggle(
       "is-stale",
-      missedFetches > 0 || !feedAvailable || feedStale
+      Boolean(candleAgeDebug) || missedFetches > 0 || !feedAvailable || feedStale
     );
   }
 
@@ -4643,7 +4786,7 @@ if (priceEl) {
 
 function playAlert(symbol, signal) {
   try {
-    if (localStorage.getItem("soundEnabled") !== "true") {
+    if (!signalAlertsEnabled()) {
       return;
     }
 
@@ -4661,15 +4804,7 @@ function playAlert(symbol, signal) {
         new Notification("FlowSignal Alert", {
           body: `${symbol} ${signal} signal detected`
         });
-      } else if (Notification.permission !== "denied") {
-    Notification.requestPermission().then(permission => {
-        if (permission === "granted") {
-            new Notification("FlowSignal Alert", {
-                body: `${symbol} ${signal} signal detected`
-            });
-        }
-    });
-}
+      }
     }
 
   } catch (err) {
@@ -7256,6 +7391,10 @@ function openPaperPanel() {
   if (!paperModal) return;
 
   closeAllOverlays();
+  applyRoleVisibility();
+  if (!isAdminAccount()) {
+    executionPage = "paper";
+  }
   paperModal.classList.remove("hidden");
   updateExecutionPageUI();
   fetchCtraderStatus();
@@ -7489,6 +7628,11 @@ if (liveAutoToggleBtn) {
   liveAutoToggleBtn.addEventListener(
     "click",
     () => {
+      if (!isAdminAccount()) {
+        liveAutoEnabled = false;
+        updateLiveToggleUI();
+        return;
+      }
 
       if (!liveConnectionState.connected) {
         liveAutoEnabled = false;
@@ -8284,6 +8428,11 @@ function updateLiveToggleUI() {
 
 function updateExecutionPageUI() {
   if (!paperPageBtn || !livePageBtn) return;
+  applyRoleVisibility();
+
+  if (!isAdminAccount()) {
+    executionPage = "paper";
+  }
 
   const show = (el) => {
     if (!el) return;
@@ -8320,6 +8469,12 @@ function updateExecutionPageUI() {
   }
 
   if (executionPage === "live") {
+    if (!isAdminAccount()) {
+      executionPage = "paper";
+      updateExecutionPageUI();
+      return;
+    }
+
     livePageBtn.classList.add("active");
 
     show(liveAutoSection);
@@ -8351,6 +8506,12 @@ paperPageBtn?.addEventListener("click", () => {
 });
 
 livePageBtn?.addEventListener("click", () => {
+  if (!isAdminAccount()) {
+    executionPage = "paper";
+    updateExecutionPageUI();
+    return;
+  }
+
   executionPage = "live";
   updateExecutionPageUI();
 });
@@ -9667,9 +9828,7 @@ function bootMainApp() {
   syncAttachedPanelGeometry();
   updateUTC();
   updatePnlVisibility();
-
-  menuStatsBtn?.classList.remove("hidden");
-  menuPaperBtn?.classList.remove("hidden");
+  applyRoleVisibility();
 
   let visitorId = localStorage.getItem("flowsignal_visitor_id");
 
@@ -9759,8 +9918,13 @@ try {
 
 const role = localStorage.getItem("flowsignal_role");
 updatePnlVisibility();
+applyRoleVisibility();
 applyDashboardPreferences();
 hydrateRiskSettings();
+initializeSignalAlertSettings();
+
+window.addEventListener("resize", applyRoleVisibility);
+window.addEventListener("orientationchange", applyRoleVisibility);
 
 if (isForexWeekendClosed()) {
   setConnectionBadge(
@@ -9786,6 +9950,7 @@ if (localStorage.getItem("flowsignal_role") === "admin") {
   if (menuStatsBtn) menuStatsBtn.classList.remove("hidden");
   if (menuPaperBtn) menuPaperBtn.classList.remove("hidden");
 }
+applyRoleVisibility();
 updatePnlVisibility();
 
     bootMainApp();
@@ -9976,9 +10141,36 @@ menuSettingsBtn?.addEventListener("click", () => {
 });
 
 menuGeneralSettingsBtn?.addEventListener("click", () => openSettingsPage("general"));
-menuRiskSettingsBtn?.addEventListener("click", () => openSettingsPage("risk"));
+menuRiskSettingsBtn?.addEventListener("click", () => {
+  if (!isAdminAccount()) {
+    openSettingsPage("general");
+    return;
+  }
+
+  openSettingsPage("risk");
+});
 menuNotificationsSettingsBtn?.addEventListener("click", () => openSettingsPage("notifications"));
 menuStrategySettingsBtn?.addEventListener("click", () => openSettingsPage("strategy"));
+
+alertsToggle?.addEventListener("change", () => {
+  setSignalAlertsEnabled(alertsToggle.checked);
+  if (alertsToggle.checked) {
+    requestSignalNotificationPermission();
+  }
+});
+
+signalAlertsToggle?.addEventListener("change", () => {
+  setSignalAlertsEnabled(signalAlertsToggle.checked);
+  if (signalAlertsToggle.checked) {
+    requestSignalNotificationPermission();
+  }
+});
+
+testSignalAlertBtn?.addEventListener("click", async () => {
+  setSignalAlertsEnabled(true);
+  await requestSignalNotificationPermission();
+  playAlert(currentChartSymbol || "XAUUSD", "BUY");
+});
 
 closeSettingsModalBtn?.addEventListener("click", () => {
   settingsModal?.classList.add("hidden");
@@ -10097,6 +10289,10 @@ document.getElementById("riskCancelBtn")?.addEventListener("click", () => {
 });
 
 menuBrokerAccountsBtn?.addEventListener("click", () => {
+  if (!isAdminAccount()) {
+    return;
+  }
+
   closeAllOverlays();
   openBrokerAccountsModal();
 });
@@ -10288,6 +10484,11 @@ if (menuAdminBtn) {
 
 if (menuStatsBtn) {
   menuStatsBtn.addEventListener("click", async () => {
+    if (!isAdminAccount()) {
+      applyRoleVisibility();
+      return;
+    }
+
     closeAllOverlays();
     setActiveSettingsPage("performance");
     setMainMenuOpen(true);
@@ -10427,29 +10628,9 @@ if (goldCard) {
 
 applyLanguage(currentLang);
 
-const openAccessBtnHero = document.getElementById("openAccessBtnHero");
-
-if (openAccessBtnHero && openAccessBtn) {
-  openAccessBtnHero.addEventListener("click", () => {
-    openAccessBtn.click();
-  });
-}
-
- // ===== LANDING BUTTONS CONTROL =====
-
-// Start Trading Now → Access Code box
-document.getElementById("openAccessBtnHero")?.addEventListener("click", () => {
-  document.getElementById("accessBox")?.classList.remove("hidden");
-});
-
-// Get Started → Access Code box
-document.getElementById("openAccessBtn")?.addEventListener("click", () => {
-  document.getElementById("accessBox")?.classList.remove("hidden");
-});
-
 // Login → Admin Login box
 document.getElementById("openAdminLoginBtn")?.addEventListener("click", () => {
-  document.getElementById("adminLoginBox")?.classList.remove("hidden");
+  openAdminLoginBox();
 });
 
 // Close access box

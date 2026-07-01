@@ -3536,8 +3536,13 @@ body.fit-mode .dashboard-grid {
 }
 
 .login-box {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  z-index: 100000;
   width: 100%;
   max-width: 360px;
+  transform: translate(-50%, -50%);
 
   background: rgba(10, 15, 25, 0.6);
   backdrop-filter: blur(12px);
@@ -3551,6 +3556,10 @@ body.fit-mode .dashboard-grid {
   display: flex;
   flex-direction: column;
   gap: 14px;
+}
+
+.login-box.hidden {
+  display: none !important;
 }
 
 .login-box h2 {
@@ -3843,6 +3852,18 @@ body.fit-mode .dashboard-grid {
 /* CLEAN PHONE MODE */
 /* ============================== */
 @media (max-width: 700px) {
+  .login-box {
+    width: calc(100vw - 28px) !important;
+    max-width: 360px !important;
+    padding: 20px !important;
+  }
+
+  .login-box input,
+  .auth-actions button {
+    min-height: 46px !important;
+    font-size: 16px !important;
+  }
+
   body,
   body.fit-mode,
   body.scroll-mode {
@@ -6410,7 +6431,20 @@ body {
 
 @media (max-width: 700px) {
   .landing-nav-actions #openAccessBtn {
-    display: none !important;
+    display: inline-flex !important;
+  }
+
+  #accessBox,
+  #adminLoginBox {
+    pointer-events: auto !important;
+  }
+
+  #accessBtn,
+  #closeAccessBtn,
+  #openAccessBtn,
+  #openAccessBtnHero {
+    pointer-events: auto !important;
+    touch-action: manipulation;
   }
 }
 
@@ -8693,6 +8727,65 @@ body.fit-mode .app:not(.locked) > .dashboard-grid {
   font-weight: 800;
 }
 
+.notification-settings-card {
+  display: grid;
+  gap: 14px;
+  border: 1px solid rgba(148, 163, 184, 0.14);
+  border-radius: 8px;
+  background: rgba(8, 14, 23, 0.72);
+  color: #e5e7eb;
+  padding: 16px;
+}
+
+.notification-toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.notification-toggle-row span {
+  display: grid;
+  gap: 5px;
+}
+
+.notification-toggle-row strong {
+  color: #f8fafc;
+  font-size: 15px;
+}
+
+.notification-toggle-row small,
+#notificationPermissionStatus {
+  color: #94a3b8;
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.notification-toggle-row input {
+  width: 46px;
+  height: 24px;
+  accent-color: #22c55e;
+  flex: 0 0 auto;
+}
+
+.notification-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.notification-actions button {
+  min-height: 34px;
+  border: 1px solid rgba(34, 197, 94, 0.55);
+  border-radius: 8px;
+  background: rgba(20, 83, 45, 0.26);
+  color: #86efac;
+  font-weight: 800;
+  padding: 0 14px;
+  cursor: pointer;
+}
+
 .settings-inline {
   grid-template-columns: auto 1fr !important;
   display: flex !important;
@@ -9288,7 +9381,7 @@ body.fit-mode .app.user-no-performance .signals-panel,
 }
 
 .performance-strip.user-no-pnl {
-  display: none;
+  display: none !important;
 }
 
 .performance-card {
