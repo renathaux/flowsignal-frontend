@@ -4,14 +4,19 @@
 @media (min-width: 701px) {
   body.fit-mode #mainApp.app:not(.locked) > .performance-strip {
     grid-template-columns:
-      minmax(210px, 1fr)
-      minmax(210px, 1fr)
-      minmax(176px, 0.78fr)
-      minmax(132px, 0.56fr) !important;
+      minmax(154px, 0.8fr)
+      minmax(182px, 0.95fr)
+      minmax(178px, 0.92fr)
+      minmax(182px, 0.95fr)
+      minmax(122px, 0.58fr) !important;
+  }
+
+  .performance-daily {
+    grid-template-columns: 30px minmax(96px, 1fr) !important;
   }
 
   .performance-monthly {
-    grid-template-columns: 34px minmax(116px, 1fr) !important;
+    grid-template-columns: 30px minmax(108px, 1fr) !important;
   }
 
   body.fit-mode .main-trade-card {
