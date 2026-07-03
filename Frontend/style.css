@@ -9360,11 +9360,11 @@ body.fit-mode .app.user-no-performance .signals-panel,
 }
 
 .performance-strip {
-  width: min(1120px, calc(100% - 44px));
-  min-height: 68px;
+  width: min(1218px, calc(100% - 44px));
+  min-height: 62px;
   margin: 0 auto 12px;
   display: grid;
-  grid-template-columns: 1fr 1fr 0.78fr;
+  grid-template-columns: 0.82fr 0.92fr 0.92fr 1fr 0.62fr;
   border: 1px solid #173b66;
   border-radius: 10px;
   background:
@@ -9386,11 +9386,11 @@ body.fit-mode .app.user-no-performance .signals-panel,
 
 .performance-card {
   min-width: 0;
-  padding: 10px 16px;
+  padding: 8px 12px;
   display: grid;
-  grid-template-columns: 34px minmax(116px, 1fr) 76px;
+  grid-template-columns: 28px minmax(96px, 1fr) 54px;
   align-items: center;
-  gap: 14px;
+  gap: 9px;
   border-right: 1px solid #172532;
   justify-content: center;
 }
@@ -9400,8 +9400,8 @@ body.fit-mode .app.user-no-performance .signals-panel,
 }
 
 .performance-icon {
-  width: 31px;
-  height: 31px;
+  width: 27px;
+  height: 27px;
   color: #e8edf4;
 }
 
@@ -9419,12 +9419,12 @@ body.fit-mode .app.user-no-performance .signals-panel,
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 5px;
+  gap: 4px;
 }
 
 .performance-copy span {
   color: #b9c4d2;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.35px;
   white-space: nowrap;
@@ -9432,7 +9432,7 @@ body.fit-mode .app.user-no-performance .signals-panel,
 
 .performance-copy strong {
   color: #39d467;
-  font-size: 23px;
+  font-size: 20px;
   line-height: 1;
   white-space: nowrap;
 }
@@ -9446,8 +9446,8 @@ body.fit-mode .app.user-no-performance .signals-panel,
 }
 
 .performance-sparkline {
-  width: 76px;
-  height: 32px;
+  width: 54px;
+  height: 27px;
   overflow: visible;
 }
 
@@ -9460,32 +9460,32 @@ body.fit-mode .app.user-no-performance .signals-panel,
 }
 
 .performance-trades {
-  grid-template-columns: 34px 1fr;
+  grid-template-columns: 28px 1fr;
+}
+
+.performance-daily {
+  grid-template-columns: 28px minmax(96px, 1fr);
 }
 
 .performance-weekly {
-  padding-left: 18px;
-  padding-right: 16px;
-  grid-template-columns: 34px 128px 78px;
+  grid-template-columns: 28px 106px 56px;
 }
 
 .performance-weekly .performance-sparkline {
-  width: 78px;
+  width: 56px;
 }
 
 .performance-floating {
-  padding-left: 14px;
-  padding-right: 12px;
-  grid-template-columns: 31px 136px 50px;
+  grid-template-columns: 28px 122px 46px;
 }
 
 .performance-floating .performance-sparkline {
-  width: 50px;
+  width: 46px;
 }
 
 .performance-trades {
-  padding-left: 16px;
-  padding-right: 16px;
+  padding-left: 12px;
+  padding-right: 12px;
 }
 
 .performance-trades .performance-copy strong {
@@ -9554,7 +9554,7 @@ body.fit-mode .app.user-no-performance .signals-panel,
   }
 
   .performance-strip {
-    width: min(860px, calc(100% - 312px));
+    width: min(1020px, calc(100% - 312px));
     margin: 0 0 12px 286px;
   }
 
@@ -9591,7 +9591,7 @@ body.fit-mode .app.user-no-performance .signals-panel,
 
 @media (max-width: 1450px) and (min-width: 1251px) {
   .performance-strip {
-    width: min(830px, calc(100% - 300px));
+    width: min(980px, calc(100% - 300px));
     margin-left: 274px;
   }
 
@@ -9606,33 +9606,33 @@ body.fit-mode .app.user-no-performance .signals-panel,
   }
 
   .performance-card {
-    padding: 9px 14px;
-    grid-template-columns: 30px minmax(96px, 1fr) 56px;
-    gap: 10px;
+    padding: 8px 10px;
+    grid-template-columns: 28px minmax(86px, 1fr) 48px;
+    gap: 8px;
   }
 
   .performance-copy strong {
-    font-size: 21px;
+    font-size: 19px;
   }
 
   .performance-sparkline {
-    width: 56px;
+    width: 48px;
   }
 
   .performance-weekly .performance-sparkline {
-    width: 62px;
+    width: 52px;
   }
 
   .performance-weekly {
-    grid-template-columns: 30px 112px 62px;
+    grid-template-columns: 28px 98px 52px;
   }
 
   .performance-floating {
-    grid-template-columns: 30px 128px 48px;
+    grid-template-columns: 28px 112px 44px;
   }
 
   .performance-floating .performance-sparkline {
-    width: 48px;
+    width: 44px;
   }
 
   .dashboard-grid {
@@ -9646,7 +9646,7 @@ body.fit-mode .app.user-no-performance .signals-panel,
 @media (max-width: 1250px) {
   .performance-strip {
     width: calc(100% - 24px);
-    grid-template-columns: 1.4fr 1fr 0.72fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .performance-card {
@@ -11616,14 +11616,19 @@ body[data-active-settings-page="performance"] #statsModal .performance-modal-box
 @media (min-width: 701px) {
   body.fit-mode #mainApp.app:not(.locked) > .performance-strip {
     grid-template-columns:
-      minmax(210px, 1fr)
-      minmax(210px, 1fr)
-      minmax(176px, 0.78fr)
-      minmax(132px, 0.56fr) !important;
+      minmax(154px, 0.8fr)
+      minmax(182px, 0.95fr)
+      minmax(178px, 0.92fr)
+      minmax(182px, 0.95fr)
+      minmax(122px, 0.58fr) !important;
+  }
+
+  .performance-daily {
+    grid-template-columns: 30px minmax(96px, 1fr) !important;
   }
 
   .performance-monthly {
-    grid-template-columns: 34px minmax(116px, 1fr) !important;
+    grid-template-columns: 30px minmax(108px, 1fr) !important;
   }
 }
 

@@ -444,7 +444,7 @@ const dashboardMonthlyPnl = document.getElementById("dashboardMonthlyPnl");
 const dashboardFloatingPnl = document.getElementById("dashboardFloatingPnl");
 const dashboardOpenTrades = document.getElementById("dashboardOpenTrades");
 const dashboardPerformanceStrip = document.querySelector(".performance-strip");
-const dashboardAdminCards = document.querySelectorAll(".performance-weekly, .performance-monthly, .performance-floating, .performance-trades");
+const dashboardAdminCards = document.querySelectorAll(".performance-daily, .performance-weekly, .performance-monthly, .performance-floating, .performance-trades");
 const voiceToggleBtn = document.getElementById("voiceToggleBtn");
 const menuAssistantBtn = document.getElementById("menuAssistantBtn");
 const assistantModal = document.getElementById("assistantModal");
@@ -6759,9 +6759,11 @@ function getBrokerAccountStatus(account, activeAccountId) {
 }
 
 function getBrokerAccountLabel(account) {
+  const displayLogin = account.trader_login || account.traderLogin || account.account_number;
+
   return [
     account.account_id || "--",
-    account.account_number ? `#${account.account_number}` : "",
+    displayLogin ? `login ${displayLogin}` : "",
     account.broker_name || "cTrader",
     account.mode || "",
     account.status || "",
@@ -6798,11 +6800,14 @@ function renderBrokerAccounts(data = {}) {
   }
 
   if (activeBrokerAccountCard) {
+    const activeDisplayLogin = activeAccount
+      ? (activeAccount.trader_login || activeAccount.traderLogin || activeAccount.account_number)
+      : "";
     activeBrokerAccountCard.innerHTML = activeAccount
       ? `
         <div class="broker-active-title">● Active Account</div>
         <strong>${activeAccount.account_id || "--"}</strong>
-        <span>${activeAccount.broker_name || "cTrader"} • ${(activeAccount.mode || "demo").toUpperCase()}</span>
+        <span>${activeAccount.broker_name || "cTrader"} • ${(activeAccount.mode || "demo").toUpperCase()}${activeDisplayLogin ? ` • login ${activeDisplayLogin}` : ""}</span>
         <button id="setActiveCtraderAccountBtn" class="broker-side-btn">Change Active Account</button>
       `
       : `
@@ -6830,6 +6835,7 @@ function renderBrokerAccounts(data = {}) {
           const isActive = status === "active";
           const currency = account.currency || "";
           const type = String(account.mode || "demo").toUpperCase();
+          const displayLogin = account.trader_login || account.traderLogin || account.account_number;
           const dotClass = account.unavailable ? "unavailable" : isActive ? "active" : "available";
 
           return `
@@ -6838,7 +6844,7 @@ function renderBrokerAccounts(data = {}) {
                 <span class="broker-account-dot ${dotClass}"></span>${accountId || "--"}
                 ${account.reason ? `<div class="broker-row-reason">${account.reason}</div>` : ""}
               </td>
-              <td>${account.account_number || accountId || "--"}</td>
+              <td>${displayLogin || "--"}</td>
               <td>${account.broker_name || "cTrader"}</td>
               <td><span class="broker-type-pill">${type}</span></td>
               <td>${formatBrokerMoney(account.balance)}</td>
