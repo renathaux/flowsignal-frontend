@@ -3760,7 +3760,17 @@ function setTagStyle(el, mode, text) {
   el.className = `glow-tag ${mode}`;
 }
 
+function normalizeMainSignalBadge(signal) {
+  const s = String(signal || "WAIT").trim().toUpperCase();
+
+  if (["BUY", "SELL", "WAIT", "NO DATA"].includes(s)) return s;
+  if (s.includes("EXIT")) return s;
+  return "WAIT";
+}
+
 function applySignalStyle(symbol, signal) {
+  signal = normalizeMainSignalBadge(signal);
+
   const shell = document.getElementById(`${symbol.toLowerCase()}-signal-shell`);
   const box = document.getElementById(`${symbol.toLowerCase()}-signal-box`);
   const text = document.getElementById(`${symbol.toLowerCase()}-signal`);
@@ -3843,7 +3853,23 @@ function getVisibleSignal(data) {
     || "WAIT"
   ).trim().toUpperCase();
 
-  return displaySignal;
+  if (["BUY", "SELL", "WAIT", "NO DATA"].includes(displaySignal)) {
+    return displaySignal;
+  }
+
+  if (displaySignal === "HOLD BUY" || displaySignal === "HOLD SELL") {
+    return "WAIT";
+  }
+
+  if (displaySignal.includes("EXIT")) {
+    return displaySignal;
+  }
+
+  if (displaySignal.includes("BIAS") || displaySignal.includes("BULLISH") || displaySignal.includes("BEARISH")) {
+    return "WAIT";
+  }
+
+  return "WAIT";
 }
 
 function tMarketText(text) {
@@ -4012,6 +4038,112 @@ function formatCandleAgeDebug(value) {
   const remainingMinutes = ageMinutes % 60;
 
   return ` (${ageHours}h ${remainingMinutes}m old)`;
+}
+
+function getTimeframeSeconds(timeframe) {
+  return {
+    "5m": 5 * 60,
+    "15m": 15 * 60,
+    "1h": 60 * 60
+  }[timeframe] || 5 * 60;
+}
+
+function formatChartCandleFreshness(value, timeframe) {
+  if (!value || value === "--") {
+    return { text: "", stale: false };
+  }
+
+  const date = parseCandleDebugDate(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return { text: "", stale: false };
+  }
+
+  const timeframeSeconds = getTimeframeSeconds(timeframe);
+  const nowSeconds = Math.floor(Date.now() / 1000);
+  const candleSeconds = Math.floor(date.getTime() / 1000);
+  const currentBucket = Math.floor(nowSeconds / timeframeSeconds) * timeframeSeconds;
+  const elapsedSeconds = Math.max(0, nowSeconds - candleSeconds);
+
+  if (candleSeconds === currentBucket && elapsedSeconds < timeframeSeconds) {
+    const elapsedMinutes = Math.floor(elapsedSeconds / 60);
+    const totalMinutes = Math.floor(timeframeSeconds / 60);
+    return {
+      text: ` (forming ${elapsedMinutes}m/${totalMinutes}m)`,
+      stale: false
+    };
+  }
+
+  const staleSeconds = nowSeconds - (candleSeconds + timeframeSeconds);
+
+  if (staleSeconds < 60) {
+    return { text: "", stale: false };
+  }
+
+  const staleMinutes = Math.floor(staleSeconds / 60);
+
+  if (staleMinutes < 120) {
+    return {
+      text: ` (${staleMinutes}m late)`,
+      stale: true
+    };
+  }
+
+  const staleHours = Math.floor(staleMinutes / 60);
+  const remainingMinutes = staleMinutes % 60;
+
+  return {
+    text: ` (${staleHours}h ${remainingMinutes}m late)`,
+    stale: true
+  };
+}
+
+function getLiveAugmentedCandles(candles, symbol, timeframe, fallbackPrice = null) {
+  const list = Array.isArray(candles)
+    ? candles.map((candle) => ({ ...candle }))
+    : [];
+
+  if (!list.length || MARKET_IS_CLOSED) return list;
+
+  const livePrice = getLiveTickMid(symbol) || Number(fallbackPrice);
+  if (!Number.isFinite(livePrice) || livePrice <= 0) return list;
+
+  const timeframeSeconds = getTimeframeSeconds(timeframe);
+  const currentBucket = Math.floor(Date.now() / 1000 / timeframeSeconds)
+    * timeframeSeconds;
+  const last = list[list.length - 1];
+  const lastTime = Number(last?.time);
+
+  if (!Number.isFinite(lastTime)) return list;
+
+  if (lastTime < currentBucket) {
+    const previousClose = Number(last.close);
+    const open = Number.isFinite(previousClose) && previousClose > 0
+      ? previousClose
+      : livePrice;
+
+    list.push({
+      time: currentBucket,
+      open,
+      high: Math.max(open, livePrice),
+      low: Math.min(open, livePrice),
+      close: livePrice
+    });
+    return list;
+  }
+
+  if (lastTime === currentBucket) {
+    const high = Number(last.high);
+    const low = Number(last.low);
+    list[list.length - 1] = {
+      ...last,
+      high: Number.isFinite(high) ? Math.max(high, livePrice) : livePrice,
+      low: Number.isFinite(low) ? Math.min(low, livePrice) : livePrice,
+      close: livePrice
+    };
+  }
+
+  return list;
 }
 
 function updateCard(symbol, data) {
@@ -5134,10 +5266,14 @@ function updateMainPanel(symbol) {
   const confidence = displayScores.confidence;
 
 
-  const liveCandles =
-  latestRawPanelData?.candles?.[symbol]?.[currentChartTimeframe] || [];
+  const liveCandles = getLiveAugmentedCandles(
+    latestRawPanelData?.candles?.[symbol]?.[currentChartTimeframe] || [],
+    symbol,
+    currentChartTimeframe,
+    data.price || data.current_price || data.entry_price
+  );
 
-const lastCandle = liveCandles[liveCandles.length - 1];
+  const lastCandle = liveCandles[liveCandles.length - 1];
 
 const fixedPrice =
   getLiveTickMid(symbol) || lastCandle?.close || data.entry_price || data.price;
@@ -5150,22 +5286,25 @@ if (priceEl) {
   const candleDebugEl = document.getElementById("main-candle-debug");
   const candleSource = data.signal_data_source || {};
   const lastCandleTime =
-    candleSource.latest_5m_time
-    || lastCandle?.time
+    lastCandle?.time
+    || candleSource.latest_5m_time
     || "--";
   const lastFetch = candleSource.last_successful_fetch || "--";
   const missedFetches = Number(candleSource.missed_fetch_count || 0);
 
   if (candleDebugEl) {
-    const candleAgeDebug = formatCandleAgeDebug(lastCandleTime);
+    const candleFreshness = formatChartCandleFreshness(
+      lastCandleTime,
+      currentChartTimeframe
+    );
     candleDebugEl.textContent =
-      `Candle: ${formatCandleDebugTime(lastCandleTime)}${candleAgeDebug} · `
+      `Candle ${currentChartTimeframe}: ${formatCandleDebugTime(lastCandleTime)}${candleFreshness.text} · `
       + `Source: ${String(candleSource.candle_source || candleSource.tf_5m_source || "cache")} · `
       + `Last fetch: ${formatCandleDebugTime(lastFetch)} · `
       + `Misses: ${missedFetches}`;
     candleDebugEl.classList.toggle(
       "is-stale",
-      Boolean(candleAgeDebug) || missedFetches > 0 || !feedAvailable || feedStale
+      candleFreshness.stale || missedFetches > 0 || !feedAvailable || feedStale
     );
   }
 
@@ -10176,7 +10315,13 @@ async function loadChartData(symbol = currentChartSymbol, timeframe = currentCha
     if (!rawData) {
       throw new Error("Panel data returned null");
     }
-    const candles = getChartCandles(rawData, symbol, currentChartTimeframe);
+    const panelPlan = rawData?.[symbol] || {};
+    const candles = getLiveAugmentedCandles(
+      getChartCandles(rawData, symbol, currentChartTimeframe),
+      symbol,
+      currentChartTimeframe,
+      panelPlan.price || panelPlan.current_price || panelPlan.entry_price
+    );
     if (!candles.length) {
       console.warn(`No candle data for ${symbol}`);
       return;
@@ -10200,7 +10345,13 @@ function renderChartFromPanel(rawData, symbol = currentChartSymbol, timeframe = 
 
   if (!chart || !candleSeries) return;
 
-    let candles = getChartCandles(rawData, symbol, timeframe);
+    const panelPlan = rawData?.[symbol] || {};
+    let candles = getLiveAugmentedCandles(
+      getChartCandles(rawData, symbol, timeframe),
+      symbol,
+      timeframe,
+      panelPlan.price || panelPlan.current_price || panelPlan.entry_price
+    );
     if (!candles.length) {
       updateChartOverlay(symbol, timeframe, []);
       return;
@@ -10318,7 +10469,14 @@ function refreshIdleChartMotion() {
 function forceChartRenderFromLatest(symbol = currentChartSymbol, timeframe = currentChartTimeframe) {
   if (!latestRawPanelData) return;
 
- const candles = getChartCandles(latestRawPanelData, symbol, timeframe).slice(-5000);
+ const candles = getLiveAugmentedCandles(
+   getChartCandles(latestRawPanelData, symbol, timeframe),
+   symbol,
+   timeframe,
+   latestRawPanelData?.[symbol]?.price
+     || latestRawPanelData?.[symbol]?.current_price
+     || latestRawPanelData?.[symbol]?.entry_price
+ ).slice(-5000);
   if (!candles.length) {
     console.warn(`No candles available for ${symbol}`);
     return;
