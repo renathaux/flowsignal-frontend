@@ -4263,11 +4263,16 @@ if (confLabel) {
     const tp2El = document.getElementById(`${smcSymbol}-tp2`);
     const rrEl = document.getElementById(`${smcSymbol}-rr`);
     const invalidationEl = document.getElementById(`${smcSymbol}-invalidation`);
-    const reasonEl = document.getElementById(`${smcSymbol}-reason`);
+const reasonEl = document.getElementById(`${smcSymbol}-reason`);
 
 const planType = String(data.plan_type || "").toUpperCase();
 const isHoldSignal = signal === "HOLD BUY" || signal === "HOLD SELL";
-const safePlanType = isHoldSignal
+const strategyDebugForPlan = data.strategy_debug || data.entry_strategy_debug || {};
+const rrBlockedForPlan = hasStructureTpRrBlock(data, strategyDebugForPlan);
+const rrDisplayForPlan = formatStructureTpRr(data, strategyDebugForPlan);
+const safePlanType = rrBlockedForPlan
+  ? "WAIT"
+  : isHoldSignal
   ? "WAIT FOR STRATEGY CONFIRMATION"
   : data.plan_type || "--";
 
@@ -4287,9 +4292,19 @@ if (entryEl) entryEl.textContent = isHoldSignal ? "--" : data.entry_price || "--
 if (slEl) slEl.textContent = isHoldSignal ? "--" : data.stop_loss || "--";
 if (tp1El) tp1El.textContent = isHoldSignal ? "--" : data.tp1 || "--";
 if (tp2El) tp2El.textContent = isHoldSignal ? "--" : data.tp2 || "--";
-if (rrEl) rrEl.textContent = isHoldSignal ? "--" : data.risk_reward || "--";
+if (rrEl) {
+  rrEl.textContent = rrBlockedForPlan
+    ? `${rrDisplayForPlan} | Required RR 1.20 to 2.00`
+    : isHoldSignal
+      ? "--"
+      : data.risk_reward || "--";
+}
 if (invalidationEl) invalidationEl.textContent = data.invalidation || "--";
-if (reasonEl) reasonEl.textContent = data.plan_reason || "--";
+if (reasonEl) {
+  reasonEl.textContent = rrBlockedForPlan
+    ? "TP swing found but RR is outside allowed window"
+    : data.plan_reason || "--";
+}
 
   // STRUCTURE PANEL DATA
   const trendEl = document.getElementById("structure-trend");
@@ -5070,6 +5085,7 @@ function hasReachedSwingSlEvaluation(data = {}, strategyDebug = {}) {
     || swingSlText.includes("WAIT_VALID_STRUCTURE_TP")
     || swingSlText.includes("WAIT_STRUCTURE_REWARD_BELOW_MINIMUM")
     || swingSlText.includes("WAIT_RR_OUTSIDE_1_2_TO_2")
+    || swingSlText.includes("NO_STRUCTURE_TP_IN_RR_WINDOW")
   );
 }
 
@@ -5077,6 +5093,62 @@ function getSwingSlCheckStatus(data = {}, strategyDebug = {}) {
   if (hasConfirmedSwingSl(strategyDebug)) return "YES";
   if (hasReachedSwingSlEvaluation(data, strategyDebug)) return "NO";
   return "NOT CHECKED";
+}
+
+function hasStructureTpRrBlock(data = {}, strategyDebug = {}) {
+  const reasonText = [
+    data?.reason,
+    data?.reason_if_wait,
+    data?.blocked_by,
+    data?.blocked_reason,
+    data?.blocker_rule_name,
+    data?.entry_timing,
+    data?.plan_reason,
+    data?.rejection_reason,
+    strategyDebug?.reason,
+    strategyDebug?.reason_if_wait,
+    strategyDebug?.blocked_by,
+    strategyDebug?.blocked_reason,
+    strategyDebug?.block_reason,
+    strategyDebug?.rejection_reason,
+  ].map((value) => String(value || "").toUpperCase()).join(" ");
+
+  return (
+    reasonText.includes("NO_STRUCTURE_TP_IN_RR_WINDOW")
+    || reasonText.includes("WAIT_RR_OUTSIDE_1_2_TO_2")
+    || reasonText.includes("ATTENTE_NO_STRUCTURE_TP_IN_RR_WINDOW")
+  );
+}
+
+function getStructureTpRrValue(data = {}, strategyDebug = {}) {
+  const directValue = firstUsableValue(
+    data?.risk_reward_ratio,
+    data?.structure_reward_ratio,
+    strategyDebug?.risk_reward_ratio,
+    strategyDebug?.structure_reward_ratio
+  );
+  const directNumber = numericValue(directValue);
+  if (directNumber !== null) return directNumber;
+
+  const candidateLists = [
+    data?.rejected_tp_candidates,
+    data?.tp_candidate_rejections,
+    strategyDebug?.rejected_tp_candidates,
+    strategyDebug?.tp_candidate_rejections,
+  ];
+
+  for (const list of candidateLists) {
+    if (!Array.isArray(list)) continue;
+    const candidate = list.find((item) => numericValue(item?.risk_reward_ratio) !== null);
+    if (candidate) return numericValue(candidate.risk_reward_ratio);
+  }
+
+  return null;
+}
+
+function formatStructureTpRr(data = {}, strategyDebug = {}) {
+  const rr = getStructureTpRrValue(data, strategyDebug);
+  return rr === null ? "Calculated RR: --" : `Calculated RR: ${rr.toFixed(2)}`;
 }
 
 function updateSmcPlanIntelligence(symbol, data, signal, strategyDebug = {}) {
@@ -5148,6 +5220,28 @@ function updateSmcPlanIntelligence(symbol, data, signal, strategyDebug = {}) {
   );
   const swingSlComplete = hasConfirmedSwingSl(strategyDebug);
   const fiveMinuteComplete = Boolean(strategyDebug.five_m_confirmation);
+  const rrBlocked = hasStructureTpRrBlock(data, strategyDebug);
+  const reachedTpRrValidation = Boolean(
+    rrBlocked
+      || (
+        smcShiftComplete
+        && swingBreakComplete
+        && fifteenCloseComplete
+        && fiveMinuteComplete
+        && swingSlComplete
+      )
+  );
+  const rrComplete = Boolean(
+    reachedTpRrValidation
+      && !rrBlocked
+      && firstUsableValue(
+        data?.tp2,
+        data?.risk_reward_ratio,
+        data?.structure_reward_ratio,
+        strategyDebug?.risk_reward_ratio,
+        strategyDebug?.structure_reward_ratio
+      )
+  );
   const waitingForFiveMinuteConfirmation = Boolean(
     !expiredSetupActive
       && !fiveMinuteComplete
@@ -5160,7 +5254,9 @@ function updateSmcPlanIntelligence(symbol, data, signal, strategyDebug = {}) {
   );
   const liveTriggerLevel = expiredSetupActive ? null : triggerLevel;
 
-  const triggerText = expiredSetupActive
+  const triggerText = rrBlocked
+    ? "TP swing found but RR is outside allowed window"
+    : expiredSetupActive
     ? "Setup expired — waiting for fresh 15m BOS/CHOCH"
     : waitingForFiveMinuteConfirmation
       ? "15m break confirmed — waiting for 5m confirmation"
@@ -5190,6 +5286,14 @@ function updateSmcPlanIntelligence(symbol, data, signal, strategyDebug = {}) {
       done: swingSlComplete,
     },
   ];
+  if (reachedTpRrValidation) {
+    waitingItems.push({
+      label: rrBlocked
+        ? `${formatStructureTpRr(data, strategyDebug)} • Required RR 1.20 to 2.00`
+        : "TP/RR validation",
+      done: rrComplete,
+    });
+  }
   if (expiredSetupActive) {
     waitingItems.splice(
       1,
@@ -5210,7 +5314,7 @@ function updateSmcPlanIntelligence(symbol, data, signal, strategyDebug = {}) {
   const progress = Math.round((completedCount / Math.max(1, progressItems.length)) * 100);
   const planIntel = document.getElementById("main-smc-plan-intel");
   if (planIntel) {
-    planIntel.classList.toggle("is-ready", progress === 100);
+    planIntel.classList.toggle("is-ready", progress === 100 && !rrBlocked);
   }
 
   setSmcText("main-smc-structure", tMarketText(String(structure || "Neutral")));
@@ -5223,7 +5327,7 @@ function updateSmcPlanIntelligence(symbol, data, signal, strategyDebug = {}) {
       : "--"
   );
   setSmcText("main-smc-estimated-tp", estimatedTpLevel ? formatSmcLevel(normalizedSymbol, estimatedTpLevel) : "--");
-  setSmcText("main-smc-progress-label", `${progress}%`);
+  setSmcText("main-smc-progress-label", rrBlocked ? "Blocked by RR" : `${progress}%`);
   const progressBar = document.getElementById("main-smc-progress-bar");
   if (progressBar) progressBar.style.width = `${progress}%`;
   renderSmcWaitingList(waitingItems);
