@@ -5196,9 +5196,14 @@ function updateSmcPlanIntelligence(symbol, data, signal, strategyDebug = {}) {
     side === "SELL" ? data?.structure_support : data?.structure_resistance
   );
   const selectedSwingSl = firstUsableValue(
+    data?.stop_loss,
+    data?.sl,
+    strategyDebug.final_sl,
+    strategyDebug.stop_loss,
+    strategyDebug?.swing_sl_debug?.final_sl,
+    strategyDebug?.swing_sl_debug?.stop_loss,
     strategyDebug.selected_swing_sl,
-    data?.selected_swing_sl,
-    data?.stop_loss
+    data?.selected_swing_sl
   );
   const estimatedSlLevel = selectedSwingSl
     || (side === "SELL" ? data?.structure_resistance : data?.structure_support);
@@ -10131,27 +10136,31 @@ function getTradeChartLevels(trade, symbol = currentChartSymbol) {
   const rememberedLevels = lastKnownTradeLevels[`${tradeSymbol}:${tradeId}`] || {};
   const brokerStopLossMissing = Boolean(trade?.broker_stop_loss_missing);
   const brokerStopLossConfirmed = Boolean(trade?.broker_stop_loss_confirmed);
-  const brokerStopLoss =
-    trade?.sl ??
-    trade?.current_sl ??
-    trade?.stop_loss ??
-    trade?.stopLoss ??
-    raw?.stopLoss ??
-    nestedRaw?.stopLoss ??
-    rememberedLevels.current_sl;
+  const brokerStopLoss = brokerStopLossConfirmed
+    ? (
+      trade?.sl ??
+      trade?.current_sl ??
+      trade?.stop_loss ??
+      trade?.stopLoss ??
+      raw?.stopLoss ??
+      nestedRaw?.stopLoss
+    )
+    : null;
   const brokerTakeProfitMissing = Boolean(trade?.broker_take_profit_missing);
   const brokerTakeProfitConfirmed = Boolean(trade?.broker_take_profit_confirmed);
-  const brokerTakeProfit =
-    trade?.tp2 ??
-    trade?.take_profit_2 ??
-    trade?.tp2_price ??
-    trade?.take_profit ??
-    trade?.takeProfit ??
-    raw?.tp2 ??
-    raw?.takeProfit ??
-    nestedRaw?.tp2 ??
-    nestedRaw?.takeProfit ??
-    rememberedLevels.tp2;
+  const brokerTakeProfit = brokerTakeProfitConfirmed
+    ? (
+      trade?.tp2 ??
+      trade?.take_profit_2 ??
+      trade?.tp2_price ??
+      trade?.take_profit ??
+      trade?.takeProfit ??
+      raw?.tp2 ??
+      raw?.takeProfit ??
+      nestedRaw?.tp2 ??
+      nestedRaw?.takeProfit
+    )
+    : null;
   const plannedStopLoss =
     trade?.planned_sl ??
     trade?.original_sl ??
@@ -10175,18 +10184,14 @@ function getTradeChartLevels(trade, symbol = currentChartSymbol) {
     original_sl:
       trade?.original_sl ??
       trade?.initial_sl ??
-      brokerStopLoss ??
       plannedStopLoss,
     planned_sl: plannedStopLoss,
-    current_sl: brokerStopLoss ?? rememberedLevels.current_sl ?? null,
+    current_sl: brokerStopLoss,
     broker_stop_loss_confirmed:
       brokerStopLossConfirmed ||
-      rememberedLevels.current_sl != null ||
       (!liveBrokerTrade && brokerStopLoss != null),
     broker_stop_loss_missing:
-      brokerStopLossMissing &&
-      brokerStopLoss == null &&
-      rememberedLevels.current_sl == null,
+      brokerStopLossMissing || (liveBrokerTrade && !brokerStopLossConfirmed),
     tp1:
       trade?.tp1 ??
       trade?.take_profit_1 ??
@@ -10194,17 +10199,14 @@ function getTradeChartLevels(trade, symbol = currentChartSymbol) {
       nestedRaw?.tp1 ??
       rememberedLevels.tp1 ??
       plannedTp1,
-    tp2: brokerTakeProfit ?? rememberedLevels.tp2 ?? plannedTp2,
+    tp2: brokerTakeProfit,
     planned_tp1: plannedTp1,
     planned_tp2: plannedTp2,
     broker_take_profit_confirmed:
       brokerTakeProfitConfirmed ||
-      rememberedLevels.tp2 != null ||
       (!liveBrokerTrade && brokerTakeProfit != null),
     broker_take_profit_missing:
-      brokerTakeProfitMissing &&
-      brokerTakeProfit == null &&
-      rememberedLevels.tp2 == null,
+      brokerTakeProfitMissing || (liveBrokerTrade && !brokerTakeProfitConfirmed),
   };
 }
 
@@ -10300,9 +10302,9 @@ function drawTradeVisualLevels() {
       lineType: "SL",
     });
   } else {
-    addTradeVisualLine(levels.planned_sl ?? levels.original_sl, "Planned SL inactive", "rgba(248, 113, 113, 0.55)", {
+    addTradeVisualLine(levels.planned_sl ?? levels.original_sl, "BROKER SL MISSING", "#ff3b30", {
       lineStyle: LightweightCharts.LineStyle.Dotted,
-      lineWidth: 1,
+      lineWidth: 3,
       symbol,
       tradeId,
       lineType: "SL",
