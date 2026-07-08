@@ -13,6 +13,11 @@ const API_URL = `${BASE_URL}/panel-data`;
 const NEWS_IMPACT_URL = `${BASE_URL}/news-impact`;
 const NEWS_IMPACT_CACHE = {};
 const NEWS_IMPACT_INFLIGHT = {};
+let currentNewsImpactWindow = null;
+let currentUpcomingHighImpactEvents = [];
+const NEWS_PROTECTION_BEFORE_MS = 30 * 60 * 1000;
+const NEWS_RELEASE_PHASE_MS = 60 * 1000;
+const NEWS_PROTECTION_AFTER_MS = 15 * 60 * 1000;
 // ==============================
 // 🌍 LANGUAGE SYSTEM
 // ==============================
@@ -20,9 +25,9 @@ const NEWS_IMPACT_INFLIGHT = {};
 const LANG = {
   en: {
     // General
-    buy: "Buy",
-    sell: "Sell",
-    confidence: "Confidence",
+    buy: "Bullish Bias",
+    sell: "Bearish Bias",
+    confidence: "Bias Strength",
     wait: "WAIT",
     send: "Send",
     cancel: "Cancel",
@@ -110,6 +115,7 @@ const LANG = {
     invalidation: "Invalidation",
     reason: "Reason",
     lastSignal: "Last Signal",
+    biasOnlyNote: "Market bias only - entry requires strategy checks.",
 
     // News panel
     marketStructure: "NEWS IMPACT",
@@ -150,9 +156,9 @@ const LANG = {
 
   fr: {
     // General
-    buy: "Achat",
-    sell: "Vente",
-    confidence: "Confiance",
+    buy: "Biais haussier",
+    sell: "Biais baissier",
+    confidence: "Force du biais",
     wait: "ATTENTE",
     send: "Envoyer",
     cancel: "Annuler",
@@ -240,6 +246,7 @@ const LANG = {
     invalidation: "Invalidation",
     reason: "Raison",
     lastSignal: "Dernier signal",
+    biasOnlyNote: "Biais de marché seulement - l’entrée exige les contrôles de stratégie.",
 
     // Structure panel
     marketStructure: "IMPACT DES NOUVELLES",
@@ -280,9 +287,9 @@ const LANG = {
 
   es: {
     // General
-    buy: "Comprar",
-    sell: "Vender",
-    confidence: "Confianza",
+    buy: "Sesgo alcista",
+    sell: "Sesgo bajista",
+    confidence: "Fuerza del sesgo",
     wait: "ESPERA",
     send: "Enviar",
     cancel: "Cancelar",
@@ -370,6 +377,7 @@ const LANG = {
     invalidation: "Invalidación",
     reason: "Razón",
     lastSignal: "Última señal",
+    biasOnlyNote: "Solo sesgo de mercado - la entrada requiere controles de estrategia.",
 
     // Structure panel
     marketStructure: "IMPACTO DE NOTICIAS",
@@ -3613,6 +3621,11 @@ const mainMetricLabels = document.querySelectorAll(".main-metrics span");
 if (mainMetricLabels[0]) mainMetricLabels[0].textContent = LANG[lang].buy;
 if (mainMetricLabels[1]) mainMetricLabels[1].textContent = LANG[lang].sell;
 if (mainMetricLabels[2]) mainMetricLabels[2].textContent = LANG[lang].confidence;
+mainMetricLabels.forEach((label) => {
+  label.title = LANG[lang].biasOnlyNote;
+});
+const biasOnlyNote = document.querySelector(".bias-only-note");
+if (biasOnlyNote) biasOnlyNote.textContent = LANG[lang].biasOnlyNote;
 
 // SMC plan title
 const smcHeader = document.querySelector(".smc-header");
@@ -4026,9 +4039,18 @@ function updateCard(symbol, data) {
   const sellLabel = document.getElementById(`${cardPrefix}-sell-label`);
   const confLabel = document.getElementById(`${cardPrefix}-conf-label`);
 
-  if (buyLabel) buyLabel.textContent = `${LANG[currentLang].buy}: ${buyPct}%`;
-if (sellLabel) sellLabel.textContent = `${LANG[currentLang].sell}: ${sellPct}%`;
-if (confLabel) confLabel.textContent = `${LANG[currentLang].confidence}: ${confidence}%`;
+  if (buyLabel) {
+    buyLabel.textContent = `${LANG[currentLang].buy}: ${buyPct}%`;
+    buyLabel.title = LANG[currentLang].biasOnlyNote;
+  }
+if (sellLabel) {
+  sellLabel.textContent = `${LANG[currentLang].sell}: ${sellPct}%`;
+  sellLabel.title = LANG[currentLang].biasOnlyNote;
+}
+if (confLabel) {
+  confLabel.textContent = `${LANG[currentLang].confidence}: ${confidence}%`;
+  confLabel.title = LANG[currentLang].biasOnlyNote;
+}
 
   if (!data._barsInit) {
   setBar(cardPrefix, "buy", buyPct, true);
@@ -4287,17 +4309,23 @@ function renderNewsImpact(symbol, newsData) {
   const eventEl = document.getElementById("news-impact-event-name");
   const currencyEl = document.getElementById("news-impact-currency");
   const timeEl = document.getElementById("news-impact-time");
+  const countdownEl = document.getElementById("news-impact-countdown");
   const levelEl = document.getElementById("news-impact-level");
   const biasEl = document.getElementById("news-impact-bias");
   const effectLabelEl = document.getElementById("news-impact-effect-label");
   const effectEl = document.getElementById("news-impact-effect");
   const scoreEl = document.getElementById("news-impact-score");
   const decisionEl = document.getElementById("news-impact-decision");
+  const forecastEl = document.getElementById("news-impact-forecast");
+  const previousEl = document.getElementById("news-impact-previous");
+  const actualEl = document.getElementById("news-impact-actual");
+  const sourceEl = document.getElementById("news-impact-source");
   const cardEl = document.querySelector(".news-impact-card");
   const dotsEl = document.querySelector(".news-impact-dots");
   const biasNoteEl = document.getElementById("news-impact-bias-note");
   const effectNoteEl = document.getElementById("news-impact-effect-note");
   const decisionNoteEl = document.getElementById("news-impact-decision-note");
+  const upcomingListEl = document.getElementById("news-impact-upcoming-list");
 
   if (!titleEl) return;
 
@@ -4305,6 +4333,9 @@ function renderNewsImpact(symbol, newsData) {
   titleEl.textContent = `NEWS IMPACT • ${displayName}`;
 
   if (!data || data.unavailable) {
+    currentNewsImpactWindow = null;
+    currentUpcomingHighImpactEvents = [];
+    renderUpcomingHighImpactEvents();
     if (cardEl) cardEl.className = "news-impact-card news-state-unavailable";
     if (updatedEl) updatedEl.textContent = "Last update: --";
     if (emptyEl) {
@@ -4332,16 +4363,17 @@ function renderNewsImpact(symbol, newsData) {
   const impact = isNoNews || !["HIGH", "MEDIUM", "LOW"].includes(rawImpact)
     ? "NEUTRAL"
     : rawImpact;
-  const bias = data.news_bias || data.bias || "Waiting for release";
+  const bias = data.news_bias || data.bias || "Neutral";
   const effect =
     data.symbol_effect
     || data.effect_on_symbol
     || data.effect
     || `${normalizedSymbol} Neutral`;
-  const decision =
-    data.trade_decision
-    || data.decision
-    || "WAITING FOR ACTUAL DATA";
+  const rawStatus = data.display_status || data.status || data.trade_decision || data.decision || "";
+  const decision = humanizeNewsStatus(rawStatus, data);
+  const sourceLabel = data.source_label || data.source_used || data.source || "";
+  const reasonText = data.news_reason || data.reason || "";
+  const eventTime = data.time_utc || data.release_time || data.time || data.event_time;
   const rawScore = data.final_news_score ?? data.news_score ?? data.score;
   const score = Number.isFinite(Number(rawScore))
     ? Math.max(-25, Math.min(25, Number(rawScore)))
@@ -4357,14 +4389,33 @@ function renderNewsImpact(symbol, newsData) {
   if (!hasNews && emptyEl) {
     emptyEl.textContent = "News unavailable.";
   }
-  if (!hasNews) return;
+  if (!hasNews) {
+    currentNewsImpactWindow = null;
+    currentUpcomingHighImpactEvents = [];
+    renderUpcomingHighImpactEvents();
+    updateNewsTradingWindow();
+    return;
+  }
+
+  currentNewsImpactWindow = {
+    eventTime,
+    eventName,
+    impact,
+  };
+  currentUpcomingHighImpactEvents = Array.isArray(data.upcoming_high_impact)
+    ? data.upcoming_high_impact
+    : [];
+  renderUpcomingHighImpactEvents(upcomingListEl);
 
   if (eventEl) eventEl.textContent = eventName;
   if (currencyEl) {
     currencyEl.textContent = `Currency affected: ${data.currency || data.currency_affected || "--"}`;
   }
   if (timeEl) {
-    timeEl.textContent = data.time_until_event || data.time_until || data.event_time || "--";
+    timeEl.textContent = formatNewsEventTime(eventTime);
+  }
+  if (countdownEl) {
+    countdownEl.textContent = `Countdown: ${data.countdown || data.time_until_event || data.time_until || "--"}`;
   }
   if (levelEl) {
     levelEl.textContent = impact;
@@ -4377,12 +4428,7 @@ function renderNewsImpact(symbol, newsData) {
   }
   if (biasEl) biasEl.textContent = bias;
   if (biasNoteEl) {
-    const biasRaw = String(bias).toUpperCase();
-    biasNoteEl.textContent = biasRaw.includes("BULLISH")
-      ? "Currency likely stronger"
-      : biasRaw.includes("BEARISH")
-        ? "Currency likely weaker"
-        : "Waiting for release";
+    biasNoteEl.textContent = reasonText || "Informational only";
   }
   if (effectLabelEl) effectLabelEl.textContent = `EFFECT ON ${displayName}`;
   if (effectEl) {
@@ -4395,30 +4441,35 @@ function renderNewsImpact(symbol, newsData) {
         ? `${displayName} may move down`
         : effectRaw.includes("BUY")
           ? `${displayName} may move up`
-          : "Normal SMC rules active";
+          : "Informational only";
     }
   }
+  if (forecastEl) forecastEl.textContent = data.forecast || "--";
+  if (previousEl) previousEl.textContent = data.previous || "--";
+  if (actualEl) actualEl.textContent = data.actual || "--";
+  if (sourceEl) sourceEl.textContent = sourceLabel || "--";
   if (scoreEl) {
     scoreEl.textContent = `${score > 0 ? "+" : ""}${score}`;
     scoreEl.classList.toggle("score-positive", score > 0);
     scoreEl.classList.toggle("score-negative", score < 0);
   }
   if (decisionEl) {
-    decisionEl.textContent = String(decision).toUpperCase();
+    decisionEl.textContent = decision;
     const decisionRaw = String(decision).toUpperCase();
     decisionEl.classList.toggle("decision-supports", decisionRaw.includes("SUPPORTS"));
     decisionEl.classList.toggle("decision-conflicts", decisionRaw.includes("CONFLICTS"));
     decisionEl.classList.toggle("decision-block", decisionRaw.includes("BLOCK"));
     if (decisionNoteEl) {
-      decisionNoteEl.textContent = decisionRaw.includes("CONFLICTS")
-        ? "Be careful - wait for news to pass"
-        : decisionRaw.includes("SUPPORTS")
-          ? "News agrees with current setup"
-          : decisionRaw.includes("BLOCK")
-            ? "Avoid entry during news volatility"
-            : decisionRaw.includes("WAITING")
-              ? "Waiting for actual data"
-              : "Normal SMC rules active";
+      const decisionNote = decisionRaw.includes("RELEASED")
+        ? "Released - analysis updated"
+        : decisionRaw.includes("DATA UNAVAILABLE")
+          ? "Calendar data unavailable"
+          : decisionRaw.includes("WAITING")
+            ? "Waiting for release data"
+            : "Informational only";
+      decisionNoteEl.textContent = sourceLabel
+        ? `${decisionNote} • Source: ${sourceLabel}`
+        : decisionNote;
     }
     if (cardEl) {
       cardEl.className = "news-impact-card";
@@ -4435,6 +4486,268 @@ function renderNewsImpact(symbol, newsData) {
       }
     }
   }
+
+  updateNewsTradingWindow();
+}
+
+function humanizeNewsStatus(status, data = {}) {
+  const raw = String(status || "").toUpperCase().replaceAll("_", " ");
+  if (raw.includes("NEWS UNAVAILABLE")) return "Data unavailable";
+  if (raw.includes("NO MAJOR NEWS")) return "Neutral";
+  if (raw.includes("WAITING FOR ACTUAL")) return "Waiting for actual data";
+  if (raw.includes("WAITING FOR RELEASE")) return "Waiting for release";
+  if (raw.includes("RELEASED")) return "Released";
+  if (data.actual !== undefined && data.actual !== null && String(data.actual).trim() !== "") {
+    return "Released";
+  }
+  return status || "Waiting for release";
+}
+
+function formatNewsEventTime(value) {
+  if (!value) return "--";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return String(value);
+  try {
+    return date.toLocaleString("en-US", {
+      timeZone: "America/New_York",
+      month: "short",
+      day: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+      timeZoneName: "short",
+    });
+  } catch (error) {
+    return String(value);
+  }
+}
+
+function parseNewsWindowTime(value) {
+  if (!value) return null;
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function formatNewsWindowDuration(ms) {
+  const totalSeconds = Math.max(0, Math.ceil(ms / 1000));
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+
+  if (hours > 0) {
+    return `${hours}h ${String(minutes).padStart(2, "0")}m ${String(seconds).padStart(2, "0")}s`;
+  }
+  return `${minutes}m ${String(seconds).padStart(2, "0")}s`;
+}
+
+function setNewsWindowPhase(id, state, countdown) {
+  const row = document.getElementById(id);
+  if (!row) return;
+  const countdownEl = row.querySelector("em");
+  row.classList.toggle("active", state === "active");
+  row.classList.toggle("completed", state === "completed");
+  row.classList.toggle("pending", state === "pending");
+  if (countdownEl) countdownEl.textContent = countdown || "--";
+}
+
+function formatUpcomingEventCountdown(value) {
+  const eventTime = parseNewsWindowTime(value);
+  if (!eventTime) return "--";
+  const remainingMs = eventTime.getTime() - Date.now();
+  if (remainingMs < 0) {
+    return `Released ${formatNewsWindowDuration(Math.abs(remainingMs))} ago`;
+  }
+  return formatNewsWindowDuration(remainingMs);
+}
+
+function renderUpcomingHighImpactEvents(container = null) {
+  const listEl = container || document.getElementById("news-impact-upcoming-list");
+  if (!listEl) return;
+
+  const events = Array.isArray(currentUpcomingHighImpactEvents)
+    ? currentUpcomingHighImpactEvents.slice(0, 2)
+    : [];
+  listEl.replaceChildren();
+
+  if (!events.length) {
+    const emptyEl = document.createElement("div");
+    emptyEl.className = "news-impact-upcoming-empty";
+    emptyEl.textContent = "No upcoming high-impact events.";
+    listEl.appendChild(emptyEl);
+    return;
+  }
+
+  events.forEach((event) => {
+    const itemEl = document.createElement("div");
+    itemEl.className = "news-impact-upcoming-event";
+
+    const titleEl = document.createElement("strong");
+    titleEl.textContent = event.event_name || event.event || "--";
+
+    const metaEl = document.createElement("span");
+    metaEl.textContent = `${event.currency || "--"} • ${event.impact || "--"}`;
+
+    const timeEl = document.createElement("b");
+    timeEl.textContent = formatNewsEventTime(event.time_utc || event.time);
+
+    const countdownEl = document.createElement("em");
+    countdownEl.dataset.eventTime = event.time_utc || event.time || "";
+    countdownEl.textContent = formatUpcomingEventCountdown(countdownEl.dataset.eventTime);
+
+    const sourceEl = document.createElement("small");
+    sourceEl.textContent = event.source_label || event.source || "--";
+
+    itemEl.append(titleEl, metaEl, timeEl, countdownEl, sourceEl);
+    listEl.appendChild(itemEl);
+  });
+}
+
+function updateUpcomingHighImpactCountdowns() {
+  document
+    .querySelectorAll("#news-impact-upcoming-list em[data-event-time]")
+    .forEach((countdownEl) => {
+      countdownEl.textContent = formatUpcomingEventCountdown(
+        countdownEl.dataset.eventTime
+      );
+    });
+}
+
+function updateNewsTradingWindow() {
+  const statusEl = document.getElementById("news-trading-window-status");
+  const countdownEl = document.getElementById("news-trading-window-countdown");
+  const releaseTime = parseNewsWindowTime(currentNewsImpactWindow?.eventTime);
+
+  if (!statusEl || !countdownEl) return;
+
+  if (!releaseTime) {
+    statusEl.textContent = "NORMAL TRADING";
+    statusEl.className = "normal";
+    countdownEl.textContent = "News protection inactive.";
+    setNewsWindowPhase("news-window-normal-start", "active", "Active now");
+    setNewsWindowPhase("news-window-before", "pending", "--");
+    setNewsWindowPhase("news-window-release", "pending", "--");
+    setNewsWindowPhase("news-window-after", "pending", "--");
+    setNewsWindowPhase("news-window-normal", "pending", "--");
+    return;
+  }
+
+  const now = Date.now();
+  const releaseMs = releaseTime.getTime();
+  const beforeStartMs = releaseMs - NEWS_PROTECTION_BEFORE_MS;
+  const releaseEndMs = releaseMs + NEWS_RELEASE_PHASE_MS;
+  const protectionEndMs = releaseMs + NEWS_PROTECTION_AFTER_MS;
+
+  if (now < beforeStartMs) {
+    statusEl.textContent = "NORMAL TRADING";
+    statusEl.className = "normal";
+    countdownEl.textContent = "News protection inactive.";
+    setNewsWindowPhase(
+      "news-window-normal-start",
+      "active",
+      `Protection begins in ${formatNewsWindowDuration(beforeStartMs - now)}`
+    );
+    setNewsWindowPhase(
+      "news-window-before",
+      "pending",
+      `Starts in ${formatNewsWindowDuration(beforeStartMs - now)}`
+    );
+    setNewsWindowPhase(
+      "news-window-release",
+      "pending",
+      `Starts in ${formatNewsWindowDuration(releaseMs - now)}`
+    );
+    setNewsWindowPhase(
+      "news-window-after",
+      "pending",
+      `Starts in ${formatNewsWindowDuration(releaseMs - now)}`
+    );
+    setNewsWindowPhase(
+      "news-window-normal",
+      "active",
+      `Protection begins in ${formatNewsWindowDuration(beforeStartMs - now)}`
+    );
+    return;
+  }
+
+  if (now < releaseMs) {
+    statusEl.textContent = "HIGH RISK";
+    statusEl.className = "high-risk";
+    countdownEl.textContent = `Trading resumes in ${formatNewsWindowDuration(protectionEndMs - now)}`;
+    setNewsWindowPhase("news-window-normal-start", "completed", "Completed");
+    setNewsWindowPhase(
+      "news-window-before",
+      "active",
+      `Release in ${formatNewsWindowDuration(releaseMs - now)}`
+    );
+    setNewsWindowPhase(
+      "news-window-release",
+      "pending",
+      `Starts in ${formatNewsWindowDuration(releaseMs - now)}`
+    );
+    setNewsWindowPhase(
+      "news-window-after",
+      "pending",
+      `Starts in ${formatNewsWindowDuration(releaseMs - now)}`
+    );
+    setNewsWindowPhase(
+      "news-window-normal",
+      "pending",
+      `Begins in ${formatNewsWindowDuration(protectionEndMs - now)}`
+    );
+    return;
+  }
+
+  if (now < releaseEndMs) {
+    statusEl.textContent = "DURING RELEASE";
+    statusEl.className = "release";
+    countdownEl.textContent = `Trading resumes in ${formatNewsWindowDuration(protectionEndMs - now)}`;
+    setNewsWindowPhase("news-window-normal-start", "completed", "Completed");
+    setNewsWindowPhase("news-window-before", "completed", "Completed");
+    setNewsWindowPhase(
+      "news-window-release",
+      "active",
+      `Extreme window ends in ${formatNewsWindowDuration(releaseEndMs - now)}`
+    );
+    setNewsWindowPhase(
+      "news-window-after",
+      "pending",
+      `Stabilizes in ${formatNewsWindowDuration(protectionEndMs - now)}`
+    );
+    setNewsWindowPhase(
+      "news-window-normal",
+      "pending",
+      `Begins in ${formatNewsWindowDuration(protectionEndMs - now)}`
+    );
+    return;
+  }
+
+  if (now < protectionEndMs) {
+    statusEl.textContent = "HIGH RISK";
+    statusEl.className = "high-risk";
+    countdownEl.textContent = `Trading resumes in ${formatNewsWindowDuration(protectionEndMs - now)}`;
+    setNewsWindowPhase("news-window-normal-start", "completed", "Completed");
+    setNewsWindowPhase("news-window-before", "completed", "Completed");
+    setNewsWindowPhase("news-window-release", "completed", "Completed");
+    setNewsWindowPhase(
+      "news-window-after",
+      "active",
+      `Ends in ${formatNewsWindowDuration(protectionEndMs - now)}`
+    );
+    setNewsWindowPhase(
+      "news-window-normal",
+      "pending",
+      `Begins in ${formatNewsWindowDuration(protectionEndMs - now)}`
+    );
+    return;
+  }
+
+  statusEl.textContent = "NORMAL TRADING";
+  statusEl.className = "normal";
+  countdownEl.textContent = "News protection inactive.";
+  setNewsWindowPhase("news-window-normal-start", "completed", "Completed");
+  setNewsWindowPhase("news-window-before", "completed", "Completed");
+  setNewsWindowPhase("news-window-release", "completed", "Completed");
+  setNewsWindowPhase("news-window-after", "completed", "Completed");
+  setNewsWindowPhase("news-window-normal", "active", "Active now");
 }
 
 async function fetchNewsImpact(symbol, options = {}) {
@@ -4509,6 +4822,279 @@ function refreshAllNewsImpact() {
     fetchNewsImpact("EURUSD", { force: true, render: true }),
     fetchNewsImpact("XAUUSD", { force: true, render: true })
   ]);
+}
+
+function firstUsableValue(...values) {
+  return values.find((value) => {
+    if (value === undefined || value === null) return false;
+    const text = String(value).trim();
+    return text !== "" && text !== "--" && text.toUpperCase() !== "N/A";
+  });
+}
+
+function numericValue(value) {
+  const number = Number(value);
+  return Number.isFinite(number) ? number : null;
+}
+
+function inferSmcPlanSide(data, signal) {
+  const rawSignal = String(signal || "").toUpperCase();
+  const planText = String(
+    data?.plan_type
+      || data?.structure_next
+      || data?.blocked_reason
+      || ""
+  ).toUpperCase();
+  const strategyDebug = data?.strategy_debug || data?.entry_strategy_debug || {};
+  const debugDirection = String(
+    strategyDebug.smc_direction
+      || strategyDebug.side
+      || strategyDebug.final_signal
+      || ""
+  ).toUpperCase();
+
+  if (rawSignal.includes("BUY") || planText.includes("BUY") || debugDirection.includes("BUY")) {
+    return "BUY";
+  }
+  if (rawSignal.includes("SELL") || planText.includes("SELL") || debugDirection.includes("SELL")) {
+    return "SELL";
+  }
+
+  const buyScore = Number(data?.buy_percentage ?? data?.buy_score);
+  const sellScore = Number(data?.sell_percentage ?? data?.sell_score);
+  if (Number.isFinite(buyScore) && Number.isFinite(sellScore) && Math.abs(buyScore - sellScore) >= 8) {
+    return buyScore > sellScore ? "BUY" : "SELL";
+  }
+  return "WAIT";
+}
+
+function formatSmcLevel(symbol, value) {
+  const number = numericValue(value);
+  if (number === null) return firstUsableValue(value) || "--";
+  const decimals = symbol === "XAUUSD" ? 2 : 5;
+  return number.toFixed(decimals);
+}
+
+function formatSmcZone(symbol, level, side) {
+  const number = numericValue(level);
+  if (number === null) return "--";
+  const buffer = symbol === "XAUUSD" ? 1.5 : 0.00015;
+  const low = side === "SELL" ? number - buffer : number;
+  const high = side === "SELL" ? number : number + buffer;
+  return `${formatSmcLevel(symbol, low)} - ${formatSmcLevel(symbol, high)}`;
+}
+
+function setSmcText(id, value) {
+  const element = document.getElementById(id);
+  if (element) element.textContent = value || "--";
+}
+
+function renderSmcWaitingList(items) {
+  const listEl = document.getElementById("main-smc-waiting-list");
+  if (!listEl) return;
+  listEl.replaceChildren();
+
+  items.forEach((item) => {
+    const li = document.createElement("li");
+    const state = item.state || (item.done ? "complete" : "missing");
+    li.className = state;
+    const mark = document.createElement("b");
+    mark.textContent = state === "info" ? "•" : item.done ? "✓" : "✗";
+    const text = document.createElement("span");
+    text.textContent = item.label;
+    li.append(mark, text);
+    listEl.appendChild(li);
+  });
+}
+
+function hasConfirmedSwingSl(strategyDebug = {}) {
+  return Boolean(
+    strategyDebug.selected_swing_sl
+      || strategyDebug.sl_source
+      || strategyDebug.sl_valid
+  );
+}
+
+function hasReachedSwingSlEvaluation(data = {}, strategyDebug = {}) {
+  if (hasConfirmedSwingSl(strategyDebug)) return true;
+  if (data?.swing_sl_debug || strategyDebug?.swing_sl_debug) return true;
+  if (data?.swing_sl_validation || strategyDebug?.swing_sl_validation) return true;
+
+  const swingSlText = [
+    data?.blocked_by,
+    data?.blocked_reason,
+    data?.blocker_rule_name,
+    data?.entry_timing,
+    data?.plan_reason,
+    strategyDebug?.blocked_by,
+    strategyDebug?.blocked_reason,
+    strategyDebug?.block_reason,
+  ].map((value) => String(value || "").toUpperCase()).join(" ");
+
+  return (
+    swingSlText.includes("SWING_SL")
+    || swingSlText.includes("SWING SL")
+    || swingSlText.includes("INVALID_RISK_REWARD")
+    || swingSlText.includes("WAIT_VALID_STRUCTURE_TP")
+    || swingSlText.includes("WAIT_STRUCTURE_REWARD_BELOW_MINIMUM")
+    || swingSlText.includes("WAIT_RR_OUTSIDE_1_2_TO_2")
+  );
+}
+
+function getSwingSlCheckStatus(data = {}, strategyDebug = {}) {
+  if (hasConfirmedSwingSl(strategyDebug)) return "YES";
+  if (hasReachedSwingSlEvaluation(data, strategyDebug)) return "NO";
+  return "NOT CHECKED";
+}
+
+function updateSmcPlanIntelligence(symbol, data, signal, strategyDebug = {}) {
+  const normalizedSymbol = String(symbol || currentChartSymbol || "EURUSD").toUpperCase();
+  const side = inferSmcPlanSide(data, signal);
+  const savedSetups = strategyDebug.saved_15m_setups || data?.saved_15m_setups || {};
+  const expiredSetup = strategyDebug.expired_15m_setup || data?.expired_15m_setup || null;
+  const savedSetupForSide = side && savedSetups ? savedSetups[side] : null;
+  const savedSetupStatus = String(
+    strategyDebug.saved_15m_setup_status
+      || savedSetupForSide?.status
+      || expiredSetup?.status
+      || ""
+  ).toUpperCase();
+  const expiredSetupLevel = firstUsableValue(
+    expiredSetup?.swing_level,
+    expiredSetup?.broken_swing_price,
+    expiredSetup?.level
+  );
+  const expiredSetupReason = firstUsableValue(
+    expiredSetup?.expiration_reason,
+    data?.setup_freshness_reason,
+    strategyDebug.blocked_reason,
+    "No 5m confirmation in time"
+  );
+  const expiredSetupActive = savedSetupStatus === "EXPIRED" && Boolean(expiredSetupLevel);
+  const actionableTriggerLevel = side === "SELL"
+    ? strategyDebug.actionable_15m_sell_level
+    : side === "BUY"
+      ? strategyDebug.actionable_15m_buy_level
+      : null;
+  const structure = firstUsableValue(
+    data?.structure_trend,
+    data?.structure_type,
+    strategyDebug.htf_structure,
+    strategyDebug.structure_type,
+    "Neutral"
+  );
+  const triggerLevel = firstUsableValue(
+    strategyDebug.entry_confirm_level,
+    strategyDebug.fifteen_m_bos_level,
+    data?.entry_confirm_level,
+    data?.fifteen_m_bos_level,
+    actionableTriggerLevel,
+    side === "SELL" ? data?.structure_support : data?.structure_resistance
+  );
+  const selectedSwingSl = firstUsableValue(
+    strategyDebug.selected_swing_sl,
+    data?.selected_swing_sl,
+    data?.stop_loss
+  );
+  const estimatedSlLevel = selectedSwingSl
+    || (side === "SELL" ? data?.structure_resistance : data?.structure_support);
+  const estimatedTpLevel = firstUsableValue(
+    data?.tp2,
+    data?.tp1,
+    side === "SELL" ? data?.structure_support : data?.structure_resistance
+  );
+
+  const smcShiftComplete = Boolean(
+    strategyDebug.bos_detected
+      || strategyDebug.choch_detected
+      || ["BUY", "SELL"].includes(String(strategyDebug.smc_direction || "").toUpperCase())
+  );
+  const swingBreakComplete = Boolean(strategyDebug.fifteen_m_swing_break);
+  const fifteenCloseComplete = Boolean(
+    strategyDebug.fifteen_m_close_confirmed
+      ?? strategyDebug.fifteen_m_candle_close_confirmed
+  );
+  const swingSlComplete = hasConfirmedSwingSl(strategyDebug);
+  const fiveMinuteComplete = Boolean(strategyDebug.five_m_confirmation);
+  const waitingForFiveMinuteConfirmation = Boolean(
+    !expiredSetupActive
+      && !fiveMinuteComplete
+      && (
+        savedSetupStatus === "PENDING"
+        || savedSetupStatus === "DIRECT_15M_ENTRY"
+        || swingBreakComplete
+        || fifteenCloseComplete
+      )
+  );
+  const liveTriggerLevel = expiredSetupActive ? null : triggerLevel;
+
+  const triggerText = expiredSetupActive
+    ? "Setup expired — waiting for fresh 15m BOS/CHOCH"
+    : waitingForFiveMinuteConfirmation
+      ? "15m break confirmed — waiting for 5m confirmation"
+    : liveTriggerLevel
+      ? `${side === "SELL" ? "Waiting for 15m close below" : side === "BUY" ? "Waiting for 15m close above" : "Waiting for 15m break near"} ${formatSmcLevel(normalizedSymbol, liveTriggerLevel)}`
+    : strategyDebug.actionable_15m_levels_message
+      ? strategyDebug.actionable_15m_levels_message
+    : "Fresh 15m BOS/CHOCH";
+  const waitingLabel = side === "SELL"
+    ? "15m bearish BOS"
+    : side === "BUY"
+      ? "15m bullish BOS"
+      : "15m BOS/CHOCH";
+
+  const waitingItems = [
+    { label: waitingLabel, done: smcShiftComplete },
+    {
+      label: liveTriggerLevel
+        ? `${side === "SELL" ? "Break below" : side === "BUY" ? "Break above" : "Break near"} ${formatSmcLevel(normalizedSymbol, liveTriggerLevel)}`
+        : "Structure break level",
+      done: swingBreakComplete,
+    },
+    { label: "15m close confirmation", done: fifteenCloseComplete },
+    { label: "5m confirmation close", done: fiveMinuteComplete },
+    {
+      label: swingSlComplete ? "Swing SL confirmed" : "Estimated SL found",
+      done: swingSlComplete,
+    },
+  ];
+  if (expiredSetupActive) {
+    waitingItems.splice(
+      1,
+      0,
+      {
+        label: `Expired level: ${formatSmcLevel(normalizedSymbol, expiredSetupLevel)}`,
+        state: "info",
+      },
+      {
+        label: `Expired reason: ${expiredSetupReason}`,
+        state: "info",
+      },
+    );
+  }
+
+  const completedCount = waitingItems.filter((item) => item.done).length;
+  const progressItems = waitingItems.filter((item) => item.state !== "info");
+  const progress = Math.round((completedCount / Math.max(1, progressItems.length)) * 100);
+  const planIntel = document.getElementById("main-smc-plan-intel");
+  if (planIntel) {
+    planIntel.classList.toggle("is-ready", progress === 100);
+  }
+
+  setSmcText("main-smc-structure", tMarketText(String(structure || "Neutral")));
+  setSmcText("main-smc-trigger", triggerText);
+  setSmcText("main-smc-entry-zone", formatSmcZone(normalizedSymbol, liveTriggerLevel, side));
+  setSmcText(
+    "main-smc-estimated-sl",
+    estimatedSlLevel
+      ? `${side === "SELL" ? "Above" : side === "BUY" ? "Below" : "Near"} ${formatSmcLevel(normalizedSymbol, estimatedSlLevel)}`
+      : "--"
+  );
+  setSmcText("main-smc-estimated-tp", estimatedTpLevel ? formatSmcLevel(normalizedSymbol, estimatedTpLevel) : "--");
+  setSmcText("main-smc-progress-label", `${progress}%`);
+  const progressBar = document.getElementById("main-smc-progress-bar");
+  if (progressBar) progressBar.style.width = `${progress}%`;
+  renderSmcWaitingList(waitingItems);
 }
 
 function updateMainPanel(symbol) {
@@ -4666,14 +5252,26 @@ if (priceEl) {
     : "--";
 
   const strategyDebug = data.strategy_debug || data.entry_strategy_debug || {};
+  updateSmcPlanIntelligence(symbol, data, signal, strategyDebug);
   const setStrategyCheck = (id, value) => {
     const element = document.getElementById(id);
     if (!element) return;
 
-    const passed = value === true;
-    element.textContent = passed ? "YES" : "NO";
+    const status = value === true
+      ? "YES"
+      : value === false
+        ? "NO"
+        : String(value || "WAITING").toUpperCase().replace(/_/g, " ");
+    const passed = status === "YES";
+    const failed = status === "NO";
+    const waiting = status === "WAITING";
+    const notChecked = status === "NOT CHECKED";
+
+    element.textContent = status;
     element.classList.toggle("check-pass", passed);
-    element.classList.toggle("check-fail", !passed);
+    element.classList.toggle("check-fail", failed);
+    element.classList.toggle("check-waiting", waiting);
+    element.classList.toggle("check-not-checked", notChecked);
   };
 
   setStrategyCheck(
@@ -4699,11 +5297,7 @@ if (priceEl) {
   );
   setStrategyCheck(
     "strategy-debug-swing-sl",
-    Boolean(
-      strategyDebug.selected_swing_sl
-      || strategyDebug.sl_source
-      || strategyDebug.sl_valid
-    )
+    getSwingSlCheckStatus(data, strategyDebug)
   );
 
   const strategyDecision = document.getElementById(
@@ -9966,6 +10560,16 @@ setInterval(() => {
   console.log("🔄 Auto refresh running...");
   refreshPanel();
 }, 15000);
+
+setInterval(() => {
+  if (typeof currentChartSymbol === "undefined") return;
+  refreshNewsImpact(currentChartSymbol);
+}, 60000);
+
+setInterval(() => {
+  updateNewsTradingWindow();
+  updateUpcomingHighImpactCountdowns();
+}, 1000);
 
 setInterval(refreshConnectionBadgeFreshness, 5000);
 

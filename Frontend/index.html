@@ -406,7 +406,7 @@
             </div>
             <div id="eurusd-signal-note" class="signal-freshness-note hidden">Trend active · no fresh entry</div>
 
-            <div class="metric-label" id="eurusd-buy-label">Buy: 0%</div>
+            <div class="metric-label" id="eurusd-buy-label">Bullish Bias: 0%</div>
             <div class="bar-wrap">
               <div class="glow-bar">
                 <div class="glow-fill buy-glow" id="eurusd-buy-fill-glow"></div>
@@ -414,7 +414,7 @@
               </div>
             </div>
 
-            <div class="metric-label" id="eurusd-sell-label">Sell: 0%</div>
+            <div class="metric-label" id="eurusd-sell-label">Bearish Bias: 0%</div>
             <div class="bar-wrap">
               <div class="glow-bar">
                 <div class="glow-fill sell-glow" id="eurusd-sell-fill-glow"></div>
@@ -422,7 +422,7 @@
               </div>
             </div>
 
-          <div class="metric-label conf-label" id="eurusd-conf-label">Confidence: 0%</div>
+          <div class="metric-label conf-label" id="eurusd-conf-label">Bias Strength: 0%</div>
             <div class="bar-wrap conf-wrap">
               <div class="glow-bar conf-bar">
                 <div class="glow-fill conf-glow" id="eurusd-conf-fill-glow"></div>
@@ -456,7 +456,7 @@
             </div>
             <div id="gold-signal-note" class="signal-freshness-note hidden">Trend active · no fresh entry</div>
 
-            <div class="metric-label" id="gold-buy-label">Buy: 0%</div>
+            <div class="metric-label" id="gold-buy-label">Bullish Bias: 0%</div>
             <div class="bar-wrap">
               <div class="glow-bar">
                 <div class="glow-fill buy-glow" id="gold-buy-fill-glow"></div>
@@ -464,7 +464,7 @@
               </div>
             </div>
 
-            <div class="metric-label" id="gold-sell-label">Sell: 0%</div>
+            <div class="metric-label" id="gold-sell-label">Bearish Bias: 0%</div>
             <div class="bar-wrap">
               <div class="glow-bar">
                 <div class="glow-fill sell-glow" id="gold-sell-fill-glow"></div>
@@ -472,7 +472,7 @@
               </div>
             </div>
 
-            <div class="metric-label conf-label" id="gold-conf-label">Confidence: 0%</div>
+            <div class="metric-label conf-label" id="gold-conf-label">Bias Strength: 0%</div>
             <div class="bar-wrap conf-wrap">
               <div class="glow-bar conf-bar">
                 <div class="glow-fill conf-glow" id="gold-conf-fill-glow"></div>
@@ -510,10 +510,11 @@
     <div id="main-signal-note" class="signal-freshness-note main-signal-note hidden">Trend active · no fresh entry</div>
 
     <div class="main-metrics">
-      <div><span>Buy</span><strong id="main-buy">--%</strong></div>
-      <div><span>Sell</span><strong id="main-sell">--%</strong></div>
-      <div><span>Confidence</span><strong id="main-confidence">--%</strong></div>
+      <div><span>Bullish Bias</span><strong id="main-buy">--%</strong></div>
+      <div><span>Bearish Bias</span><strong id="main-sell">--%</strong></div>
+      <div><span>Bias Strength</span><strong id="main-confidence">--%</strong></div>
     </div>
+    <div class="bias-only-note">Market bias only - entry requires strategy checks.</div>
 
     <div class="smc-panel main-smc-panel">
       <div class="smc-header">⚡ SMC PLAN</div>
@@ -524,6 +525,45 @@
       <div class="smc-row"><span>TP2</span><span id="main-tp2">--</span></div>
       <div class="smc-row"><span>Risk/Reward</span><span id="main-rr">--</span></div>
       <div class="smc-row signal-blocker-row hidden" id="main-blocked-reason-row"><span>Block Reason</span><span id="main-blocked-reason">--</span></div>
+      <div class="smc-plan-intel" id="main-smc-plan-intel">
+        <div class="smc-intel-grid">
+          <div>
+            <span>Market Structure</span>
+            <strong id="main-smc-structure">--</strong>
+          </div>
+          <div>
+            <span>Next Trigger</span>
+            <strong id="main-smc-trigger">--</strong>
+          </div>
+        </div>
+        <div class="smc-intel-section">
+          <span>Waiting For</span>
+          <ul id="main-smc-waiting-list"></ul>
+        </div>
+        <div class="smc-intel-grid smc-intel-levels">
+          <div>
+            <span>Next Entry Zone</span>
+            <strong id="main-smc-entry-zone">--</strong>
+          </div>
+          <div>
+            <span>Estimated SL</span>
+            <strong id="main-smc-estimated-sl">--</strong>
+          </div>
+          <div>
+            <span>Estimated TP</span>
+            <strong id="main-smc-estimated-tp">--</strong>
+          </div>
+        </div>
+        <div class="smc-intel-progress">
+          <div>
+            <span>Progress</span>
+            <strong id="main-smc-progress-label">0%</strong>
+          </div>
+          <div class="smc-progress-track">
+            <i id="main-smc-progress-bar"></i>
+          </div>
+        </div>
+      </div>
     </div>
 
     <details class="entry-strategy-debug" open>
@@ -625,6 +665,7 @@
         <strong id="news-impact-event-name">--</strong>
         <em id="news-impact-currency">Currency affected: --</em>
         <b id="news-impact-time">--</b>
+        <small id="news-impact-countdown">Countdown: --</small>
       </div>
 
       <div class="news-impact-item">
@@ -647,16 +688,75 @@
         <em id="news-impact-effect-note">Normal SMC rules active</em>
       </div>
 
+      <div class="news-impact-upcoming">
+        <div class="news-impact-upcoming-heading">
+          <span>UPCOMING HIGH IMPACT</span>
+          <em>Next 2 relevant events</em>
+        </div>
+        <div id="news-impact-upcoming-list" class="news-impact-upcoming-list">
+          <div class="news-impact-upcoming-empty">No upcoming high-impact events.</div>
+        </div>
+      </div>
+
+      <div class="news-impact-details">
+        <div>
+          <span>FORECAST</span>
+          <strong id="news-impact-forecast">--</strong>
+        </div>
+        <div>
+          <span>PREVIOUS</span>
+          <strong id="news-impact-previous">--</strong>
+        </div>
+        <div>
+          <span>ACTUAL</span>
+          <strong id="news-impact-actual">--</strong>
+        </div>
+        <div>
+          <span>SOURCE</span>
+          <strong id="news-impact-source">--</strong>
+        </div>
+      </div>
+
       <div class="news-impact-score">
-        <span>FINAL NEWS SCORE</span>
+        <span>NEWS SCORE</span>
         <strong id="news-impact-score">0</strong>
         <em>-25 to +25</em>
       </div>
 
       <div class="news-impact-decision">
-        <span>TRADE DECISION</span>
-        <strong id="news-impact-decision">WAITING FOR ACTUAL DATA</strong>
-        <em id="news-impact-decision-note">Wait for news to pass</em>
+        <span>STATUS</span>
+        <strong id="news-impact-decision">Waiting for release</strong>
+        <em id="news-impact-decision-note">Informational only</em>
+      </div>
+
+      <div class="news-impact-trading-window">
+        <div class="news-impact-trading-summary">
+          <span>TRADING WINDOW</span>
+          <strong id="news-trading-window-status">NORMAL TRADING</strong>
+          <em id="news-trading-window-countdown">News protection inactive.</em>
+        </div>
+        <div class="news-impact-window-phases">
+          <div id="news-window-normal-start" class="news-window-phase">
+            <b>🟢 Normal</b>
+            <span>Inactive</span>
+          </div>
+          <div id="news-window-before" class="news-window-phase">
+            <b>🟡 30m Before</b>
+            <span>Avoid new entries</span>
+          </div>
+          <div id="news-window-release" class="news-window-phase">
+            <b>🔴 Release</b>
+            <span>Extreme volatility</span>
+          </div>
+          <div id="news-window-after" class="news-window-phase">
+            <b>🟡 15m After</b>
+            <span>Stabilizing</span>
+          </div>
+          <div id="news-window-normal" class="news-window-phase">
+            <b>🟢 Normal</b>
+            <span>Clear</span>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -673,7 +773,7 @@
             <th>Time</th>
             <th>Symbol</th>
             <th>Signal</th>
-            <th>Confidence</th>
+            <th>Bias Strength</th>
             <th>Result</th>
             <th>Pips</th>
           </tr>
@@ -876,8 +976,8 @@
         <label><input type="checkbox" data-dashboard-pref="showWeeklyPnl"> Show Weekly P/L</label>
         <label><input type="checkbox" data-dashboard-pref="showMonthlyPnl"> Show Monthly P/L</label>
         <label><input type="checkbox" data-dashboard-pref="showFloatingPnl"> Show Floating P/L</label>
-        <label><input type="checkbox" data-dashboard-pref="showConfidence"> Show Confidence</label>
-        <label><input type="checkbox" data-dashboard-pref="showBuySellPct"> Show Buy/Sell %</label>
+        <label><input type="checkbox" data-dashboard-pref="showConfidence"> Show Bias Strength</label>
+        <label><input type="checkbox" data-dashboard-pref="showBuySellPct"> Show Bullish/Bearish Bias</label>
         <label><input type="checkbox" data-dashboard-pref="showManualTradeButtons"> Show Buy/Sell Buttons</label>
         <label><input type="checkbox" data-dashboard-pref="showOpenTradesCounter"> Show Open Trades Counter</label>
         <label><input type="checkbox" data-dashboard-pref="showMarketStructurePanel"> Show News Impact Panel</label>
@@ -1298,7 +1398,7 @@
   <script src="performance.js?v=1"></script>
   <script src="history.js?v=1"></script>
   <script src="responsiveLayout.js?v=1"></script>
-  <script src="script.js?v=71"></script>
+  <script src="script.js?v=72"></script>
 </body>
 </html>
   
