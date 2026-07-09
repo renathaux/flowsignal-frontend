@@ -12720,3 +12720,39 @@ body.fit-mode .smc-intel-section li span {
   overflow: hidden !important;
   text-overflow: ellipsis !important;
 }
+body:not([data-user-role="admin"]) #menuStatsBtn,
+body:not([data-user-role="admin"]) #menuRiskSettingsBtn,
+body:not([data-user-role="admin"]) #menuBrokerAccountsBtn,
+body:not([data-user-role="admin"]) #livePageBtn,
+body:not([data-user-role="admin"]) #liveAutoSection,
+body:not([data-user-role="admin"]) #brokerConnectionStatus,
+body:not([data-user-role="admin"]) #liveActiveOrders,
+body:not([data-user-role="admin"]) #liveAutoSymbolStatus,
+body:not([data-user-role="admin"]) .main-buttons-row,
+body:not([data-user-role="admin"]) .entry-strategy-debug,
+body:not([data-user-role="admin"]) .main-smc-panel,
+body:not([data-user-role="admin"]) #tradeLevelDragLayer,
+body:not([data-user-role="admin"]) #tradeLevelPreview,
+body:not([data-user-role="admin"]) #tradeLevelConfirmModal {
+  display: none !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+
+.user-live-auto-status {
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+  padding: 6px 12px;
+  border: 1px solid rgba(34, 197, 94, 0.42);
+  border-radius: 8px;
+  background: rgba(16, 185, 129, 0.12);
+  color: #86efac;
+  font-size: 12px;
+  font-weight: 900;
+  line-height: 1.2;
+}
+
+body[data-user-role="admin"] .user-live-auto-status {
+  display: none !important;
+}

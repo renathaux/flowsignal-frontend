@@ -1252,6 +1252,21 @@ function applyRoleVisibility() {
   setAdminOnlyVisible(document.getElementById("liveActiveOrders"), admin);
   setAdminOnlyVisible(document.getElementById("liveAutoSymbolStatus"), admin);
 
+  document.querySelectorAll(
+    ".main-buttons-row, .entry-strategy-debug, .main-smc-panel, #tradeLevelDragLayer, #tradeLevelPreview, #tradeLevelConfirmModal"
+  ).forEach((element) => {
+    element.classList.toggle("hidden", !admin);
+    element.setAttribute("aria-hidden", admin ? "false" : "true");
+  });
+
+  if (!admin) {
+    clearTradeLines("EURUSD");
+    clearTradeLines("XAUUSD");
+    hideTradeLevelPreview?.();
+    document.getElementById("tradeLevelConfirmModal")?.classList.add("hidden");
+  }
+  renderUserLiveAutoStatus();
+
   if (!admin && executionPage === "live") {
     executionPage = "paper";
   }
@@ -1291,6 +1306,40 @@ function updatePnlVisibility() {
 
   if (livePnlCardRow) {
     livePnlCardRow.classList.toggle("hidden", !showPnl);
+  }
+}
+
+function renderUserLiveAutoStatus() {
+  const existing = document.getElementById("userLiveAutoStatus");
+
+  if (isAdminAccount()) {
+    existing?.remove();
+    return;
+  }
+
+  const activeTrades = Object.entries(activeLiveOrders || {})
+    .filter(([_, trade]) => trade && isLiveTradeActiveForDisplay(trade));
+
+  if (!activeTrades.length) {
+    existing?.remove();
+    return;
+  }
+
+  const summary = activeTrades
+    .map(([symbol, trade]) => {
+      const side = String(trade?.side || trade?.action || "LIVE").toUpperCase();
+      return `${symbol} ${side}`;
+    })
+    .join(" · ");
+
+  const badge = existing || document.createElement("div");
+  badge.id = "userLiveAutoStatus";
+  badge.className = "user-live-auto-status";
+  badge.textContent = `Live Auto running: ${summary}`;
+
+  const topbar = document.querySelector(".topbar");
+  if (topbar && !existing) {
+    topbar.appendChild(badge);
   }
 }
 
@@ -6490,6 +6539,7 @@ function updateLivePanel(liveTrades, liveHistory = [], stats = null) {
   renderLiveActiveOrders();
   renderLiveHistory();
   drawTradeVisualLevels();
+  renderUserLiveAutoStatus();
 
 }
 
@@ -7577,6 +7627,15 @@ function applyCtraderStatus(status) {
 }
 
 async function fetchCtraderStatus() {
+  if (!isAdminAccount()) {
+    return {
+      connected: Boolean(liveConnectionState.connected),
+      reason: liveConnectionState.connected
+        ? "connected through shared FlowSignal account"
+        : "broker status hidden for user",
+    };
+  }
+
   try {
     const res = await fetch(`${BASE_URL}/ctrader-status`, {
       method: "GET",
@@ -8125,9 +8184,11 @@ if (meta.live_account) {
   updateLiveToggleUI();
 }
 
-const ctraderStatus = await fetchCtraderStatus();
+const ctraderStatus = isAdminAccount()
+  ? await fetchCtraderStatus()
+  : null;
 
-if (ctraderStatus && !ctraderStatus.connected) {
+if (isAdminAccount() && ctraderStatus && !ctraderStatus.connected) {
   liveAutoEnabled = false;
 }
 
@@ -8262,9 +8323,11 @@ function openPaperPanel() {
   }
   paperModal.classList.remove("hidden");
   updateExecutionPageUI();
-  fetchCtraderStatus();
-  fetchMarketDataSourceStatus();
-  fetchAutoTradeStatus();
+  if (isAdminAccount()) {
+    fetchCtraderStatus();
+    fetchMarketDataSourceStatus();
+    fetchAutoTradeStatus();
+  }
 
   document.documentElement.classList.add("paper-open");
   document.body.classList.add("paper-open");
@@ -9772,11 +9835,19 @@ function roundTradeLevelPrice(value, symbol = currentChartSymbol) {
   return Number(Number(value).toFixed(decimals));
 }
 
-function getTradeLotSize(trade) {
+const TRADE_LEVEL_MIN_RR = 1.20;
+const TRADE_LEVEL_MAX_RR = 2.00;
+
+function getTradeLotSize(trade, symbol = currentChartSymbol) {
+  const normalizedSymbol = normalizeTradeChartSymbol(symbol);
+  const volumeUnits = Number(trade?.volume_units);
+  if (normalizedSymbol === "XAUUSD" && Number.isFinite(volumeUnits) && volumeUnits > 0) {
+    return volumeUnits / 10000;
+  }
+
   const lots = Number(trade?.lot_size ?? trade?.volume);
   if (Number.isFinite(lots) && lots > 0) return lots;
 
-  const volumeUnits = Number(trade?.volume_units);
   return Number.isFinite(volumeUnits) && volumeUnits > 0
     ? volumeUnits / 10000
     : 0;
@@ -9787,7 +9858,7 @@ function getTradeLevelMetrics(trade, levels, changedLevel, price) {
   const entry = Number(levels.entry);
   const sl = Number(levels.current_sl);
   const tp2 = Number(levels.tp2);
-  const lotSize = getTradeLotSize(trade);
+  const lotSize = getTradeLotSize(trade, symbol);
   const pipSize = symbol === "XAUUSD" ? 0.01 : 0.0001;
   const lineDistance = Math.abs(Number(price) - entry);
   const pips = lineDistance / pipSize;
@@ -9812,7 +9883,11 @@ function getTradeLevelMetrics(trade, levels, changedLevel, price) {
 }
 
 function validateDraggedTradeLevel(trade, levels, changedLevel, price) {
-  const entry = Number(levels.entry);
+  const nextLevels = {
+    ...levels,
+    [changedLevel === "sl" ? "current_sl" : changedLevel]: Number(price),
+  };
+  const entry = Number(nextLevels.entry);
   const side = String(trade?.side || trade?.action || "").toUpperCase();
   const numericPrice = Number(price);
 
@@ -9828,11 +9903,31 @@ function validateDraggedTradeLevel(trade, levels, changedLevel, price) {
     if (["tp1", "tp2"].includes(changedLevel) && numericPrice >= entry) return "SELL take profit must stay below Entry";
   }
 
-  const nextTp1 = changedLevel === "tp1" ? numericPrice : Number(levels.tp1);
-  const nextTp2 = changedLevel === "tp2" ? numericPrice : Number(levels.tp2);
+  const nextTp1 = Number(nextLevels.tp1);
+  const nextTp2 = Number(nextLevels.tp2);
   if (Number.isFinite(nextTp1) && Number.isFinite(nextTp2)) {
     if (side === "BUY" && nextTp1 > nextTp2) return "TP1 cannot be above TP2 on a BUY";
     if (side === "SELL" && nextTp1 < nextTp2) return "TP1 cannot be below TP2 on a SELL";
+  }
+
+  const nextSl = Number(nextLevels.current_sl);
+  const metrics = getTradeLevelMetrics(
+    trade,
+    nextLevels,
+    changedLevel,
+    numericPrice
+  );
+  if (
+    Number.isFinite(nextSl)
+    && Number.isFinite(nextTp2)
+    && Number.isFinite(metrics.riskReward)
+  ) {
+    if (metrics.riskReward < TRADE_LEVEL_MIN_RR) {
+      return `Risk / Reward must be at least 1:${TRADE_LEVEL_MIN_RR.toFixed(2)}. Move TP2 farther or SL closer.`;
+    }
+    if (metrics.riskReward > TRADE_LEVEL_MAX_RR) {
+      return `Risk / Reward must stay at or below 1:${TRADE_LEVEL_MAX_RR.toFixed(2)}. Move TP2 closer or SL farther.`;
+    }
   }
 
   return "";
@@ -9899,6 +9994,8 @@ function scheduleTradeLevelReposition() {
 }
 
 function openTradeLevelConfirmation() {
+  if (!isAdminAccount()) return;
+
   const modal = document.getElementById("tradeLevelConfirmModal");
   const summary = document.getElementById("tradeLevelConfirmSummary");
   const metricsBox = document.getElementById("tradeLevelConfirmMetrics");
@@ -9917,6 +10014,13 @@ function openTradeLevelConfirmation() {
     price
   );
   const labels = { sl: "Broker SL", tp1: "TP1", tp2: "Broker TP" };
+  const validationError = validateDraggedTradeLevel(
+    state.trade,
+    state.proposedLevels,
+    state.changedLevel,
+    price
+  );
+  const applyButton = document.getElementById("applyTradeLevelChangeBtn");
 
   summary.textContent = `${labels[state.changedLevel]} → ${formatLivePrice(currentChartSymbol, price)}`;
   metricsBox.innerHTML = `
@@ -9925,7 +10029,13 @@ function openTradeLevelConfirmation() {
     <span>Dollar risk<strong>${formatLiveMoney(-metrics.dollarRisk)}</strong></span>
     <span>Projected profit<strong>${formatLiveMoney(metrics.projectedProfit)}</strong></span>
   `;
-  errorBox?.classList.add("hidden");
+  if (validationError && errorBox) {
+    errorBox.textContent = validationError;
+    errorBox.classList.remove("hidden");
+  } else {
+    errorBox?.classList.add("hidden");
+  }
+  if (applyButton) applyButton.disabled = Boolean(validationError);
   modal.classList.remove("hidden");
 }
 
@@ -9939,6 +10049,8 @@ function closeTradeLevelConfirmation({ restore = false } = {}) {
 }
 
 async function applyDraggedTradeLevelChange() {
+  if (!isAdminAccount()) return;
+
   const state = chartLevelDragState;
   const applyButton = document.getElementById("applyTradeLevelChangeBtn");
   const errorBox = document.getElementById("tradeLevelConfirmError");
@@ -9950,6 +10062,23 @@ async function applyDraggedTradeLevelChange() {
   const tradeId = getTradeChartIdentity(trade, dragSymbol);
 
   if (!levels || !trade || !state.changedLevel) return;
+
+  const price = Number(levels[
+    state.changedLevel === "sl" ? "current_sl" : state.changedLevel
+  ]);
+  const validationError = validateDraggedTradeLevel(
+    trade,
+    levels,
+    state.changedLevel,
+    price
+  );
+  if (validationError) {
+    if (errorBox) {
+      errorBox.textContent = validationError;
+      errorBox.classList.remove("hidden");
+    }
+    return;
+  }
 
   applyButton.disabled = true;
   applyButton.textContent = "APPLYING…";
@@ -10008,6 +10137,7 @@ async function applyDraggedTradeLevelChange() {
 }
 
 function beginTradeLevelDrag(event, lineElement, trade, levels, levelKey) {
+  if (!isAdminAccount()) return;
   if (lineElement.classList.contains("is-locked")) return;
 
   event.preventDefault();
@@ -10091,6 +10221,9 @@ function renderDraggableTradeLevels(trade, levels) {
   if (!layer || !candleSeries) return;
 
   layer.replaceChildren();
+
+  if (!isAdminAccount()) return;
+
   const symbol = normalizeTradeChartSymbol(currentChartSymbol);
   const tradeId = getTradeChartIdentity(trade, symbol);
   const lineDefinitions = [
@@ -10241,6 +10374,12 @@ function drawTradeVisualLevels() {
   clearInactiveTradeVisualLines();
 
   if (!chart || !candleSeries) return;
+
+  if (!isAdminAccount()) {
+    clearTradeLines("EURUSD");
+    clearTradeLines("XAUUSD");
+    return;
+  }
 
   if (getDisplayedOpenTradeCount() === 0) {
     clearTradeLines("EURUSD");
