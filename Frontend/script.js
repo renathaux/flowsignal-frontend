@@ -4220,19 +4220,27 @@ function updateCard(symbol, data) {
   const buyLabel = document.getElementById(`${cardPrefix}-buy-label`);
   const sellLabel = document.getElementById(`${cardPrefix}-sell-label`);
   const confLabel = document.getElementById(`${cardPrefix}-conf-label`);
+  const cardEl = document.getElementById(`${cardPrefix}-card`);
+  const mobileTrend = buyPct >= sellPct ? "BULLISH ↑" : "BEARISH ↓";
 
   if (buyLabel) {
     buyLabel.textContent = `${LANG[currentLang].buy}: ${buyPct}%`;
     buyLabel.title = LANG[currentLang].biasOnlyNote;
+    buyLabel.dataset.mobileTitle = "Trend (15m)";
+    buyLabel.dataset.mobileValue = mobileTrend;
   }
 if (sellLabel) {
   sellLabel.textContent = `${LANG[currentLang].sell}: ${sellPct}%`;
   sellLabel.title = LANG[currentLang].biasOnlyNote;
+  sellLabel.dataset.mobileTitle = "Bias Strength";
+  sellLabel.dataset.mobileValue = `${confidence}%`;
 }
 if (confLabel) {
   confLabel.textContent = `${LANG[currentLang].confidence}: ${confidence}%`;
   confLabel.title = LANG[currentLang].biasOnlyNote;
 }
+  cardEl?.classList.toggle("mobile-bullish", buyPct >= sellPct);
+  cardEl?.classList.toggle("mobile-bearish", sellPct > buyPct);
 
   if (!data._barsInit) {
   setBar(cardPrefix, "buy", buyPct, true);
@@ -8181,6 +8189,7 @@ if (meta.live_account) {
 
   renderLiveHistory();
   renderLiveActiveOrders(); 
+  renderMobileOpenTradeCard();
 
   updateLiveToggleUI();
 }
@@ -8342,6 +8351,8 @@ function openPaperPanel() {
     }, 0);
   }
 }
+
+window.openPaperPanel = openPaperPanel;
 
 function closePaperPanel() {
   if (!paperModal) return;
@@ -9306,6 +9317,153 @@ function renderLiveActiveOrders() {
   liveActiveList.insertAdjacentHTML("beforeend", renderLiveStatsRow());
 }
 
+function clampPercent(value) {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) return 0;
+  return Math.max(0, Math.min(100, numeric));
+}
+
+function getMobileOpenTrade() {
+  const entries = Object.entries(activeLiveOrders || {})
+    .filter(([_, trade]) => {
+      const source = String(trade?.source || "broker").toLowerCase();
+      return trade && source === "broker" && isLiveTradeActiveForDisplay(trade);
+    });
+
+  if (!entries.length) return null;
+
+  const current = normalizeTradeChartSymbol(currentChartSymbol);
+  return entries.find(([symbol]) => normalizeTradeChartSymbol(symbol) === current)
+    || entries[0];
+}
+
+function getTradeNumericLevel(...values) {
+  for (const value of values) {
+    const numeric = Number(value);
+    if (Number.isFinite(numeric) && numeric > 0) return numeric;
+  }
+  return null;
+}
+
+function setMobileTradeText(id, value) {
+  const element = document.getElementById(id);
+  if (element) element.textContent = value ?? "--";
+}
+
+function renderMobileOpenTradeCard() {
+  const card = document.getElementById("mobileOpenTradeCard");
+  const body = document.getElementById("mobileTradeBody");
+  const empty = document.getElementById("mobileTradeEmpty");
+
+  if (!card || !body || !empty) return;
+
+  const entry = getMobileOpenTrade();
+  if (!entry) {
+    body.classList.add("hidden");
+    empty.classList.remove("hidden");
+    card.classList.remove("buy", "sell", "protected", "tp1-hit");
+    return;
+  }
+
+  const [symbol, trade] = entry;
+  const side = String(trade.side || trade.action || "").toUpperCase();
+  const isSell = side === "SELL";
+  const pnl = getLiveTradePnl(trade);
+  const lotSize = trade.lot_size ?? trade.volume ?? trade.lots;
+  const entryPrice = getTradeNumericLevel(trade.entry, trade.entry_price);
+  const sl = getTradeNumericLevel(
+    trade.current_sl,
+    trade.sl,
+    trade.stop_loss,
+    trade.stopLoss,
+    trade.raw?.stopLoss
+  );
+  const tp1 = getTradeNumericLevel(
+    trade.tp1,
+    trade.take_profit_1,
+    trade.tp_price,
+    trade.raw?.tp1
+  );
+  const tp2 = getTradeNumericLevel(
+    trade.tp2,
+    trade.tp2_price,
+    trade.take_profit,
+    trade.takeProfit,
+    trade.raw?.tp2,
+    trade.raw?.takeProfit
+  );
+  const protectedSl = getTradeNumericLevel(
+    trade.protected_sl_price,
+    trade.protected_sl,
+    trade.break_even_sl
+  );
+  const livePrice = getTradeNumericLevel(
+    getLiveTickMid(symbol),
+    trade.current_price,
+    trade.currentPrice,
+    trade.price,
+    entryPrice
+  );
+  const levels = [sl, entryPrice, tp1, tp2, protectedSl, livePrice]
+    .filter((value) => Number.isFinite(value));
+  if (!levels.length) {
+    body.classList.add("hidden");
+    empty.classList.remove("hidden");
+    return;
+  }
+  const min = Math.min(...levels);
+  const max = Math.max(...levels);
+  const range = max - min || 1;
+  const percent = (value) => clampPercent(((Number(value) - min) / range) * 100);
+  const greenTo = isSell
+    ? Math.min(percent(entryPrice), percent(livePrice))
+    : Math.max(percent(entryPrice), percent(livePrice));
+  const greenFrom = isSell
+    ? Math.max(percent(entryPrice), percent(livePrice))
+    : Math.min(percent(entryPrice), percent(livePrice));
+  const tp1Hit = Boolean(trade.hit_tp1 || trade.tp1_hit || trade.profit_protected);
+  const protectedActive = Boolean(protectedSl || trade.profit_protected);
+  const priceText = formatLivePrice(symbol, livePrice) || "--";
+
+  card.classList.toggle("buy", !isSell);
+  card.classList.toggle("sell", isSell);
+  card.classList.toggle("protected", protectedActive);
+  card.classList.toggle("tp1-hit", tp1Hit);
+  body.classList.remove("hidden");
+  empty.classList.add("hidden");
+
+  setMobileTradeText("mobileTradeSymbol", DISPLAY_NAMES[symbol] || symbol);
+  setMobileTradeText("mobileTradeSide", side || "--");
+  setMobileTradeText("mobileTradeLot", formatLiveNumber(lotSize, 2));
+  setMobileTradeText("mobileTradeEntry", formatLivePrice(symbol, entryPrice) || "--");
+  setMobileTradeText("mobileTradeSl", formatLivePrice(symbol, sl) || "--");
+  setMobileTradeText("mobileTradeTp1", formatLivePrice(symbol, tp1) || "--");
+  setMobileTradeText("mobileTradeTp2", formatLivePrice(symbol, tp2) || "--");
+  setMobileTradeText("mobileTradeLivePrice", priceText);
+  setMobileTradeText("mobileTradePnl", pnl === null ? "$0.00" : formatLiveMoney(pnl));
+
+  const sideEl = document.getElementById("mobileTradeSide");
+  const pnlEl = document.getElementById("mobileTradePnl");
+  const protectionEl = document.getElementById("mobileTradeProtection");
+  const protectedMarker = card.querySelector(".marker.protected");
+
+  sideEl?.classList.toggle("sell", isSell);
+  sideEl?.classList.toggle("buy", !isSell);
+  pnlEl?.classList.toggle("positive", Number(pnl) > 0);
+  pnlEl?.classList.toggle("negative", Number(pnl) < 0);
+  protectionEl?.classList.toggle("hidden", !protectedActive);
+  protectedMarker?.classList.toggle("hidden", !protectedSl);
+
+  card.style.setProperty("--sl-pos", `${percent(sl)}%`);
+  card.style.setProperty("--entry-pos", `${percent(entryPrice)}%`);
+  card.style.setProperty("--tp1-pos", `${percent(tp1)}%`);
+  card.style.setProperty("--tp2-pos", `${percent(tp2)}%`);
+  card.style.setProperty("--live-pos", `${percent(livePrice)}%`);
+  card.style.setProperty("--protected-pos", `${percent(protectedSl || sl)}%`);
+  card.style.setProperty("--green-from", `${greenFrom}%`);
+  card.style.setProperty("--green-to", `${greenTo}%`);
+}
+
 function updateLiveToggleUI() {
 
   if (!liveAutoToggleBtn) return;
@@ -9513,6 +9671,31 @@ let lastChartData = {
 };
 let _CHART_IDLE_PHASE = 0;
 let _CHART_IDLE_ENABLED = false;
+
+function clearTradeLevelDragLayer({ force = false } = {}) {
+  const dragLayer = document.getElementById("tradeLevelDragLayer");
+  if (!dragLayer) return;
+
+  if (!force && (chartLevelDragState.active || chartLevelDragState.pending)) {
+    return;
+  }
+
+  dragLayer.replaceChildren();
+}
+
+function hideChartAttributionMark() {
+  const container = document.getElementById("chartContainer");
+  if (!container) return;
+
+  container
+    .querySelectorAll(
+      'a[href*="tradingview.com"], [aria-label*="TradingView"], [title*="TradingView"]'
+    )
+    .forEach((element) => {
+      element.style.setProperty("display", "none", "important");
+      element.style.setProperty("pointer-events", "none", "important");
+    });
+}
 let MARKET_IS_CLOSED = false;
 let frozenChart = {};
 let frozenCandlesCache = null;
@@ -9546,6 +9729,7 @@ function initChart() {
       EURUSD: {},
       XAUUSD: {},
     };
+    clearTradeLevelDragLayer({ force: true });
   }
 
   chart = LightweightCharts.createChart(container, {
@@ -9596,6 +9780,9 @@ function initChart() {
     lockVisibleTimeRangeOnResize: true
   }
 });
+
+  hideChartAttributionMark();
+  requestAnimationFrame(hideChartAttributionMark);
 
   candleSeries = chart.addCandlestickSeries({
   upColor: "#26a69a",
@@ -9779,10 +9966,7 @@ function clearTradeLines(symbol = currentChartSymbol) {
   }
 
   if (executionSymbol === normalizeTradeExecutionSymbol(currentChartSymbol)) {
-    const dragLayer = document.getElementById("tradeLevelDragLayer");
-    if (dragLayer && !chartLevelDragState.active && !chartLevelDragState.pending) {
-      dragLayer.replaceChildren();
-    }
+    clearTradeLevelDragLayer();
   }
 }
 
@@ -10366,6 +10550,8 @@ function drawTradeVisualLevels() {
 
   clearTradeVisualLevels();
   clearInactiveTradeVisualLines();
+  clearTradeLevelDragLayer();
+  hideChartAttributionMark();
 
   if (!chart || !candleSeries) return;
 
@@ -10385,7 +10571,10 @@ function drawTradeVisualLevels() {
   const symbol = normalizeTradeChartSymbol(currentChartSymbol);
   const hasActiveTrade = Boolean(trade);
 
-  if (!hasActiveTrade) return;
+  if (!hasActiveTrade) {
+    clearTradeLevelDragLayer();
+    return;
+  }
 
   const chartLevels = getTradeChartLevels(trade, symbol);
   if (!hasCompleteTradeChartLevels(chartLevels)) {
@@ -10781,6 +10970,7 @@ function switchChart(symbol, timeframe = currentChartTimeframe) {
     if (hasCandles) {
       forceChartRenderFromLatest(currentChartSymbol, timeframe);
       updateMainPanel(currentChartSymbol);
+      renderMobileOpenTradeCard();
       console.log(`📈 Chart updated: ${currentChartSymbol} ${timeframe} at ${new Date().toLocaleTimeString()}`);
     } else {
       applyLanguage(currentLang);
@@ -10808,6 +10998,7 @@ function switchTimeframe(timeframe) {
     if (hasCandles) {
       forceChartRenderFromLatest(currentChartSymbol, timeframe);
       updateMainPanel(currentChartSymbol);
+      renderMobileOpenTradeCard();
 
       console.log(`⏱️ Timeframe switched: ${currentChartSymbol} ${timeframe}`);
     } else {
@@ -11685,7 +11876,13 @@ function moveNewsImpactPanel() {
 
   const smcPanel = mainPanel.querySelector(".main-smc-panel");
 
-  if (window.innerWidth <= 850) {
+  if (window.innerWidth <= 700) {
+    if (smcPanel && newsPanel.parentNode !== mainPanel) {
+      mainPanel.appendChild(newsPanel);
+    } else if (smcPanel && newsPanel.previousElementSibling !== smcPanel) {
+      mainPanel.appendChild(newsPanel);
+    }
+  } else if (window.innerWidth <= 850) {
     if (smcPanel && newsPanel.parentNode !== mainPanel) {
       mainPanel.insertBefore(newsPanel, smcPanel);
     }

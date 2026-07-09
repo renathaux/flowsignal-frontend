@@ -4,9 +4,9 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>nathaux.Fx</title>
-  <link rel="stylesheet" href="style.css?v=53" />
+  <link rel="stylesheet" href="style.css?v=55" />
   <link rel="stylesheet" href="desktop.css?v=1" media="(min-width: 701px)" />
-  <link rel="stylesheet" href="phone.css?v=4" media="(max-width: 700px)" />
+  <link rel="stylesheet" href="phone.css?v=12" media="(max-width: 700px)" />
   <script>
     window.openFlowSignalAccess = function (event) {
       if (event) {
@@ -278,6 +278,10 @@
       <button id="menuToggleBtn" class="menu-toggle">☰</button>
       <div class="brand-left"><span class="app-logo-wave" aria-hidden="true">≋</span>FlowSignal</div>
       <div class="header">nathaux.Fx</div>
+      <button class="mobile-notify-btn" type="button" aria-label="Notifications">
+        <span aria-hidden="true">⌁</span>
+        <b>3</b>
+      </button>
 
       <div class="header-actions">
         <div class="voice-controls" aria-label="Voice announcer controls">
@@ -628,6 +632,50 @@
   <div id="tradeLevelPreview" class="trade-level-preview hidden" aria-live="polite"></div>
 </div>
 
+<div class="mobile-timeframe-row" aria-label="Mobile timeframe selector">
+  <button type="button" onclick="switchTimeframe('5m')">5m</button>
+  <button type="button" onclick="switchTimeframe('15m')">15m</button>
+  <button type="button" onclick="switchTimeframe('1h')">1H</button>
+  <button type="button" onclick="switchTimeframe('4h')">4H</button>
+  <button type="button" onclick="switchTimeframe('1d')">1D</button>
+</div>
+
+<section id="mobileOpenTradeCard" class="mobile-open-trade-card" aria-live="polite">
+  <div class="mobile-open-trade-head">
+    <strong>OPEN TRADE</strong>
+    <span id="mobileTradeLiveBadge">LIVE</span>
+  </div>
+  <div id="mobileTradeEmpty" class="mobile-trade-empty">No active live trade</div>
+  <div id="mobileTradeBody" class="mobile-trade-body hidden">
+    <div class="mobile-trade-main">
+      <div>
+        <strong id="mobileTradeSymbol">--</strong>
+        <span id="mobileTradeSide" class="mobile-trade-side">--</span>
+      </div>
+      <b id="mobileTradePnl">$0.00</b>
+    </div>
+    <div class="mobile-trade-grid">
+      <span>Lot <b id="mobileTradeLot">--</b></span>
+      <span>Entry <b id="mobileTradeEntry">--</b></span>
+      <span>SL <b id="mobileTradeSl">--</b></span>
+      <span>TP1 <b id="mobileTradeTp1">--</b></span>
+      <span>TP2 <b id="mobileTradeTp2">--</b></span>
+    </div>
+    <div id="mobileTradeProtection" class="mobile-trade-protection hidden">Protected SL active</div>
+    <div class="mobile-trade-progress" style="--live-pos:50%;--entry-pos:50%;--sl-pos:0%;--tp1-pos:50%;--tp2-pos:100%;--protected-pos:0%;">
+      <div class="mobile-trade-line">
+        <i class="mobile-trade-fill"></i>
+        <span class="marker sl"><b>SL</b></span>
+        <span class="marker entry"><b>Entry</b></span>
+        <span class="marker tp1"><b>TP1</b></span>
+        <span class="marker tp2"><b>TP2</b></span>
+        <span class="marker protected hidden"><b>Protected SL</b></span>
+        <span class="marker live"><b id="mobileTradeLivePrice">--</b></span>
+      </div>
+    </div>
+  </div>
+</section>
+
 <div id="tradeLevelConfirmModal" class="trade-level-confirm-modal hidden" style="display:none">
   <div class="trade-level-confirm-card" role="dialog" aria-modal="true" aria-labelledby="tradeLevelConfirmTitle">
     <div class="trade-level-confirm-kicker">ORDER MANAGEMENT</div>
@@ -799,6 +847,29 @@
       <span aria-hidden="true">▣</span>
       flowsignalfx.com
     </a>
+
+    <nav class="mobile-bottom-nav" aria-label="Mobile app navigation">
+      <button type="button" class="active" aria-label="Dashboard">
+        <span aria-hidden="true">⌂</span>
+        <b>Dashboard</b>
+      </button>
+      <button type="button" onclick="switchChart(currentChartSymbol, currentChartTimeframe)" aria-label="Markets">
+        <span aria-hidden="true">▥</span>
+        <b>Markets</b>
+      </button>
+      <button type="button" onclick="window.openPaperPanel?.()" aria-label="Trades">
+        <span aria-hidden="true">▣</span>
+        <b>Trades</b>
+      </button>
+      <button type="button" onclick="document.querySelector('.history-section')?.scrollIntoView({behavior:'smooth'})" aria-label="History">
+        <span aria-hidden="true">◷</span>
+        <b>History</b>
+      </button>
+      <button type="button" onclick="document.getElementById('menuToggleBtn')?.click()" aria-label="Menu">
+        <span aria-hidden="true">☰</span>
+        <b>Menu</b>
+      </button>
+    </nav>
   </div>
 
   <div id="smartExplain" class="smart-explain hidden" role="dialog" aria-modal="false" aria-labelledby="smartExplainTitle">
@@ -1398,7 +1469,7 @@
   <script src="performance.js?v=1"></script>
   <script src="history.js?v=1"></script>
   <script src="responsiveLayout.js?v=1"></script>
-  <script src="script.js?v=76"></script>
+  <script src="script.js?v=79"></script>
 </body>
 </html>
   
