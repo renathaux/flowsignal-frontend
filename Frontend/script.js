@@ -5054,16 +5054,33 @@ function renderSmcWaitingList(items) {
   });
 }
 
-function hasConfirmedSwingSl(strategyDebug = {}) {
+function getConfirmedSwingSlValue(data = {}, strategyDebug = {}) {
+  return firstUsableValue(
+    strategyDebug.selected_swing_sl,
+    strategyDebug.sl_source,
+    strategyDebug.final_sl,
+    strategyDebug.stop_loss,
+    strategyDebug?.swing_sl_debug?.selected_swing_sl,
+    strategyDebug?.swing_sl_debug?.final_sl,
+    strategyDebug?.swing_sl_debug?.stop_loss,
+    data?.selected_swing_sl,
+    data?.swing_sl_debug?.selected_swing_sl,
+    data?.swing_sl_debug?.final_sl,
+    data?.swing_sl_debug?.stop_loss
+  );
+}
+
+function hasConfirmedSwingSl(data = {}, strategyDebug = {}) {
   return Boolean(
-    strategyDebug.selected_swing_sl
-      || strategyDebug.sl_source
+    getConfirmedSwingSlValue(data, strategyDebug)
       || strategyDebug.sl_valid
+      || data?.swing_sl_debug?.ok
+      || strategyDebug?.swing_sl_debug?.ok
   );
 }
 
 function hasReachedSwingSlEvaluation(data = {}, strategyDebug = {}) {
-  if (hasConfirmedSwingSl(strategyDebug)) return true;
+  if (hasConfirmedSwingSl(data, strategyDebug)) return true;
   if (data?.swing_sl_debug || strategyDebug?.swing_sl_debug) return true;
   if (data?.swing_sl_validation || strategyDebug?.swing_sl_validation) return true;
 
@@ -5090,7 +5107,7 @@ function hasReachedSwingSlEvaluation(data = {}, strategyDebug = {}) {
 }
 
 function getSwingSlCheckStatus(data = {}, strategyDebug = {}) {
-  if (hasConfirmedSwingSl(strategyDebug)) return "YES";
+  if (hasConfirmedSwingSl(data, strategyDebug)) return "YES";
   if (hasReachedSwingSlEvaluation(data, strategyDebug)) return "NO";
   return "NOT CHECKED";
 }
@@ -5223,7 +5240,7 @@ function updateSmcPlanIntelligence(symbol, data, signal, strategyDebug = {}) {
     strategyDebug.fifteen_m_close_confirmed
       ?? strategyDebug.fifteen_m_candle_close_confirmed
   );
-  const swingSlComplete = hasConfirmedSwingSl(strategyDebug);
+  const swingSlComplete = hasConfirmedSwingSl(data, strategyDebug);
   const fiveMinuteComplete = Boolean(strategyDebug.five_m_confirmation);
   const rrBlocked = hasStructureTpRrBlock(data, strategyDebug);
   const reachedTpRrValidation = Boolean(
