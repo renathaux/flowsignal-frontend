@@ -916,6 +916,7 @@ function closeAllOverlays() {
   brokerAccountsModal?.classList.add("hidden");
   assistantModal?.classList.add("hidden");
   paperModal?.classList.add("hidden");
+  closeTradeLevelConfirmation?.({ restore: false, reset: true });
   document.documentElement.classList.remove("paper-open");
   document.body.classList.remove("paper-open");
   setActiveSettingsPage(null);
@@ -8317,6 +8318,7 @@ function openPaperPanel() {
   if (!paperModal) return;
 
   closeAllOverlays();
+  closeTradeLevelConfirmation({ restore: false, reset: true });
   applyRoleVisibility();
   if (!isAdminAccount()) {
     executionPage = "paper";
@@ -9835,9 +9837,6 @@ function roundTradeLevelPrice(value, symbol = currentChartSymbol) {
   return Number(Number(value).toFixed(decimals));
 }
 
-const TRADE_LEVEL_MIN_RR = 1.20;
-const TRADE_LEVEL_MAX_RR = 2.00;
-
 function getTradeLotSize(trade, symbol = currentChartSymbol) {
   const normalizedSymbol = normalizeTradeChartSymbol(symbol);
   const volumeUnits = Number(trade?.volume_units);
@@ -9910,26 +9909,6 @@ function validateDraggedTradeLevel(trade, levels, changedLevel, price) {
     if (side === "SELL" && nextTp1 < nextTp2) return "TP1 cannot be below TP2 on a SELL";
   }
 
-  const nextSl = Number(nextLevels.current_sl);
-  const metrics = getTradeLevelMetrics(
-    trade,
-    nextLevels,
-    changedLevel,
-    numericPrice
-  );
-  if (
-    Number.isFinite(nextSl)
-    && Number.isFinite(nextTp2)
-    && Number.isFinite(metrics.riskReward)
-  ) {
-    if (metrics.riskReward < TRADE_LEVEL_MIN_RR) {
-      return `Risk / Reward must be at least 1:${TRADE_LEVEL_MIN_RR.toFixed(2)}. Move TP2 farther or SL closer.`;
-    }
-    if (metrics.riskReward > TRADE_LEVEL_MAX_RR) {
-      return `Risk / Reward must stay at or below 1:${TRADE_LEVEL_MAX_RR.toFixed(2)}. Move TP2 closer or SL farther.`;
-    }
-  }
-
   return "";
 }
 
@@ -9951,6 +9930,18 @@ function updateTradeLevelPreview(trade, levels, changedLevel, price, error = "")
 
 function hideTradeLevelPreview() {
   document.getElementById("tradeLevelPreview")?.classList.add("hidden");
+}
+
+function createEmptyChartLevelDragState() {
+  return {
+    active: false,
+    pending: false,
+    changedLevel: null,
+    proposedLevels: null,
+    originalLevels: null,
+    trade: null,
+    symbol: null,
+  };
 }
 
 function positionTradeLevelDragLine(lineElement, price) {
@@ -10036,14 +10027,22 @@ function openTradeLevelConfirmation() {
     errorBox?.classList.add("hidden");
   }
   if (applyButton) applyButton.disabled = Boolean(validationError);
+  modal.style.removeProperty("display");
   modal.classList.remove("hidden");
 }
 
-function closeTradeLevelConfirmation({ restore = false } = {}) {
-  document.getElementById("tradeLevelConfirmModal")?.classList.add("hidden");
+function closeTradeLevelConfirmation({ restore = false, reset = false } = {}) {
+  const modal = document.getElementById("tradeLevelConfirmModal");
+  if (modal) {
+    modal.classList.add("hidden");
+    modal.style.setProperty("display", "none", "important");
+  }
   hideTradeLevelPreview();
   chartLevelDragState.active = false;
   chartLevelDragState.pending = false;
+  if (reset) {
+    chartLevelDragState = createEmptyChartLevelDragState();
+  }
 
   if (restore) drawTradeVisualLevels();
 }
@@ -10061,7 +10060,10 @@ async function applyDraggedTradeLevelChange() {
   );
   const tradeId = getTradeChartIdentity(trade, dragSymbol);
 
-  if (!levels || !trade || !state.changedLevel) return;
+  if (!state.pending || !levels || !trade || !state.changedLevel) {
+    closeTradeLevelConfirmation({ restore: false, reset: true });
+    return;
+  }
 
   const price = Number(levels[
     state.changedLevel === "sl" ? "current_sl" : state.changedLevel
@@ -10114,15 +10116,7 @@ async function applyDraggedTradeLevelChange() {
       tp2: levels.tp2,
     };
     console.log("backendUpdate", "success", dragSymbol, tradeId, state.changedLevel);
-    closeTradeLevelConfirmation();
-    chartLevelDragState = {
-      active: false,
-      pending: false,
-      changedLevel: null,
-      proposedLevels: null,
-      originalLevels: null,
-      trade: null,
-    };
+    closeTradeLevelConfirmation({ restore: false, reset: true });
     drawTradeVisualLevels();
   } catch (error) {
     console.error("backendUpdate", "fail", dragSymbol, tradeId, state.changedLevel, error.message);
@@ -10262,7 +10256,7 @@ function renderDraggableTradeLevels(trade, levels) {
 }
 
 document.getElementById("cancelTradeLevelChangeBtn")?.addEventListener("click", () => {
-  closeTradeLevelConfirmation({ restore: true });
+  closeTradeLevelConfirmation({ restore: true, reset: true });
 });
 
 document.getElementById("applyTradeLevelChangeBtn")?.addEventListener(
@@ -10272,7 +10266,7 @@ document.getElementById("applyTradeLevelChangeBtn")?.addEventListener(
 
 document.getElementById("tradeLevelConfirmModal")?.addEventListener("click", (event) => {
   if (event.target.id === "tradeLevelConfirmModal") {
-    closeTradeLevelConfirmation({ restore: true });
+    closeTradeLevelConfirmation({ restore: true, reset: true });
   }
 });
 
@@ -10772,6 +10766,7 @@ async function quickRefreshChart() {
 }
 function switchChart(symbol, timeframe = currentChartTimeframe) {
   const previousSymbol = currentChartSymbol;
+  closeTradeLevelConfirmation({ restore: false, reset: true });
   clearTradeLines(previousSymbol);
   document.getElementById("tradeLevelDragLayer")?.replaceChildren();
   currentChartSymbol = normalizeTradeChartSymbol(symbol);
@@ -10804,6 +10799,7 @@ window.switchChart = switchChart;
 // ==============================
 
 function switchTimeframe(timeframe) {
+  closeTradeLevelConfirmation({ restore: false, reset: true });
   currentChartTimeframe = timeframe;
 
   try {
@@ -10845,6 +10841,7 @@ document.querySelectorAll(".chart-timeframes button").forEach((button) => {
 });
 
 function bootMainApp() {
+  closeTradeLevelConfirmation({ restore: false, reset: true });
   syncAttachedPanelGeometry();
   updateUTC();
   updatePnlVisibility();
@@ -10905,6 +10902,12 @@ function syncAttachedPanelGeometry() {
 }
 
 window.addEventListener("resize", syncAttachedPanelGeometry);
+window.addEventListener("beforeunload", () => {
+  closeTradeLevelConfirmation({ restore: false, reset: true });
+});
+window.addEventListener("pagehide", () => {
+  closeTradeLevelConfirmation({ restore: false, reset: true });
+});
 
 // ==============================
 // LOGOUT BUTTON
