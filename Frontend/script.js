@@ -421,6 +421,7 @@ let currentLang = localStorage.getItem("flowsignal_lang") || "en";
 const TRADE_URL = `${BASE_URL}/execute-trade`;
 
 const statusEl = document.getElementById("status");
+const mobileLiveStatusEl = document.querySelector(".mobile-live-status");
 const utcLabel = document.getElementById("utcLabel");
 const alertsToggle = document.getElementById("alertsToggle");
 const strongToggle = document.getElementById("strongToggle");
@@ -5778,6 +5779,13 @@ function setConnectionBadge(state = "live", details = "") {
   statusEl.dataset.mobileLabel = label;
   statusEl.dataset.connectionState = normalized;
   statusEl.className = `status status-${normalized}`;
+
+  if (mobileLiveStatusEl) {
+    const mobileLabel = label.replace(/^●\s*/, "");
+    mobileLiveStatusEl.textContent = mobileLabel;
+    mobileLiveStatusEl.title = details || label;
+    mobileLiveStatusEl.dataset.connectionState = normalized;
+  }
 }
 
 function setStatus(text, mode = "live") {
