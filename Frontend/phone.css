@@ -2456,19 +2456,21 @@
     display: flex !important;
     width: 100% !important;
     max-width: 100% !important;
-    padding: 28px 20px 14px !important;
-    gap: 10px !important;
+    padding: 28px 14px 14px !important;
+    gap: 6px !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
     overflow: hidden !important;
   }
 
   #landingPage.landing-pro .landing-logo {
     flex: 1 1 auto !important;
     min-width: 0 !important;
-    max-width: calc(100% - 126px) !important;
-    font-size: 26px !important;
+    max-width: none !important;
+    font-size: clamp(22px, 7.2vw, 30px) !important;
     line-height: 1 !important;
     white-space: nowrap !important;
-    overflow: hidden !important;
+    overflow: visible !important;
   }
 
   #landingPage.landing-pro .landing-logo .logo-wave {
@@ -2479,24 +2481,24 @@
     flex: 0 0 auto !important;
     display: flex !important;
     align-items: center !important;
-    gap: 8px !important;
+    gap: 5px !important;
     width: auto !important;
     min-width: 0 !important;
   }
 
   #landingPage.landing-pro #landingLang {
-    width: 46px !important;
-    min-width: 46px !important;
-    height: 38px !important;
-    font-size: 13px !important;
+    width: 42px !important;
+    min-width: 42px !important;
+    height: 36px !important;
+    font-size: 12px !important;
   }
 
   #landingPage.landing-pro .landing-login-btn {
-    width: 70px !important;
-    min-width: 70px !important;
-    height: 38px !important;
+    width: 64px !important;
+    min-width: 64px !important;
+    height: 36px !important;
     padding: 0 !important;
-    font-size: 14px !important;
+    font-size: 13px !important;
   }
 
   #landingPage.landing-pro #openAccessBtn {
