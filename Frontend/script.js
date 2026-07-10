@@ -454,6 +454,16 @@ const dashboardFloatingPnl = document.getElementById("dashboardFloatingPnl");
 const dashboardOpenTrades = document.getElementById("dashboardOpenTrades");
 const dashboardPerformanceStrip = document.querySelector(".performance-strip");
 const dashboardAdminCards = document.querySelectorAll(".performance-daily, .performance-weekly, .performance-monthly, .performance-floating, .performance-trades");
+function isCompactPhoneView() {
+  const widths = [
+    window.innerWidth,
+    window.outerWidth,
+    document.documentElement?.clientWidth,
+    window.visualViewport?.width
+  ].filter((width) => Number.isFinite(width) && width > 0);
+  return Math.min(...widths) <= 760;
+}
+
 const voiceToggleBtn = document.getElementById("voiceToggleBtn");
 const menuAssistantBtn = document.getElementById("menuAssistantBtn");
 const assistantModal = document.getElementById("assistantModal");
@@ -782,8 +792,9 @@ function initializeSignalAlertSettings() {
 
 function applyDashboardPreferences() {
   const prefs = loadLocalObject(DASHBOARD_PREFS_KEY, DEFAULT_DASHBOARD_PREFS);
+  const phoneView = isCompactPhoneView();
   document.body.classList.toggle("hide-weekly-pnl", !prefs.showWeeklyPnl);
-  document.body.classList.toggle("hide-monthly-pnl", !prefs.showMonthlyPnl);
+  document.body.classList.toggle("hide-monthly-pnl", !phoneView && !prefs.showMonthlyPnl);
   document.body.classList.toggle("hide-floating-pnl", !prefs.showFloatingPnl);
   document.body.classList.toggle("hide-manual-trade-buttons", !prefs.showManualTradeButtons);
   document.body.classList.toggle("hide-open-trades-counter", !prefs.showOpenTradesCounter);
@@ -4229,16 +4240,22 @@ function updateCard(symbol, data) {
     buyLabel.title = LANG[currentLang].biasOnlyNote;
     buyLabel.dataset.mobileTitle = "Trend (15m)";
     buyLabel.dataset.mobileValue = mobileTrend;
+    buyLabel.dataset.mobileCompact = `Bullish ${buyPct}%`;
+    buyLabel.nextElementSibling?.setAttribute("data-mobile-info", `B ${buyPct}%`);
   }
 if (sellLabel) {
   sellLabel.textContent = `${LANG[currentLang].sell}: ${sellPct}%`;
   sellLabel.title = LANG[currentLang].biasOnlyNote;
   sellLabel.dataset.mobileTitle = "Bias Strength";
   sellLabel.dataset.mobileValue = `${confidence}%`;
+  sellLabel.dataset.mobileCompact = `Bearish ${sellPct}%`;
+  sellLabel.nextElementSibling?.setAttribute("data-mobile-info", `S ${sellPct}%`);
 }
 if (confLabel) {
   confLabel.textContent = `${LANG[currentLang].confidence}: ${confidence}%`;
   confLabel.title = LANG[currentLang].biasOnlyNote;
+  confLabel.dataset.mobileCompact = `Strength ${confidence}%`;
+  confLabel.nextElementSibling?.setAttribute("data-mobile-info", `STR ${confidence}%`);
 }
   cardEl?.classList.toggle("mobile-bullish", buyPct >= sellPct);
   cardEl?.classList.toggle("mobile-bearish", sellPct > buyPct);
@@ -6151,10 +6168,12 @@ function renderHistory(history) {
       const pipsText = String(pips).trim();
       if (pipsText.startsWith("+")) pipsClass = "history-pips-plus";
       if (pipsText.startsWith("-")) pipsClass = "history-pips-minus";
+      const rawTime = String(item.time || "--");
+      const compactTime = formatHistoryTime(rawTime);
 
       return `
         <tr class="history-row ${rowClass}">
-          <td class="history-time">${item.time || "--"}</td>
+          <td class="history-time" title="${escapeHtml(rawTime)}">${compactTime}</td>
           <td class="history-symbol">${DISPLAY_NAMES[item.symbol] || item.symbol || "--"}</td>
           <td>
             <span class="history-pill ${signalClass}">${signal}</span>
@@ -6168,6 +6187,16 @@ function renderHistory(history) {
       `;
     })
     .join("");
+}
+
+function formatHistoryTime(rawTime) {
+  if (!rawTime || rawTime === "--") return "--";
+  const text = String(rawTime).trim();
+  const timeMatch = text.match(/\b(\d{2}):(\d{2})(?::\d{2})?\b/);
+  if (timeMatch) return `${timeMatch[1]}:${timeMatch[2]}`;
+  const dateMatch = text.match(/\b\d{4}-(\d{2})-(\d{2})\b/);
+  if (dateMatch) return `${dateMatch[1]}-${dateMatch[2]}`;
+  return text.length > 5 ? text.slice(0, 5) : text;
 }
 
 // ==============================
@@ -11902,7 +11931,35 @@ function moveNewsImpactPanel() {
   }
 }
 
+function moveMobileHistorySection() {
+  const historySection = document.querySelector(".history-section");
+  const mainPanel = document.querySelector(".main-trade-card");
+  const chartPanel = document.querySelector(".chart-section");
+  const smcPanel = document.querySelector(".main-smc-panel");
+
+  if (!historySection || !mainPanel || !chartPanel || !smcPanel) return;
+
+  if (window.innerWidth <= 700) {
+    if (smcPanel.parentNode !== chartPanel || smcPanel.nextElementSibling !== historySection) {
+      chartPanel.insertBefore(smcPanel, historySection.parentNode === chartPanel ? historySection : null);
+    }
+    if (historySection.previousElementSibling !== smcPanel) {
+      chartPanel.insertBefore(historySection, smcPanel.nextSibling);
+    }
+  } else {
+    const debugPanel = mainPanel.querySelector(".entry-strategy-debug");
+    if (smcPanel.parentNode !== mainPanel) {
+      mainPanel.insertBefore(smcPanel, debugPanel || null);
+    }
+    if (historySection.parentNode !== chartPanel) {
+      chartPanel.appendChild(historySection);
+    }
+  }
+}
+
 moveNewsImpactPanel();
+moveMobileHistorySection();
 window.addEventListener("resize", moveNewsImpactPanel);
+window.addEventListener("resize", moveMobileHistorySection);
 
 applyLanguage(currentLang);

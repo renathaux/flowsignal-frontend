@@ -1,5 +1,4 @@
-/* Phone-only FlowSignal overrides.
-   Keep mobile fixes here so they cannot affect the PC layout. */
+
 
 @media (max-width: 700px) {
   #landingPage.landing-pro {
@@ -491,14 +490,6 @@
     filter: drop-shadow(0 0 16px rgba(47, 128, 237, 0.38));
   }
 
-  .mobile-notify-btn [aria-hidden="true"],
-  .mobile-bottom-nav [aria-hidden="true"],
-  .performance-icon[aria-hidden="true"] {
-    display: grid !important;
-    visibility: visible !important;
-    pointer-events: auto !important;
-  }
-
   body.fit-mode #mainApp.app:not(.locked) > .topbar {
     position: absolute !important;
     top: max(15px, env(safe-area-inset-top)) !important;
@@ -532,81 +523,6 @@
     letter-spacing: 0.4px !important;
   }
 
-  body.fit-mode #mainApp.app:not(.locked) > .performance-strip {
-    display: grid !important;
-    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
-    gap: 0 !important;
-    width: 100% !important;
-    margin: 4px 0 2px !important;
-    padding: 12px 8px !important;
-    border: 1px solid var(--phone-line) !important;
-    border-radius: 18px !important;
-    background: linear-gradient(145deg, rgba(8, 19, 33, 0.96), rgba(2, 8, 15, 0.98)) !important;
-    box-shadow: 0 18px 44px rgba(0, 0, 0, 0.34), inset 0 1px rgba(255, 255, 255, 0.04) !important;
-    order: 3 !important;
-  }
-
-  .performance-strip .performance-floating {
-    display: none !important;
-  }
-
-  .performance-strip .performance-monthly {
-    display: grid !important;
-  }
-
-  .performance-strip .performance-card {
-    display: grid !important;
-    grid-template-columns: 22px minmax(0, 1fr) !important;
-    min-height: 72px !important;
-    padding: 4px 8px !important;
-    border-right: 1px solid rgba(148, 163, 184, 0.13) !important;
-    background: transparent !important;
-    box-shadow: none !important;
-  }
-
-  .performance-strip .performance-floating {
-    display: none !important;
-  }
-
-  .performance-strip .performance-monthly {
-    display: grid !important;
-  }
-
-  .performance-strip .performance-card:last-child {
-    border-right: 0 !important;
-  }
-
-  .performance-icon {
-    width: 19px !important;
-    height: 19px !important;
-    margin-top: 2px !important;
-    color: #f4f7fb !important;
-  }
-
-  .performance-strip .performance-copy span {
-    font-size: 9px !important;
-    letter-spacing: 0.55px !important;
-    color: #c7d0de !important;
-  }
-
-  .performance-strip .performance-copy strong {
-    color: var(--phone-green) !important;
-    font-size: clamp(15px, 4vw, 20px) !important;
-    font-weight: 950 !important;
-    letter-spacing: -0.45px !important;
-  }
-
-  .performance-strip .performance-copy strong.negative {
-    color: var(--phone-red) !important;
-  }
-
-  .performance-strip .performance-sparkline {
-    grid-column: 2 !important;
-    width: 46px !important;
-    height: 16px !important;
-    margin-top: 3px !important;
-  }
-
   body.fit-mode #mainApp.app:not(.locked) > .dashboard-grid {
     order: 4 !important;
     gap: 14px !important;
@@ -617,11 +533,11 @@
   }
 
   .dashboard-grid > .chart-panel {
-    order: 2 !important;
+    order: 3 !important;
   }
 
   .dashboard-grid > .main-trade-panel {
-    order: 3 !important;
+    order: 2 !important;
     display: block !important;
     width: 100% !important;
     min-height: 0 !important;
@@ -1333,36 +1249,6 @@
     letter-spacing: 0.2px !important;
   }
 
-  body.fit-mode #mainApp.app:not(.locked) > .performance-strip {
-    margin: 2px 0 1px !important;
-    padding: 7px 6px !important;
-    border-radius: 13px !important;
-  }
-
-  .performance-strip .performance-card {
-    grid-template-columns: 16px minmax(0, 1fr) !important;
-    min-height: 48px !important;
-    padding: 2px 5px !important;
-  }
-
-  .performance-icon {
-    width: 15px !important;
-    height: 15px !important;
-  }
-
-  .performance-strip .performance-copy span {
-    font-size: 7.5px !important;
-    letter-spacing: 0.25px !important;
-  }
-
-  .performance-strip .performance-copy strong {
-    font-size: clamp(13px, 3.5vw, 17px) !important;
-  }
-
-  .performance-strip .performance-sparkline {
-    display: none !important;
-  }
-
   body.fit-mode #mainApp.app:not(.locked) > .dashboard-grid {
     gap: 8px !important;
   }
@@ -1570,34 +1456,6 @@
     min-width: 14px !important;
     height: 14px !important;
     font-size: 8px !important;
-  }
-
-  body.fit-mode #mainApp.app:not(.locked) > .performance-strip {
-    margin: 2px 0 !important;
-    padding: 5px 4px !important;
-    border-radius: 11px !important;
-  }
-
-  .performance-strip .performance-card {
-    grid-template-columns: 13px minmax(0, 1fr) !important;
-    min-height: 34px !important;
-    padding: 1px 4px !important;
-  }
-
-  .performance-icon {
-    width: 12px !important;
-    height: 12px !important;
-  }
-
-  .performance-strip .performance-copy span {
-    font-size: 6.5px !important;
-    line-height: 1 !important;
-    letter-spacing: 0 !important;
-  }
-
-  .performance-strip .performance-copy strong {
-    font-size: clamp(11px, 3vw, 14px) !important;
-    line-height: 1 !important;
   }
 
   body.fit-mode #mainApp.app:not(.locked) > .dashboard-grid,
@@ -2012,52 +1870,6 @@
     font-size: 11px !important;
   }
 
-  body.fit-mode #mainApp.app:not(.locked) > .performance-strip {
-    margin-bottom: 8px !important;
-    padding: 2px 12px !important;
-    border-radius: 16px !important;
-  }
-
-  body.fit-mode #mainApp.app:not(.locked) > .performance-strip.user-no-pnl {
-    display: none !important;
-  }
-
-  .performance-strip .performance-monthly {
-    display: none !important;
-  }
-
-  .performance-strip .performance-card {
-    grid-template-columns: minmax(0, 1fr) 72px !important;
-    min-height: 49px !important;
-    padding: 6px 0 !important;
-  }
-
-  .performance-strip .performance-card:last-child {
-    min-height: 37px !important;
-  }
-
-  .performance-strip .performance-copy {
-    gap: 2px !important;
-  }
-
-  .performance-strip .performance-copy span {
-    font-size: 9px !important;
-    letter-spacing: 0.25px !important;
-  }
-
-  .performance-strip .performance-copy strong {
-    font-size: 17px !important;
-  }
-
-  .performance-strip .performance-weekly .performance-copy strong:not(.neutral):not(.negative) {
-    font-size: 22px !important;
-  }
-
-  .performance-strip .performance-sparkline {
-    width: 70px !important;
-    height: 23px !important;
-  }
-
   body.fit-mode #mainApp.app:not(.locked) > .dashboard-grid {
     gap: 8px !important;
   }
@@ -2235,6 +2047,31 @@
     font-size: clamp(7.5px, 2.25vw, 9px) !important;
   }
 
+  .history-table {
+    table-layout: fixed !important;
+    width: 100% !important;
+  }
+
+  .history-time {
+    max-width: 42px !important;
+    white-space: nowrap !important;
+  }
+
+  .history-table th:first-child,
+  .history-table td:first-child {
+    width: 42px !important;
+  }
+
+  .history-table th:nth-child(2),
+  .history-table td:nth-child(2) {
+    width: 54px !important;
+  }
+
+  .history-table th:nth-child(5),
+  .history-table td:nth-child(5) {
+    width: 72px !important;
+  }
+
   .history-table .history-badge,
   .history-table .badge {
     padding: 3px 4px !important;
@@ -2336,7 +2173,7 @@
 
 @media (max-width: 700px) {
   body.fit-mode #mainApp.app:not(.locked) > .top-header {
-    grid-template-columns: 36px minmax(0, 1fr) 38px !important;
+    grid-template-columns: 36px minmax(0, 1fr) 96px !important;
     align-items: center !important;
     min-height: 38px !important;
     padding: 0 !important;
@@ -2350,13 +2187,13 @@
     grid-row: 1 !important;
     justify-self: end !important;
     place-items: center !important;
-    width: 38px !important;
-    height: 17px !important;
+    width: 92px !important;
+    height: 28px !important;
     border: 1px solid rgba(0, 230, 118, 0.42) !important;
     border-radius: 999px !important;
     background: rgba(0, 78, 50, 0.24) !important;
     color: #00e676 !important;
-    font-size: 7px !important;
+    font-size: 10px !important;
     font-weight: 950 !important;
     line-height: 1 !important;
     letter-spacing: 0 !important;
@@ -2372,5 +2209,259 @@
     display: none !important;
     visibility: hidden !important;
     pointer-events: none !important;
+  }
+}
+
+/* Final phone P/L row. Keep this as the single source for the mobile performance cards. */
+@media (max-width: 700px) {
+  body.fit-mode #mainApp.app:not(.locked) > .performance-strip {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr) 64px !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 0 9px !important;
+    padding: 7px 8px !important;
+    gap: 0 !important;
+    overflow: hidden !important;
+  }
+
+  body.fit-mode #mainApp.app:not(.locked) > .performance-strip > .performance-card {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    align-items: flex-start !important;
+    justify-content: center !important;
+    min-width: 0 !important;
+    min-height: 44px !important;
+    padding: 2px 5px !important;
+    gap: 2px !important;
+    border-right: 1px solid rgba(148, 163, 184, 0.16) !important;
+    overflow: hidden !important;
+  }
+
+  body.fit-mode #mainApp.app:not(.locked) > .performance-strip > .performance-card:last-child {
+    border-right: 0 !important;
+  }
+
+  body.fit-mode #mainApp.app:not(.locked) > .performance-strip > .performance-monthly {
+    display: flex !important;
+    visibility: visible !important;
+  }
+
+  body.fit-mode #mainApp.app:not(.locked) > .performance-strip > .performance-floating {
+    display: none !important;
+  }
+
+  body.fit-mode #mainApp.app:not(.locked) > .performance-strip .performance-icon,
+  body.fit-mode #mainApp.app:not(.locked) > .performance-strip .performance-sparkline {
+    display: none !important;
+  }
+
+  body.fit-mode #mainApp.app:not(.locked) > .performance-strip .performance-copy {
+    width: 100% !important;
+    min-width: 0 !important;
+    overflow: hidden !important;
+  }
+
+  body.fit-mode #mainApp.app:not(.locked) > .performance-strip .performance-copy span {
+    display: block !important;
+    max-width: 100% !important;
+    overflow: hidden !important;
+    font-size: 8px !important;
+    line-height: 1 !important;
+    letter-spacing: 0 !important;
+    white-space: nowrap !important;
+    text-overflow: clip !important;
+  }
+
+  body.fit-mode #mainApp.app:not(.locked) > .performance-strip .performance-copy strong {
+    display: block !important;
+    max-width: 100% !important;
+    overflow: hidden !important;
+    font-size: 13px !important;
+    line-height: 1.05 !important;
+    letter-spacing: -0.55px !important;
+    white-space: nowrap !important;
+    text-overflow: clip !important;
+  }
+
+  body.fit-mode #mainApp.app:not(.locked) > .performance-strip > .performance-trades {
+    align-items: center !important;
+    text-align: center !important;
+    padding-left: 2px !important;
+    padding-right: 2px !important;
+  }
+
+  body.fit-mode #mainApp.app:not(.locked) > .performance-strip > .performance-trades .performance-copy {
+    text-align: center !important;
+  }
+
+  body.fit-mode #mainApp.app:not(.locked) > .performance-strip > .performance-trades .performance-copy span {
+    font-size: 6.5px !important;
+  }
+
+  body.fit-mode #mainApp.app:not(.locked) > .performance-strip > .performance-trades .performance-copy strong {
+    font-size: 13px !important;
+    letter-spacing: 0 !important;
+  }
+}
+
+/* Final phone pair cards. Keep this as the single source for EURUSD/XAUUSD card sizing. */
+@media (max-width: 700px) {
+  body.fit-mode #mainApp.app:not(.locked) .signals-panel .content-grid {
+    gap: 8px !important;
+  }
+
+  body.fit-mode #mainApp.app:not(.locked) .signals-panel .symbol-card {
+    min-height: 104px !important;
+    height: 104px !important;
+    padding: 8px 12px 5px !important;
+    border-radius: 14px !important;
+  }
+
+  body.fit-mode #mainApp.app:not(.locked) .symbol-card .card-header {
+    min-height: 22px !important;
+    margin: 0 !important;
+  }
+
+  body.fit-mode #mainApp.app:not(.locked) .symbol-card .card-title {
+    font-size: 18px !important;
+    line-height: 1 !important;
+  }
+
+  body.fit-mode #mainApp.app:not(.locked) .symbol-card .symbol-icon {
+    width: 28px !important;
+    height: 20px !important;
+  }
+
+  body.fit-mode #mainApp.app:not(.locked) .symbol-card .signal-shell {
+    left: 12px !important;
+    top: 36px !important;
+    width: 244px !important;
+    height: 44px !important;
+  }
+
+  body.fit-mode #mainApp.app:not(.locked) .symbol-card .signal-box {
+    min-height: 44px !important;
+    height: 44px !important;
+    border-radius: 13px !important;
+  }
+
+  body.fit-mode #mainApp.app:not(.locked) .symbol-card .signal-text {
+    font-size: 26px !important;
+    line-height: 1 !important;
+  }
+
+  body.fit-mode #mainApp.app:not(.locked) .symbol-card .metric-label {
+    display: none !important;
+    visibility: hidden !important;
+  }
+
+  body.fit-mode #mainApp.app:not(.locked) .symbol-card .metric-label::before {
+    content: "" !important;
+    display: none !important;
+  }
+
+  body.fit-mode #mainApp.app:not(.locked) .symbol-card .bar-wrap {
+    display: block !important;
+    visibility: visible !important;
+    left: 66% !important;
+    width: 31% !important;
+    height: 9px !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    overflow: visible !important;
+  }
+
+  body.fit-mode #mainApp.app:not(.locked) .symbol-card .bar-wrap::before {
+    content: attr(data-mobile-info) !important;
+    position: absolute !important;
+    left: 0 !important;
+    top: -2px !important;
+    width: 40% !important;
+    overflow: hidden !important;
+    color: #f8fafc !important;
+    font-size: 8.5px !important;
+    line-height: 1 !important;
+    font-weight: 900 !important;
+    letter-spacing: 0 !important;
+    white-space: nowrap !important;
+  }
+
+  body.fit-mode #mainApp.app:not(.locked) .symbol-card .glow-bar {
+    display: block !important;
+    width: 58% !important;
+    height: 6px !important;
+    margin-left: 42% !important;
+    border-radius: 999px !important;
+    background: rgba(148, 163, 184, 0.13) !important;
+  }
+
+  body.fit-mode #mainApp.app:not(.locked) .symbol-card .tags-row {
+    display: none !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+  }
+
+  body.fit-mode #mainApp.app:not(.locked) .symbol-card .glow-tag {
+    height: 21px !important;
+    font-size: 7.5px !important;
+  }
+
+  body.fit-mode #mainApp.app:not(.locked) #eurusd-buy-label,
+  body.fit-mode #mainApp.app:not(.locked) #gold-buy-label {
+    top: auto !important;
+    left: auto !important;
+    width: auto !important;
+  }
+
+  body.fit-mode #mainApp.app:not(.locked) #eurusd-buy-label + .bar-wrap,
+  body.fit-mode #mainApp.app:not(.locked) #gold-buy-label + .bar-wrap {
+    top: 36px !important;
+  }
+
+  body.fit-mode #mainApp.app:not(.locked) #eurusd-sell-label,
+  body.fit-mode #mainApp.app:not(.locked) #gold-sell-label {
+    top: auto !important;
+    left: auto !important;
+    width: auto !important;
+  }
+
+  body.fit-mode #mainApp.app:not(.locked) #eurusd-sell-label + .bar-wrap,
+  body.fit-mode #mainApp.app:not(.locked) #gold-sell-label + .bar-wrap {
+    top: 53px !important;
+  }
+
+  body.fit-mode #mainApp.app:not(.locked) #eurusd-conf-label,
+  body.fit-mode #mainApp.app:not(.locked) #gold-conf-label {
+    top: auto !important;
+    left: auto !important;
+    width: auto !important;
+  }
+
+  body.fit-mode #mainApp.app:not(.locked) #eurusd-conf-label + .bar-wrap,
+  body.fit-mode #mainApp.app:not(.locked) #gold-conf-label + .bar-wrap {
+    top: 70px !important;
+  }
+}
+
+/* Final phone order: Open Trade -> SMC Plan -> Recent Signal History. */
+@media (max-width: 700px) {
+  body.fit-mode #mainApp.app:not(.locked) .chart-section > .main-smc-panel {
+    display: block !important;
+    width: 100% !important;
+    margin: 8px 0 0 !important;
+  }
+
+  body.fit-mode #mainApp.app:not(.locked) .chart-section > .history-section {
+    width: 100% !important;
+    margin-top: 8px !important;
+  }
+
+  body.fit-mode #mainApp.app:not(.locked) > .dashboard-grid > .main-trade-panel {
+    order: 2 !important;
+  }
+
+  body.fit-mode #mainApp.app:not(.locked) > .dashboard-grid > .chart-panel {
+    order: 3 !important;
   }
 }
