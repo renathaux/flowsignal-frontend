@@ -4894,6 +4894,13 @@ body.fit-mode .structure-panel {
   border: none !important;
 }
 
+#chartContainer a[href*="tradingview.com"],
+#chartContainer [aria-label*="TradingView"],
+#chartContainer [title*="TradingView"] {
+  display: none !important;
+  pointer-events: none !important;
+}
+
 .chart-overlay-header {
   position: absolute !important;
   top: 12px !important;
@@ -5005,6 +5012,13 @@ body.fit-mode .structure-panel {
 }
 
 .trade-level-preview strong { color: #fff; }
+
+.trade-level-preview.hidden {
+  display: none !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
 
 .trade-level-confirm-modal {
   position: fixed;
@@ -11358,6 +11372,14 @@ body[data-active-settings-page="performance"] #statsModal .performance-modal-box
 }
 
 .mobile-domain-pill {
+  display: none;
+}
+
+.mobile-timeframe-row,
+.mobile-open-trade-card,
+.mobile-bottom-nav,
+.mobile-notify-btn,
+.mobile-live-status {
   display: none;
 }
 

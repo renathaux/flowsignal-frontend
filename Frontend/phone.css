@@ -2243,12 +2243,27 @@
   }
 
   body.fit-mode #mainApp.app:not(.locked) > .performance-strip > .performance-monthly {
-    display: flex !important;
-    visibility: visible !important;
+    display: none !important;
+    visibility: hidden !important;
   }
 
   body.fit-mode #mainApp.app:not(.locked) > .performance-strip > .performance-floating {
-    display: none !important;
+    display: grid !important;
+    visibility: visible !important;
+  }
+
+  body.hide-floating-pnl.fit-mode #mainApp.app:not(.locked) > .performance-strip > .performance-floating {
+    display: grid !important;
+    visibility: visible !important;
+  }
+
+  body.fit-mode #mainApp.app:not(.locked) > .performance-strip > .performance-floating .performance-copy span {
+    font-size: 0 !important;
+  }
+
+  body.fit-mode #mainApp.app:not(.locked) > .performance-strip > .performance-floating .performance-copy span::after {
+    content: "LIVE P/L" !important;
+    font-size: 8px !important;
   }
 
   body.fit-mode #mainApp.app:not(.locked) > .performance-strip .performance-icon,
@@ -2554,5 +2569,62 @@
 
   body.fit-mode #mainApp.app:not(.locked) > .dashboard-grid > .chart-panel {
     order: 3 !important;
+  }
+}
+
+/* Final phone chart cleanup. */
+@media (max-width: 700px) {
+  body.fit-mode #mainApp.app:not(.locked) > .dashboard-grid {
+    gap: 0 !important;
+    row-gap: 0 !important;
+  }
+
+  body.fit-mode #mainApp.app:not(.locked) > .dashboard-grid > .main-trade-panel,
+  body.fit-mode #mainApp.app:not(.locked) > .dashboard-grid > .main-trade-panel .main-trade-card,
+  body.fit-mode #mainApp.app:not(.locked) .chart-panel,
+  body.fit-mode #mainApp.app:not(.locked) .chart-wrap,
+  body.fit-mode #mainApp.app:not(.locked) .chart-section {
+    margin: 0 !important;
+    padding: 0 !important;
+    gap: 0 !important;
+  }
+
+  body.fit-mode #mainApp.app:not(.locked) > .dashboard-grid > .chart-panel {
+    margin-top: -22px !important;
+  }
+
+  body.fit-mode #mainApp.app:not(.locked) .main-trade-panel .main-smc-panel {
+    margin: 0 0 2px !important;
+  }
+
+  body.fit-mode #mainApp.app:not(.locked) .chart-section > .main-smc-panel {
+    margin: 0 0 2px !important;
+  }
+
+  body.fit-mode #mainApp.app:not(.locked) .chart-section .chart-controls {
+    margin-top: 0 !important;
+  }
+
+  body.fit-mode #mainApp.app:not(.locked) #chartContainer a[href*="tradingview.com"],
+  body.fit-mode #mainApp.app:not(.locked) #chartContainer #tv-attr-logo,
+  body.fit-mode #mainApp.app:not(.locked) #chartContainer .tv-attr-logo,
+  body.fit-mode #mainApp.app:not(.locked) #chartContainer [id*="tv-attr"],
+  body.fit-mode #mainApp.app:not(.locked) #chartContainer [class*="tv-attr"],
+  body.fit-mode #mainApp.app:not(.locked) #chartContainer iframe,
+  body.fit-mode #mainApp.app:not(.locked) #chartContainer .tv-lightweight-charts a,
+  body.fit-mode #mainApp.app:not(.locked) #chartContainer [class*="logo"],
+  body.fit-mode #mainApp.app:not(.locked) #chartContainer [class*="watermark"] {
+    display: none !important;
+    opacity: 0 !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+  }
+
+  body.fit-mode #mainApp.app:not(.locked) .trade-level-preview,
+  body.fit-mode #mainApp.app:not(.locked) .trade-level-preview.hidden {
+    display: none !important;
+    opacity: 0 !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
   }
 }

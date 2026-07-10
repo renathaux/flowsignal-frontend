@@ -417,6 +417,12 @@ const LANG = {
   }
 };
 
+function tTradeAction(signal) {
+  const side = String(signal || "").trim().toUpperCase();
+  if (side === "BUY" || side === "SELL") return side;
+  return side;
+}
+
 let currentLang = localStorage.getItem("flowsignal_lang") || "en";
 const TRADE_URL = `${BASE_URL}/execute-trade`;
 
@@ -795,7 +801,7 @@ function applyDashboardPreferences() {
   const phoneView = isCompactPhoneView();
   document.body.classList.toggle("hide-weekly-pnl", !prefs.showWeeklyPnl);
   document.body.classList.toggle("hide-monthly-pnl", !phoneView && !prefs.showMonthlyPnl);
-  document.body.classList.toggle("hide-floating-pnl", !prefs.showFloatingPnl);
+  document.body.classList.toggle("hide-floating-pnl", !phoneView && !prefs.showFloatingPnl);
   document.body.classList.toggle("hide-manual-trade-buttons", !prefs.showManualTradeButtons);
   document.body.classList.toggle("hide-open-trades-counter", !prefs.showOpenTradesCounter);
   document.body.classList.toggle("hide-confidence-ui", !prefs.showConfidence);
@@ -809,6 +815,32 @@ function applyDashboardPreferences() {
   document.querySelectorAll("[data-dashboard-pref]").forEach((input) => {
     input.checked = Boolean(prefs[input.dataset.dashboardPref]);
   });
+
+  forcePhonePerformanceRow();
+}
+
+function forcePhonePerformanceRow() {
+  const monthlyCard = document.querySelector(".performance-monthly");
+  const floatingCard = document.querySelector(".performance-floating");
+  const floatingLabel = floatingCard?.querySelector(".performance-copy span");
+
+  if (!monthlyCard || !floatingCard) return;
+
+  if (isCompactPhoneView()) {
+    monthlyCard.style.setProperty("display", "none", "important");
+    monthlyCard.style.setProperty("visibility", "hidden", "important");
+    floatingCard.style.setProperty("display", "grid", "important");
+    floatingCard.style.setProperty("visibility", "visible", "important");
+    floatingCard.style.setProperty("order", "3", "important");
+    if (floatingLabel) floatingLabel.textContent = "LIVE P/L";
+  } else {
+    monthlyCard.style.removeProperty("display");
+    monthlyCard.style.removeProperty("visibility");
+    floatingCard.style.removeProperty("display");
+    floatingCard.style.removeProperty("visibility");
+    floatingCard.style.removeProperty("order");
+    if (floatingLabel) floatingLabel.textContent = "LIVE P/L (FLOATING)";
+  }
 }
 
 function hydrateRiskSettings() {
@@ -3878,9 +3910,9 @@ function applySignalStyle(symbol, signal) {
   if (signal === "WAIT" || isHold) {
     text.textContent = LANG[currentLang].wait;
   } else if (signal === "BUY") {
-    text.textContent = LANG[currentLang].buy.toUpperCase();
+    text.textContent = tTradeAction(signal);
   } else if (signal === "SELL") {
-    text.textContent = LANG[currentLang].sell.toUpperCase();
+    text.textContent = tTradeAction(signal);
   } else {
     text.textContent = signal;
   }
@@ -3890,8 +3922,7 @@ function tSignal(signal) {
   const s = String(signal || "WAIT").toUpperCase();
 
   if (s === "WAIT") return LANG[currentLang].wait;
-  if (s === "BUY") return LANG[currentLang].buy.toUpperCase();
-  if (s === "SELL") return LANG[currentLang].sell.toUpperCase();
+  if (s === "BUY" || s === "SELL") return tTradeAction(s);
   if (s === "HOLD BUY" || s === "HOLD SELL") return LANG[currentLang].wait;
 
   if (s === "EXIT SELL") return "EXIT SELL";
@@ -5188,6 +5219,33 @@ function getSwingSlCheckStatus(data = {}, strategyDebug = {}) {
   return "NOT CHECKED";
 }
 
+function getFifteenMinuteBreak(data = {}, strategyDebug = {}) {
+  return data?.fifteen_m_swing_break
+    || strategyDebug?.fifteen_m_swing_break_detail
+    || strategyDebug?.fifteen_m_swing_break_data
+    || null;
+}
+
+function hasConfirmedFifteenMinuteBreak(data = {}, strategyDebug = {}) {
+  const breakData = getFifteenMinuteBreak(data, strategyDebug);
+  const breakSide = String(breakData?.side || "").toUpperCase();
+  const breakLevel = firstUsableValue(
+    strategyDebug?.fifteen_m_break_level,
+    strategyDebug?.fifteen_m_swing_level,
+    strategyDebug?.fifteen_m_bos_level,
+    data?.fifteen_m_swing_level,
+    data?.fifteen_m_bos_level,
+    breakData?.level
+  );
+
+  return Boolean(
+    strategyDebug?.fifteen_m_swing_break === true
+      || strategyDebug?.fifteen_m_swing_break_confirmed === true
+      || data?.fifteen_m_swing_break_confirmed === true
+      || (["BUY", "SELL"].includes(breakSide) && breakLevel)
+  );
+}
+
 function hasStructureTpRrBlock(data = {}, strategyDebug = {}) {
   const reasonText = [
     data?.reason,
@@ -5311,7 +5369,7 @@ function updateSmcPlanIntelligence(symbol, data, signal, strategyDebug = {}) {
       || strategyDebug.choch_detected
       || ["BUY", "SELL"].includes(String(strategyDebug.smc_direction || "").toUpperCase())
   );
-  const swingBreakComplete = Boolean(strategyDebug.fifteen_m_swing_break);
+  const swingBreakComplete = hasConfirmedFifteenMinuteBreak(data, strategyDebug);
   const fifteenCloseComplete = Boolean(
     strategyDebug.fifteen_m_close_confirmed
       ?? strategyDebug.fifteen_m_candle_close_confirmed
@@ -5625,7 +5683,7 @@ if (priceEl) {
   );
   setStrategyCheck(
     "strategy-debug-swing-break",
-    strategyDebug.fifteen_m_swing_break
+    hasConfirmedFifteenMinuteBreak(data, strategyDebug)
   );
   setStrategyCheck(
     "strategy-debug-15m-close",
@@ -7142,6 +7200,7 @@ function renderDashboardPerformance(meta = {}) {
     element.classList.toggle("negative", safeValue < 0);
     element.classList.toggle("neutral", safeValue === 0);
   });
+  forcePhonePerformanceRow();
 
   if (dashboardOpenTrades) {
     const openTradeCount = Number.isFinite(brokerOpenCount)
@@ -9726,12 +9785,37 @@ function hideChartAttributionMark() {
 
   container
     .querySelectorAll(
-      'a[href*="tradingview.com"], [aria-label*="TradingView"], [title*="TradingView"]'
+      'a[href*="tradingview.com"], #tv-attr-logo, .tv-attr-logo, [id*="tv-attr"], [class*="tv-attr"], [aria-label*="TradingView"], [title*="TradingView"], [class*="logo"], [class*="watermark"]'
     )
     .forEach((element) => {
       element.style.setProperty("display", "none", "important");
+      element.style.setProperty("opacity", "0", "important");
+      element.style.setProperty("visibility", "hidden", "important");
       element.style.setProperty("pointer-events", "none", "important");
     });
+
+  const containerRect = container.getBoundingClientRect();
+  if (!containerRect.width || !containerRect.height) return;
+
+  Array.from(container.querySelectorAll("*")).forEach((element) => {
+    if (["CANVAS", "TABLE", "TBODY", "TR", "TD"].includes(element.tagName)) return;
+
+    const rect = element.getBoundingClientRect();
+    const isSmallBottomLeft =
+      rect.width > 0 &&
+      rect.height > 0 &&
+      rect.width <= 92 &&
+      rect.height <= 52 &&
+      rect.left - containerRect.left <= 88 &&
+      containerRect.bottom - rect.bottom <= 88;
+
+    if (!isSmallBottomLeft) return;
+
+    element.style.setProperty("display", "none", "important");
+    element.style.setProperty("opacity", "0", "important");
+    element.style.setProperty("visibility", "hidden", "important");
+    element.style.setProperty("pointer-events", "none", "important");
+  });
 }
 let MARKET_IS_CLOSED = false;
 let frozenChart = {};
@@ -9775,7 +9859,8 @@ function initChart() {
 
   layout: {
     background: { color: "#0b0f1a" },
-    textColor: "#9fb0c8"
+    textColor: "#9fb0c8",
+    attributionLogo: false
   },
   priceFormat: {
     type: 'price',
@@ -9820,6 +9905,9 @@ function initChart() {
 
   hideChartAttributionMark();
   requestAnimationFrame(hideChartAttributionMark);
+  window.setTimeout(hideChartAttributionMark, 100);
+  window.setTimeout(hideChartAttributionMark, 350);
+  window.setTimeout(hideChartAttributionMark, 900);
 
   candleSeries = chart.addCandlestickSeries({
   upColor: "#26a69a",
@@ -11175,7 +11263,9 @@ hydrateRiskSettings();
 initializeSignalAlertSettings();
 
 window.addEventListener("resize", applyRoleVisibility);
+window.addEventListener("resize", forcePhonePerformanceRow);
 window.addEventListener("orientationchange", applyRoleVisibility);
+window.addEventListener("orientationchange", forcePhonePerformanceRow);
 
 if (isForexWeekendClosed()) {
   setConnectionBadge(
