@@ -2506,6 +2506,33 @@
   #landingPage.landing-pro #openAccessBtn {
     display: none !important;
   }
+
+  #landingPage.landing-pro .hero-section {
+    width: 100vw !important;
+    max-width: 100vw !important;
+    margin-left: calc(50% - 50vw) !important;
+    margin-right: calc(50% - 50vw) !important;
+    padding: 54px 18px 32px !important;
+  }
+
+  #landingPage.landing-pro .hero-left {
+    width: 100% !important;
+    max-width: none !important;
+  }
+
+  #landingPage.landing-pro .hero-pill,
+  #landingPage.landing-pro .hero-actions,
+  #landingPage.landing-pro .hero-left p,
+  #landingPage.landing-pro .hero-badges {
+    width: 100% !important;
+    max-width: none !important;
+  }
+
+  #landingPage.landing-pro .hero-left h1 {
+    width: 100% !important;
+    max-width: none !important;
+    font-size: clamp(58px, 17vw, 76px) !important;
+  }
 }
 
 /* Final phone order: Open Trade -> SMC Plan -> Recent Signal History. */
