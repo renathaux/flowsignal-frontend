@@ -735,7 +735,7 @@ const DEFAULT_RISK_PREFS = {
   maxWeeklyLoss: "",
   maxOpenTrades: "1",
   tp1PercentOfTp2: "80",
-  protectedSlPercentOfTp2: "50",
+  protectedSlPercentOfTp2: "40",
   breakEvenEnabled: true,
   allowedSymbols: "EURUSD,XAUUSD",
   defaultTradingMode: "PAPER",
@@ -4372,19 +4372,24 @@ if (confLabel) {
     const invalidationEl = document.getElementById(`${smcSymbol}-invalidation`);
 const reasonEl = document.getElementById(`${smcSymbol}-reason`);
 
-const planType = String(data.plan_type || "").toUpperCase();
+const executedPlanSnapshot = data.executed_trade_setup_snapshot || null;
+const planType = String(
+  executedPlanSnapshot
+    ? (data.smc_status || executedPlanSnapshot.status || "RUNNING")
+    : (data.plan_type || "")
+).toUpperCase();
 const isHoldSignal = signal === "HOLD BUY" || signal === "HOLD SELL";
-const strategyDebugForPlan = data.strategy_debug || data.entry_strategy_debug || {};
+const strategyDebugForPlan = getSmcStrategyDebug(data);
 const rrBlockedForPlan = hasStructureTpRrBlock(data, strategyDebugForPlan);
 const rrDisplayForPlan = formatStructureTpRr(data, strategyDebugForPlan);
 const safePlanType = rrBlockedForPlan
   ? "WAIT"
   : isHoldSignal
   ? "WAIT FOR STRATEGY CONFIRMATION"
-  : data.plan_type || "--";
+  : executedPlanSnapshot ? planType : data.plan_type || "--";
 
 if (typeEl) typeEl.textContent = safePlanType;
-if (biasEl) biasEl.textContent = isHoldSignal ? "WAIT" : data.plan_bias || "--";
+if (biasEl) biasEl.textContent = executedPlanSnapshot?.direction || (isHoldSignal ? "WAIT" : data.plan_bias || "--");
 
 [typeEl, biasEl].forEach((el) => {
   if (!el) return;
@@ -4395,10 +4400,10 @@ if (biasEl) biasEl.textContent = isHoldSignal ? "WAIT" : data.plan_bias || "--";
   else if (planType.includes("EXIT")) el.classList.add("plan-exit");
   else el.classList.add("plan-wait");
 });
-if (entryEl) entryEl.textContent = isHoldSignal ? "--" : data.entry_price || "--";
-if (slEl) slEl.textContent = isHoldSignal ? "--" : data.stop_loss || "--";
-if (tp1El) tp1El.textContent = isHoldSignal ? "--" : data.tp1 || "--";
-if (tp2El) tp2El.textContent = isHoldSignal ? "--" : data.tp2 || "--";
+if (entryEl) entryEl.textContent = executedPlanSnapshot?.entry ?? (isHoldSignal ? "--" : data.entry_price || "--");
+if (slEl) slEl.textContent = executedPlanSnapshot?.sl ?? (isHoldSignal ? "--" : data.stop_loss || "--");
+if (tp1El) tp1El.textContent = executedPlanSnapshot?.tp1 ?? (isHoldSignal ? "--" : data.tp1 || "--");
+if (tp2El) tp2El.textContent = executedPlanSnapshot?.tp2 ?? (isHoldSignal ? "--" : data.tp2 || "--");
 if (rrEl) {
   rrEl.textContent = rrBlockedForPlan
     ? `${rrDisplayForPlan} | Required RR 1.20 to 2.00`
@@ -5091,6 +5096,55 @@ function numericValue(value) {
   return Number.isFinite(number) ? number : null;
 }
 
+function getSmcStrategyDebug(data = {}) {
+  const merged = {
+    ...(data?.signal_diagnostics || {}),
+    ...(data?.entry_strategy_debug || {}),
+    ...(data?.strategy_debug || {}),
+  };
+  const breakData = data?.fifteen_m_swing_break || {};
+  const confirmation5m = data?.confirmation_5m || {};
+  const breakSide = String(breakData?.side || data?.fifteen_m_setup || "").toUpperCase();
+
+  if (merged.bos_detected == null) {
+    merged.bos_detected = Boolean(
+      merged.fifteen_m_swing_break === true
+      || merged.fifteen_m_swing_break_confirmed === true
+      || data?.fifteen_m_swing_break_confirmed === true
+      || (["BUY", "SELL"].includes(breakSide) && breakData?.level != null)
+    );
+  }
+  if (merged.choch_detected == null) merged.choch_detected = Boolean(data?.choch_detected);
+  if (!merged.smc_direction && ["BUY", "SELL"].includes(breakSide)) merged.smc_direction = breakSide;
+  if (merged.fifteen_m_close_confirmed == null) {
+    merged.fifteen_m_close_confirmed = Boolean(
+      data?.fifteen_m_close_confirmed
+      ?? data?.fifteen_m_swing_break_confirmed
+      ?? breakData?.close_confirmed
+      ?? breakData?.confirmed
+    );
+  }
+  if (merged.five_m_confirmation == null) {
+    merged.five_m_confirmation = Boolean(
+      data?.five_m_confirmation
+      ?? data?.current_5m_entry_confirmation
+      ?? confirmation5m?.close_confirmed
+    );
+  }
+  if (!merged.selected_swing_sl) {
+    merged.selected_swing_sl = firstUsableValue(
+      data?.selected_swing_sl,
+      data?.swing_sl_debug?.selected_swing_sl,
+      data?.swing_sl_debug?.final_sl,
+      data?.stop_loss
+    );
+  }
+  if (merged.sl_valid == null) {
+    merged.sl_valid = Boolean(merged.selected_swing_sl || data?.swing_sl_debug?.ok);
+  }
+  return merged;
+}
+
 function inferSmcPlanSide(data, signal) {
   const rawSignal = String(signal || "").toUpperCase();
   const planText = String(
@@ -5099,7 +5153,7 @@ function inferSmcPlanSide(data, signal) {
       || data?.blocked_reason
       || ""
   ).toUpperCase();
-  const strategyDebug = data?.strategy_debug || data?.entry_strategy_debug || {};
+  const strategyDebug = getSmcStrategyDebug(data);
   const debugDirection = String(
     strategyDebug.smc_direction
       || strategyDebug.side
@@ -5304,6 +5358,41 @@ function formatStructureTpRr(data = {}, strategyDebug = {}) {
 
 function updateSmcPlanIntelligence(symbol, data, signal, strategyDebug = {}) {
   const normalizedSymbol = String(symbol || currentChartSymbol || "EURUSD").toUpperCase();
+  const executedSnapshot = data?.executed_trade_setup_snapshot;
+  const snapshotSymbol = String(executedSnapshot?.symbol || "").toUpperCase();
+  const snapshotPositionId = executedSnapshot?.broker_position_id ?? executedSnapshot?.position_id;
+  if (
+    executedSnapshot
+    && snapshotSymbol === normalizedSymbol
+    && snapshotPositionId !== undefined
+    && snapshotPositionId !== null
+  ) {
+    const direction = String(executedSnapshot.direction || data?.active_trade_side || "").toUpperCase();
+    const status = String(data?.smc_status || executedSnapshot.status || "RUNNING").toUpperCase();
+    const breakLabel = executedSnapshot.break_level
+      ? `Structure break at ${formatSmcLevel(normalizedSymbol, executedSnapshot.break_level)}`
+      : "Structure break level";
+    const waitingItems = [
+      { label: `${executedSnapshot.bos_choch || direction} confirmed`, done: true },
+      { label: breakLabel, done: true },
+      { label: "15m close confirmation", done: true },
+      { label: "5m confirmation close", done: true },
+      { label: "Swing SL confirmed", done: true },
+      { label: "TP/RR validation", done: true },
+    ];
+    const planIntel = document.getElementById("main-smc-plan-intel");
+    if (planIntel) planIntel.classList.add("is-ready");
+    setSmcText("main-smc-structure", tMarketText(String(executedSnapshot.structure || direction)));
+    setSmcText("main-smc-trigger", status === "EXECUTED" ? "EXECUTED" : "RUNNING");
+    setSmcText("main-smc-entry-zone", formatSmcLevel(normalizedSymbol, executedSnapshot.entry));
+    setSmcText("main-smc-estimated-sl", formatSmcLevel(normalizedSymbol, executedSnapshot.swing_sl ?? executedSnapshot.sl));
+    setSmcText("main-smc-estimated-tp", formatSmcLevel(normalizedSymbol, executedSnapshot.tp2));
+    setSmcText("main-smc-progress-label", "100%");
+    const progressBar = document.getElementById("main-smc-progress-bar");
+    if (progressBar) progressBar.style.width = "100%";
+    renderSmcWaitingList(waitingItems);
+    return;
+  }
   const side = inferSmcPlanSide(data, signal);
   const savedSetups = strategyDebug.saved_15m_setups || data?.saved_15m_setups || {};
   const expiredSetup = strategyDebug.expired_15m_setup || data?.expired_15m_setup || null;
@@ -5623,9 +5712,13 @@ if (priceEl) {
     mainLocalTime.textContent = new Date().toLocaleTimeString();
   }
 
-  document.getElementById("main-plan-type").textContent = tMarketText(data.plan_type || "--");
+  const mainExecutedSnapshot = data.executed_trade_setup_snapshot || null;
+  const mainExecutedStatus = mainExecutedSnapshot
+    ? (data.smc_status || mainExecutedSnapshot.status || "RUNNING")
+    : null;
+  document.getElementById("main-plan-type").textContent = tMarketText(mainExecutedStatus || data.plan_type || "--");
   const mainPlanType = document.getElementById("main-plan-type");
-  const mainPlanRaw = String(data.plan_type || "").toUpperCase();
+  const mainPlanRaw = String(mainExecutedStatus || data.plan_type || "").toUpperCase();
 
   [mainPlanType].forEach((el) => {
     if (!el) return;
@@ -5637,10 +5730,10 @@ if (priceEl) {
     else if (mainPlanRaw.includes("SELL")) el.classList.add("plan-sell");
     else el.classList.add("plan-wait");
   });
-  document.getElementById("main-entry-price").textContent = data.entry_price || "--";
-  document.getElementById("main-sl").textContent = data.stop_loss || "--";
-  document.getElementById("main-tp1").textContent = data.tp1 || "--";
-  document.getElementById("main-tp2").textContent = data.tp2 || "--";
+  document.getElementById("main-entry-price").textContent = mainExecutedSnapshot?.entry ?? data.entry_price ?? "--";
+  document.getElementById("main-sl").textContent = mainExecutedSnapshot?.sl ?? data.stop_loss ?? "--";
+  document.getElementById("main-tp1").textContent = mainExecutedSnapshot?.tp1 ?? data.tp1 ?? "--";
+  document.getElementById("main-tp2").textContent = mainExecutedSnapshot?.tp2 ?? data.tp2 ?? "--";
   const rawRiskReward = String(data.risk_reward || "").trim();
   const riskRewardLooksValid =
     rawRiskReward &&
@@ -5650,7 +5743,7 @@ if (priceEl) {
     ? rawRiskReward
     : "--";
 
-  const strategyDebug = data.strategy_debug || data.entry_strategy_debug || {};
+  const strategyDebug = getSmcStrategyDebug(data);
   updateSmcPlanIntelligence(symbol, data, signal, strategyDebug);
   const setStrategyCheck = (id, value) => {
     const element = document.getElementById(id);
@@ -6290,7 +6383,7 @@ function isLiveBrokerTrade(trade) {
 }
 
 function hasConfirmedProfitProtection(trade) {
-  if (!trade?.profit_protected) return false;
+  if (!trade?.profit_protected || trade?.protection_confirmed === false) return false;
 
   if (!isLiveBrokerTrade(trade)) return true;
 
@@ -6299,7 +6392,7 @@ function hasConfirmedProfitProtection(trade) {
 
 function getProfitProtectionLabel(trade) {
   return hasConfirmedProfitProtection(trade)
-    ? "Profit Protected (+50% TP2 locked)"
+    ? "Profit Protected (+40% toward TP2 locked)"
     : "";
 }
 
@@ -6312,7 +6405,7 @@ function getSlProtectionWarning(trade) {
   }
 
   return trade?.sl_protection_failed || trade?.sl_protection_warning
-    ? "TP1 hit, but broker SL protection failed"
+    ? "BROKER SL PROTECTION FAILED"
     : "";
 }
 
