@@ -708,6 +708,14 @@ const generalSettingsPanel = document.getElementById("generalSettingsPanel");
 const riskSettingsPanel = document.getElementById("riskSettingsPanel");
 const notificationsSettingsPanel = document.getElementById("notificationsSettingsPanel");
 const strategySettingsPanel = document.getElementById("strategySettingsPanel");
+const newsModeSaveBtn = document.getElementById("newsModeSaveBtn");
+const newsModeSaveStatus = document.getElementById("newsModeSaveStatus");
+const newsModeCurrentLabel = document.getElementById("newsModeCurrentLabel");
+const newsModeAccount = document.getElementById("newsModeAccount");
+const newsModeEnvironment = document.getElementById("newsModeEnvironment");
+const newsModeConfirmModal = document.getElementById("newsModeConfirmModal");
+const newsModeConfirmCancelBtn = document.getElementById("newsModeConfirmCancelBtn");
+const newsModeConfirmEnableBtn = document.getElementById("newsModeConfirmEnableBtn");
 const signalAlertsToggle = document.getElementById("signalAlertsToggle");
 const testSignalAlertBtn = document.getElementById("testSignalAlertBtn");
 const notificationPermissionStatus = document.getElementById("notificationPermissionStatus");
@@ -715,6 +723,175 @@ const notificationPermissionStatus = document.getElementById("notificationPermis
 const DASHBOARD_PREFS_KEY = "flowsignal_dashboard_preferences";
 const RISK_PREFS_KEY = "flowsignal_risk_preferences";
 const SIGNAL_ALERTS_KEY = "soundEnabled";
+const SESSION_TOKEN_KEY = "flowsignal_session_token";
+const NEWS_MODE_VALUES = new Set(["OFF", "BLOCK_ONLY", "TRADE_CONFIRMED"]);
+let confirmedNewsTradingMode = null;
+let newsModeSaveInProgress = false;
+// This state is read by early role/layout guards before the chart initializes.
+let tradeVisualPriceLines = {
+  EURUSD: {},
+  XAUUSD: {},
+};
+
+function displayNewsMode(mode) {
+  return String(mode || "OFF").replaceAll("_", " ");
+}
+
+function selectedNewsMode() {
+  return document.querySelector('input[name="newsTradingMode"]:checked')?.value || null;
+}
+
+function setNewsModeSelection(mode) {
+  document.querySelectorAll('input[name="newsTradingMode"]').forEach((input) => {
+    input.checked = input.value === mode;
+  });
+}
+
+function setNewsModeControlsDisabled(disabled) {
+  document.querySelectorAll('input[name="newsTradingMode"]').forEach((input) => {
+    input.disabled = Boolean(disabled);
+  });
+  if (newsModeSaveBtn) newsModeSaveBtn.disabled = true;
+}
+
+function setNewsModeStatus(message, state = "") {
+  if (!newsModeSaveStatus) return;
+  newsModeSaveStatus.textContent = message;
+  newsModeSaveStatus.classList.toggle("is-success", state === "success");
+  newsModeSaveStatus.classList.toggle("is-error", state === "error");
+}
+
+function applyConfirmedNewsMode(data, statusMessage = "") {
+  const mode = NEWS_MODE_VALUES.has(data?.mode) ? data.mode : "OFF";
+  confirmedNewsTradingMode = mode;
+  setNewsModeSelection(mode);
+  if (newsModeCurrentLabel) {
+    newsModeCurrentLabel.textContent = `Current mode: ${displayNewsMode(mode)}`;
+  }
+  if (newsModeAccount) newsModeAccount.textContent = data?.active_account || "Not connected";
+  if (newsModeEnvironment) {
+    const environment = String(data?.broker_environment || "unknown");
+    newsModeEnvironment.textContent = environment.charAt(0).toUpperCase() + environment.slice(1);
+  }
+  const badge = document.getElementById("news-trading-mode-badge");
+  if (badge) badge.textContent = `NEWS MODE: ${displayNewsMode(mode)}`;
+  setNewsModeControlsDisabled(false);
+  if (newsModeSaveBtn) newsModeSaveBtn.disabled = true;
+  if (statusMessage) setNewsModeStatus(statusMessage, "success");
+}
+
+function newsModeAuthHeaders() {
+  const token = localStorage.getItem(SESSION_TOKEN_KEY);
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
+function hasLocalFlowSignalAccess() {
+  let accessGrant = null;
+  try {
+    accessGrant = JSON.parse(localStorage.getItem("flowsignal_access") || "null");
+  } catch (error) {
+    accessGrant = null;
+  }
+  const role = localStorage.getItem("flowsignal_role");
+  return Boolean(accessGrant?.granted || role === "user" || role === "admin");
+}
+
+async function establishFlowSignalSession(code = ACCESS_CODE) {
+  if (!code) return false;
+  try {
+    const response = await fetch(`${BASE_URL}/session/access-code`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ code }),
+    });
+    const data = await response.json();
+    if (!response.ok || !data.token) return false;
+    localStorage.setItem(SESSION_TOKEN_KEY, data.token);
+    return true;
+  } catch (error) {
+    console.error("FlowSignal backend session could not be established:", error);
+    return false;
+  }
+}
+
+async function ensureFlowSignalSession(forceRefresh = false) {
+  if (!forceRefresh && localStorage.getItem(SESSION_TOKEN_KEY)) return true;
+  if (!hasLocalFlowSignalAccess()) return false;
+  return establishFlowSignalSession(ACCESS_CODE);
+}
+
+async function authenticatedSettingsFetch(url, options = {}) {
+  if (!await ensureFlowSignalSession()) return null;
+  const send = () => fetch(url, {
+    ...options,
+    headers: { ...(options.headers || {}), ...newsModeAuthHeaders() },
+  });
+  let response = await send();
+  if (response.status === 401 && hasLocalFlowSignalAccess()) {
+    localStorage.removeItem(SESSION_TOKEN_KEY);
+    if (await ensureFlowSignalSession(true)) response = await send();
+  }
+  return response;
+}
+
+async function loadNewsTradingMode() {
+  setNewsModeControlsDisabled(true);
+  if (!hasLocalFlowSignalAccess()) {
+    confirmedNewsTradingMode = null;
+    setNewsModeStatus("🔒 Sign in to modify News Trading Mode.", "error");
+    return false;
+  }
+  setNewsModeStatus("Loading current mode…");
+  try {
+    const response = await authenticatedSettingsFetch(
+      `${BASE_URL}/settings/news-trading-mode`
+    );
+    if (!response) throw new Error("Could not establish the FlowSignal session.");
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.detail || "Could not load news trading mode");
+    applyConfirmedNewsMode(data);
+    setNewsModeStatus(`Loaded from ${displayNewsMode(data.source || "backend")}.`);
+    return true;
+  } catch (error) {
+    setNewsModeControlsDisabled(true);
+    setNewsModeStatus(error.message || "Could not load news trading mode", "error");
+    return false;
+  }
+}
+
+async function persistNewsTradingMode(mode) {
+  if (newsModeSaveInProgress || !NEWS_MODE_VALUES.has(mode)) return;
+  newsModeSaveInProgress = true;
+  if (newsModeSaveBtn) {
+    newsModeSaveBtn.disabled = true;
+    newsModeSaveBtn.textContent = "Saving…";
+  }
+  setNewsModeStatus("Saving…");
+  try {
+    const response = await authenticatedSettingsFetch(`${BASE_URL}/settings/news-trading-mode`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Request-Source": "flowsignal_web_app",
+      },
+      body: JSON.stringify({ mode }),
+    });
+    if (!response) throw new Error("🔒 Sign in to modify News Trading Mode.");
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.detail || "Could not save news trading mode");
+    applyConfirmedNewsMode(data, "Saved successfully");
+    refreshNewsImpact(currentChartSymbol);
+  } catch (error) {
+    if (confirmedNewsTradingMode) setNewsModeSelection(confirmedNewsTradingMode);
+    setNewsModeStatus(error.message || "Could not save news trading mode", "error");
+  } finally {
+    newsModeSaveInProgress = false;
+    if (newsModeSaveBtn) {
+      newsModeSaveBtn.textContent = "Save";
+      newsModeSaveBtn.disabled = selectedNewsMode() === confirmedNewsTradingMode;
+    }
+  }
+}
 const DEFAULT_DASHBOARD_PREFS = {
   showWeeklyPnl: true,
   showMonthlyPnl: false,
@@ -999,6 +1176,9 @@ function openSettingsPage(page = "general") {
   if (page === "notifications") {
     initializeSignalAlertSettings();
   }
+  if (page === "strategy") {
+    loadNewsTradingMode();
+  }
   if (page === "risk") {
   const localPrefs = loadLocalObject(RISK_PREFS_KEY, DEFAULT_RISK_PREFS);
   updateRiskSaveStatus(localPrefs, "Loaded local");
@@ -1019,6 +1199,8 @@ if (closeAccessBtn) {
 // ==============================
 
 const ACCESS_CODE = "FLOWTEST";
+window.establishFlowSignalSession = establishFlowSignalSession;
+window.loadNewsTradingMode = loadNewsTradingMode;
 if (openAdminLoginBtn) {
   openAdminLoginBtn.addEventListener("click", () => {
     openAdminLoginBox();
@@ -1059,6 +1241,7 @@ if (adminLoginBtn) {
           time: Date.now()
         }));
         localStorage.setItem("flowsignal_role", "admin");
+        localStorage.setItem(SESSION_TOKEN_KEY, data.token);
         updatePnlVisibility();
         applyRoleVisibility();
 
@@ -4560,6 +4743,9 @@ function updateSmcVisual(data) {
 function renderNewsImpact(symbol, newsData) {
   const normalizedSymbol = String(symbol || "EURUSD").toUpperCase();
   const data = newsData && typeof newsData === "object" ? newsData : null;
+  const authoritativeNews = data?.news_trading && typeof data.news_trading === "object"
+    ? data.news_trading
+    : {};
 
   const titleEl = document.getElementById("news-impact-title");
   const updatedEl = document.getElementById("news-impact-updated");
@@ -4585,11 +4771,15 @@ function renderNewsImpact(symbol, newsData) {
   const effectNoteEl = document.getElementById("news-impact-effect-note");
   const decisionNoteEl = document.getElementById("news-impact-decision-note");
   const upcomingListEl = document.getElementById("news-impact-upcoming-list");
+  const modeBadgeEl = document.getElementById("news-trading-mode-badge");
 
   if (!titleEl) return;
 
   const displayName = DISPLAY_NAMES[normalizedSymbol] || normalizedSymbol;
   titleEl.textContent = `NEWS IMPACT • ${displayName}`;
+  if (modeBadgeEl && NEWS_MODE_VALUES.has(authoritativeNews.mode)) {
+    modeBadgeEl.textContent = `NEWS MODE: ${displayNewsMode(authoritativeNews.mode)}`;
+  }
 
   if (!data || data.unavailable) {
     currentNewsImpactWindow = null;
@@ -4611,7 +4801,12 @@ function renderNewsImpact(symbol, newsData) {
     || data.news_event
     || data.event
   );
-  const rawDecision = String(data.trade_decision || data.decision || "").toUpperCase();
+  const rawDecision = String(
+    authoritativeNews.authoritative_status
+    || data.trade_decision
+    || data.decision
+    || ""
+  ).toUpperCase();
   const rawEventName = data.event_name || data.next_event || data.news_event || data.event || "--";
   const isNoNews = rawDecision.includes("NO_MAJOR_NEWS")
     || rawDecision.includes("NEWS_UNAVAILABLE")
@@ -4628,11 +4823,24 @@ function renderNewsImpact(symbol, newsData) {
     || data.effect_on_symbol
     || data.effect
     || `${normalizedSymbol} Neutral`;
-  const rawStatus = data.display_status || data.status || data.trade_decision || data.decision || "";
+  const rawStatus = authoritativeNews.authoritative_status
+    || data.trade_decision
+    || data.display_status
+    || data.status
+    || data.decision
+    || "";
   const decision = humanizeNewsStatus(rawStatus, data);
   const sourceLabel = data.source_label || data.source_used || data.source || "";
-  const reasonText = data.news_reason || data.reason || "";
-  const eventTime = data.time_utc || data.release_time || data.time || data.event_time;
+  const reasonText = authoritativeNews.blocking_reason
+    || data.blocking_reason
+    || data.news_reason
+    || data.reason
+    || "";
+  const eventTime = authoritativeNews.event_time
+    || data.time_utc
+    || data.release_time
+    || data.time
+    || data.event_time;
   const rawScore = data.final_news_score ?? data.news_score ?? data.score;
   const score = Number.isFinite(Number(rawScore))
     ? Math.max(-25, Math.min(25, Number(rawScore)))
@@ -4660,6 +4868,7 @@ function renderNewsImpact(symbol, newsData) {
     eventTime,
     eventName,
     impact,
+    authoritative: authoritativeNews,
   };
   currentUpcomingHighImpactEvents = Array.isArray(data.upcoming_high_impact)
     ? data.upcoming_high_impact
@@ -4687,7 +4896,10 @@ function renderNewsImpact(symbol, newsData) {
   }
   if (biasEl) biasEl.textContent = bias;
   if (biasNoteEl) {
-    biasNoteEl.textContent = reasonText || "Informational only";
+    const surprise = authoritativeNews.normalized_surprise;
+    biasNoteEl.textContent = Number.isFinite(Number(surprise))
+      ? `${reasonText || "News evaluated"} • Surprise: ${Number(surprise).toFixed(3)}`
+      : reasonText || "Backend-authoritative news status";
   }
   if (effectLabelEl) effectLabelEl.textContent = `EFFECT ON ${displayName}`;
   if (effectEl) {
@@ -4719,16 +4931,19 @@ function renderNewsImpact(symbol, newsData) {
     decisionEl.classList.toggle("decision-conflicts", decisionRaw.includes("CONFLICTS"));
     decisionEl.classList.toggle("decision-block", decisionRaw.includes("BLOCK"));
     if (decisionNoteEl) {
+      const expiration = authoritativeNews.opportunity_expiration
+        ? ` • Expires: ${formatNewsEventTime(authoritativeNews.opportunity_expiration)}`
+        : "";
       const decisionNote = decisionRaw.includes("RELEASED")
         ? "Released - analysis updated"
         : decisionRaw.includes("DATA UNAVAILABLE")
           ? "Calendar data unavailable"
           : decisionRaw.includes("WAITING")
             ? "Waiting for release data"
-            : "Informational only";
+            : reasonText || "Backend-authoritative status";
       decisionNoteEl.textContent = sourceLabel
-        ? `${decisionNote} • Source: ${sourceLabel}`
-        : decisionNote;
+        ? `${decisionNote} • Source: ${sourceLabel}${expiration}`
+        : `${decisionNote}${expiration}`;
     }
     if (cardEl) {
       cardEl.className = "news-impact-card";
@@ -4751,6 +4966,18 @@ function renderNewsImpact(symbol, newsData) {
 
 function humanizeNewsStatus(status, data = {}) {
   const raw = String(status || "").toUpperCase().replaceAll("_", " ");
+  const authoritativeStatuses = [
+    "NEWS BLOCK",
+    "WAITING FOR ACTUAL",
+    "MIXED RESULT",
+    "WAITING FOR 5M CONFIRMATION",
+    "NEWS BUY READY",
+    "NEWS SELL READY",
+    "NEWS TRADE RUNNING",
+    "NEWS OPPORTUNITY EXPIRED",
+  ];
+  const authoritative = authoritativeStatuses.find((value) => raw.includes(value));
+  if (authoritative) return authoritative;
   if (raw.includes("NEWS UNAVAILABLE")) return "Data unavailable";
   if (raw.includes("NO MAJOR NEWS")) return "Neutral";
   if (raw.includes("WAITING FOR ACTUAL")) return "Waiting for actual data";
@@ -4876,6 +5103,33 @@ function updateNewsTradingWindow() {
   const releaseTime = parseNewsWindowTime(currentNewsImpactWindow?.eventTime);
 
   if (!statusEl || !countdownEl) return;
+
+  const authoritative = currentNewsImpactWindow?.authoritative;
+  if (authoritative && Object.keys(authoritative).length) {
+    const status = String(
+      authoritative.authoritative_status || "NORMAL"
+    ).toUpperCase();
+    const phase = String(authoritative.phase || "NORMAL").toUpperCase();
+    statusEl.textContent = status;
+    statusEl.className = status.includes("READY")
+      ? "normal"
+      : status === "NORMAL" || status.includes("EXPIRED")
+        ? "normal"
+        : phase === "RELEASE_LOCK"
+          ? "release"
+          : "high-risk";
+    const expiration = parseNewsWindowTime(authoritative.opportunity_expiration);
+    const remaining = expiration
+      ? ` • Opportunity expires in ${formatNewsWindowDuration(expiration.getTime() - Date.now())}`
+      : "";
+    countdownEl.textContent = `${authoritative.blocking_reason || phase}${remaining}`;
+    setNewsWindowPhase("news-window-normal-start", phase === "NORMAL" ? "active" : "completed", phase === "NORMAL" ? "Active now" : "Completed");
+    setNewsWindowPhase("news-window-before", phase === "PRE_NEWS" ? "active" : phase === "NORMAL" ? "pending" : "completed", phase === "PRE_NEWS" ? "Backend block active" : "--");
+    setNewsWindowPhase("news-window-release", phase === "RELEASE_LOCK" ? "active" : phase === "POST_NEWS_EVALUATION" ? "completed" : "pending", phase === "RELEASE_LOCK" ? "Waiting for verified actual" : "--");
+    setNewsWindowPhase("news-window-after", phase === "POST_NEWS_EVALUATION" ? "active" : "pending", phase === "POST_NEWS_EVALUATION" ? status : "--");
+    setNewsWindowPhase("news-window-normal", phase === "NORMAL" ? "active" : "pending", phase === "NORMAL" ? "Active now" : "Backend gate controls entry");
+    return;
+  }
 
   if (!releaseTime) {
     statusEl.textContent = "NORMAL TRADING";
@@ -9838,10 +10092,6 @@ if (adminModal) {
 let chart = null;
 let candleSeries = null;
 let structureLine = null;
-let tradeVisualPriceLines = {
-  EURUSD: {},
-  XAUUSD: {},
-};
 let chartLevelDragState = {
   active: false,
   pending: false,
@@ -11255,6 +11505,7 @@ function bootMainApp() {
   updateUTC();
   updatePnlVisibility();
   applyRoleVisibility();
+  loadNewsTradingMode();
 
   let visitorId = localStorage.getItem("flowsignal_visitor_id");
 
@@ -11285,6 +11536,11 @@ fetch(`${BASE_URL}/track-visit`, {
   applyLanguage(currentLang);
   refreshPanel();
   }
+
+window.bootMainApp = bootMainApp;
+document.addEventListener("flowsignal:authenticated", () => {
+  bootMainApp();
+});
 
 function syncAttachedPanelGeometry() {
   const topHeader = document.querySelector(".top-header");
@@ -11328,6 +11584,7 @@ if (logoutBtn) {
     localStorage.removeItem("flowsignal_access");
     localStorage.removeItem("flowsignal_role");
     localStorage.removeItem("flowsignal_admin");
+    localStorage.removeItem(SESSION_TOKEN_KEY);
     location.reload();
   });
 }
@@ -11595,6 +11852,41 @@ menuRiskSettingsBtn?.addEventListener("click", () => {
 });
 menuNotificationsSettingsBtn?.addEventListener("click", () => openSettingsPage("notifications"));
 menuStrategySettingsBtn?.addEventListener("click", () => openSettingsPage("strategy"));
+
+document.querySelectorAll('input[name="newsTradingMode"]').forEach((input) => {
+  input.addEventListener("change", () => {
+    if (newsModeSaveBtn) {
+      newsModeSaveBtn.disabled = (
+        newsModeSaveInProgress
+        || !confirmedNewsTradingMode
+        || selectedNewsMode() === confirmedNewsTradingMode
+      );
+    }
+    setNewsModeStatus(`Selected: ${displayNewsMode(input.value)}`);
+  });
+});
+
+newsModeSaveBtn?.addEventListener("click", () => {
+  const mode = selectedNewsMode();
+  if (!mode || mode === confirmedNewsTradingMode) return;
+  if (mode === "TRADE_CONFIRMED") {
+    newsModeConfirmModal?.classList.remove("hidden");
+    return;
+  }
+  persistNewsTradingMode(mode);
+});
+
+newsModeConfirmCancelBtn?.addEventListener("click", () => {
+  newsModeConfirmModal?.classList.add("hidden");
+  if (confirmedNewsTradingMode) setNewsModeSelection(confirmedNewsTradingMode);
+  if (newsModeSaveBtn) newsModeSaveBtn.disabled = true;
+  setNewsModeStatus("Confirmed mode was not changed.");
+});
+
+newsModeConfirmEnableBtn?.addEventListener("click", () => {
+  newsModeConfirmModal?.classList.add("hidden");
+  persistNewsTradingMode("TRADE_CONFIRMED");
+});
 
 alertsToggle?.addEventListener("change", () => {
   setSignalAlertsEnabled(alertsToggle.checked);

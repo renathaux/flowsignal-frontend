@@ -12778,3 +12778,99 @@ body:not([data-user-role="admin"]) #tradeLevelConfirmModal {
 body[data-user-role="admin"] .user-live-auto-status {
   display: none !important;
 }
+.news-trading-mode-badge {
+  color: #f5b942;
+  border: 1px solid rgba(245, 185, 66, 0.45);
+  border-radius: 999px;
+  padding: 3px 8px;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
+.news-mode-settings-card {
+  border: 1px solid #263c54;
+  border-radius: 14px;
+  padding: 20px;
+  background: #0c1521;
+  color: #e8eef7;
+}
+
+.news-mode-settings-heading,
+.news-mode-settings-actions,
+.news-mode-account-context {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.news-mode-settings-heading h3 { margin: 0 0 5px; }
+.news-mode-settings-heading p { margin: 0; color: #91a2b8; }
+.news-mode-settings-heading > strong { color: #f5b942; white-space: nowrap; }
+
+.news-mode-account-context {
+  justify-content: flex-start;
+  margin: 18px 0;
+  padding: 10px 12px;
+  border-radius: 9px;
+  background: #101e2d;
+  color: #9fb0c4;
+}
+
+.news-mode-account-context strong { color: #fff; }
+
+.news-mode-options {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.news-mode-options label {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 13px;
+  border: 1px solid #263c54;
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.news-mode-options label:has(input:checked) {
+  border-color: #f5b942;
+  background: rgba(245, 185, 66, 0.08);
+}
+
+.news-mode-options input { margin-top: 3px; accent-color: #f5b942; }
+.news-mode-options span { display: grid; gap: 4px; }
+.news-mode-options small { color: #91a2b8; line-height: 1.4; }
+
+.news-mode-settings-actions { margin-top: 18px; }
+.news-mode-settings-actions span { color: #91a2b8; }
+.news-mode-settings-actions span.is-success { color: #4ade80; }
+.news-mode-settings-actions span.is-error { color: #fb7185; }
+.news-mode-settings-actions button,
+.news-mode-confirm-actions button {
+  border: 1px solid #f5b942;
+  border-radius: 8px;
+  padding: 9px 20px;
+  background: #f5b942;
+  color: #07101b;
+  font-weight: 800;
+  cursor: pointer;
+}
+.news-mode-settings-actions button:disabled { opacity: 0.5; cursor: wait; }
+
+.news-mode-confirm-box { max-width: 470px; }
+.news-mode-confirm-box p { color: #a9b7c9; line-height: 1.55; }
+.news-mode-confirm-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; }
+.news-mode-confirm-actions #newsModeConfirmCancelBtn { background: transparent; color: #d7e0eb; border-color: #41536a; }
+
+@media (max-width: 620px) {
+  .news-mode-settings-heading,
+  .news-mode-settings-actions,
+  .news-mode-account-context { align-items: flex-start; flex-direction: column; }
+}

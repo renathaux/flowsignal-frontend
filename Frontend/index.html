@@ -43,7 +43,7 @@
       }, 50);
     };
 
-    window.enterFlowSignalAccess = function (event) {
+    window.enterFlowSignalAccess = async function (event) {
       if (event) {
         event.preventDefault();
         event.stopPropagation();
@@ -64,6 +64,15 @@
       if (code !== "FLOWTEST") {
         if (authMsg) {
           authMsg.textContent = "Invalid code";
+          authMsg.style.color = "#ff8f8f";
+        }
+        return;
+      }
+
+      var sessionReady = await window.establishFlowSignalSession?.(code);
+      if (!sessionReady) {
+        if (authMsg) {
+          authMsg.textContent = "Could not authenticate with the FlowSignal backend";
           authMsg.style.color = "#ff8f8f";
         }
         return;
@@ -91,9 +100,8 @@
       if (typeof window.applyRoleVisibility === "function") {
         window.applyRoleVisibility();
       }
-      if (typeof window.bootMainApp === "function") {
-        window.bootMainApp();
-      }
+      document.dispatchEvent(new Event("flowsignal:authenticated"));
+      await window.loadNewsTradingMode?.();
     };
   </script>
 </head>
@@ -694,6 +702,7 @@
         <span id="news-impact-title">NEWS IMPACT • EURUSD</span>
       </div>
       <div class="news-impact-updated">
+        <span id="news-trading-mode-badge" class="news-trading-mode-badge">NEWS MODE: OFF</span>
         <span id="news-impact-updated">Last update: --</span>
         <span class="news-impact-refresh" aria-hidden="true">↻</span>
       </div>
@@ -1133,8 +1142,52 @@
     </section>
 
     <section id="strategySettingsPanel" class="settings-panel hidden">
-      <div class="settings-placeholder">Strategy settings will appear here when editable strategy profiles are connected.</div>
+      <div class="news-mode-settings-card">
+        <div class="news-mode-settings-heading">
+          <div>
+            <h3>News Trading Mode</h3>
+            <p>Choose how high-impact economic news affects new entries.</p>
+          </div>
+          <strong id="newsModeCurrentLabel">Current mode: --</strong>
+        </div>
+
+        <div class="news-mode-account-context">
+          <span>Active account: <strong id="newsModeAccount">--</strong></span>
+          <span>Environment: <strong id="newsModeEnvironment">--</strong></span>
+        </div>
+
+        <fieldset id="newsModeOptions" class="news-mode-options">
+          <label>
+            <input type="radio" name="newsTradingMode" value="OFF">
+            <span><strong>OFF</strong><small>News does not block or create trades.</small></span>
+          </label>
+          <label>
+            <input type="radio" name="newsTradingMode" value="BLOCK_ONLY">
+            <span><strong>BLOCK ONLY</strong><small>Blocks new entries from 30 minutes before until 15 minutes after relevant high-impact news.</small></span>
+          </label>
+          <label>
+            <input type="radio" name="newsTradingMode" value="TRADE_CONFIRMED">
+            <span><strong>TRADE CONFIRMED</strong><small>Blocks before release, then may trade one verified post-news setup after live data and market confirmation.</small></span>
+          </label>
+        </fieldset>
+
+        <div class="news-mode-settings-actions">
+          <span id="newsModeSaveStatus" role="status">Loading current mode…</span>
+          <button id="newsModeSaveBtn" type="button" disabled>Save</button>
+        </div>
+      </div>
     </section>
+  </div>
+</div>
+
+<div id="newsModeConfirmModal" class="trade-modal hidden" role="dialog" aria-modal="true" aria-labelledby="newsModeConfirmTitle">
+  <div class="trade-modal-box news-mode-confirm-box">
+    <div class="trade-modal-title" id="newsModeConfirmTitle">Enable confirmed news trading?</div>
+    <p>This mode may open trades after high-impact economic releases.<br>It should be tested on demo before being used on a funded or live account.</p>
+    <div class="news-mode-confirm-actions">
+      <button id="newsModeConfirmCancelBtn" type="button">Cancel</button>
+      <button id="newsModeConfirmEnableBtn" type="button">Enable</button>
+    </div>
   </div>
 </div>
 
@@ -1465,7 +1518,7 @@
   <script src="performance.js?v=1"></script>
   <script src="history.js?v=1"></script>
   <script src="responsiveLayout.js?v=1"></script>
-  <script src="script.js?v=98"></script>
+  <script src="script.js?v=102"></script>
 </body>
 </html>
   
