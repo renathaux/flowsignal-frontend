@@ -8115,10 +8115,13 @@ function applyCtraderStatus(status) {
 
   if (runtimeStatusDetail) {
     const connected = Boolean(status.connected);
-    runtimeStatusDetail.dataset.state = connected ? "connected" : "disconnected";
-    runtimeStatusDetail.textContent = connected
-      ? "Broker connected"
-      : "Broker disconnected";
+    const degraded = Boolean(status.degraded);
+    runtimeStatusDetail.dataset.state = degraded
+      ? "reconnecting"
+      : connected ? "connected" : "disconnected";
+    runtimeStatusDetail.textContent = degraded
+      ? "Broker reconnecting"
+      : connected ? "Broker connected" : "Broker disconnected";
     runtimeStatusDetail.title = status.reason || runtimeStatusDetail.textContent;
   }
 
@@ -8139,7 +8142,9 @@ async function fetchCtraderStatus() {
   try {
     const res = await fetch(`${BASE_URL}/ctrader-status`, {
       method: "GET",
-      cache: "no-store"
+      cache: "no-store",
+      timeoutMs: 8000,
+      suppressErrorPanel: true
     });
 
     if (res.status === 404) {
@@ -8159,12 +8164,12 @@ async function fetchCtraderStatus() {
     return status;
   } catch (err) {
     console.warn("CTRADER STATUS ERROR:", err);
-    liveConnectionState.connected = false;
-    liveConnectionState.reason = "Broker reconnecting";
+    liveConnectionState.degraded = true;
+    liveConnectionState.reason = "Broker status delayed; keeping last confirmed state";
     if (runtimeStatusDetail) {
       runtimeStatusDetail.dataset.state = "reconnecting";
       runtimeStatusDetail.textContent = "Broker reconnecting";
-      runtimeStatusDetail.title = err.message || "Broker status unavailable";
+      runtimeStatusDetail.title = "Status check delayed; last confirmed broker state preserved";
     }
     updateLiveToggleUI();
     window.FlowSignalStartup?.record("broker_status_failed", { message: err.message });
@@ -8173,6 +8178,7 @@ async function fetchCtraderStatus() {
 }
 
 function formatBrokerMoney(value, currency = "") {
+  if (value === null || value === undefined || value === "") return "--";
   const amount = Number(value);
 
   if (!Number.isFinite(amount)) return "--";
@@ -8207,9 +8213,15 @@ function renderBrokerAccounts(data = {}) {
     ? (data.active_account_id || "")
     : (liveConnectionState.account_id || "");
   const activeAccount = accounts.find((account) => String(account.account_id) === String(activeAccountId));
-  const connected = data.ok !== false && (liveConnectionState.connected || accounts.length > 0 || activeAccountId);
+  const hasAvailableAccount = accounts.some((account) => !account.unavailable);
+  const temporarilyUnavailable = Boolean(
+    accounts.length && !hasAvailableAccount && activeAccountId
+  );
+  const connected = data.ok !== false && !temporarilyUnavailable && (
+    liveConnectionState.connected || hasAvailableAccount
+  );
 
-  if (data.ok !== false && accounts.length) {
+  if (data.ok !== false && hasAvailableAccount) {
     lastGoodBrokerAccountsData = JSON.parse(JSON.stringify({
       ...data,
       active_account_id: activeAccountId,
@@ -8218,14 +8230,19 @@ function renderBrokerAccounts(data = {}) {
   }
 
   if (brokerAccountsStatus) {
-    brokerAccountsStatus.innerHTML = data.ok === false
+    brokerAccountsStatus.innerHTML = temporarilyUnavailable
+      ? `Connection Status: <span>temporarily unavailable</span> • Active selection preserved`
+      : data.ok === false
       ? `Connection Status: <span>${data.reason || "disconnected"}</span>`
       : `Connection Status: <strong>${connected ? "ready" : "disconnected"}</strong>${activeAccountId ? ` • Active` : ""}`;
   }
 
   if (brokerConnectedBadge) {
-    brokerConnectedBadge.textContent = connected ? "Connected" : "Disconnected";
+    brokerConnectedBadge.textContent = temporarilyUnavailable
+      ? "Reconnecting"
+      : connected ? "Connected" : "Disconnected";
     brokerConnectedBadge.classList.toggle("disconnected", !connected);
+    brokerConnectedBadge.classList.toggle("reconnecting", temporarilyUnavailable);
   }
 
   if (brokerAuthorizedText) {
@@ -8345,6 +8362,8 @@ async function loadBrokerAccounts(refresh = false) {
     const res = await fetch(`${BASE_URL}/${endpoint}`, {
       method: "GET",
       headers: { "Content-Type": "application/json" },
+      timeoutMs: 10000,
+      suppressErrorPanel: true,
     });
     const data = await res.json();
 

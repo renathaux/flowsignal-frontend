@@ -1093,6 +1093,11 @@ body.fit-mode #mainApp.app:not(.locked) > #sideMenu.app-sidebar.is-open {
   color: #ff646b;
 }
 
+.broker-connected-badge.reconnecting {
+  background: rgba(245, 158, 11, 0.14);
+  color: #fbbf24;
+}
+
 .broker-account-status,
 .broker-authorized-text {
   margin-top: 10px;

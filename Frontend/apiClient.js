@@ -80,6 +80,8 @@
     const suppressErrorPanel = Boolean(
       init?.suppressErrorPanel
       || String(url || "").includes("/news-impact")
+      || String(url || "").includes("/ctrader-status")
+      || String(url || "").includes("/ctrader/status")
     );
 
     if (!suppressErrorPanel) {
