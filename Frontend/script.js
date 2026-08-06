@@ -8029,8 +8029,12 @@ async function fetchAutoTradeStatus() {
 
     const status = await res.json();
     autoTradeStatus = status;
-    liveAutoStatusBySymbol =
+  liveAutoStatusBySymbol =
       status?.live_auto_status_by_symbol || liveAutoStatusBySymbol || {};
+    if (typeof status?.auto_trade?.live_enabled === "boolean") {
+      liveAutoEnabled = status.auto_trade.live_enabled;
+      updateLiveToggleUI();
+    }
     renderAutoTradeStatus();
   } catch (err) {
     console.warn("AUTO TRADE STATUS ERROR:", err);
@@ -8065,7 +8069,6 @@ function applyCtraderStatus(status) {
   liveConnectionState.degraded = Boolean(status.degraded);
 
   if (!liveConnectionState.connected) {
-    liveAutoEnabled = false;
     activeLiveOrders = {
       EURUSD: null,
       XAUUSD: null
@@ -8641,10 +8644,6 @@ const ctraderStatus = isAdminAccount()
   ? await fetchCtraderStatus()
   : null;
 
-if (isAdminAccount() && ctraderStatus && !ctraderStatus.connected) {
-  liveAutoEnabled = false;
-}
-
 if (paperModal && !paperModal.classList.contains("hidden")) {
   fetchMarketDataSourceStatus();
   fetchAutoTradeStatus();
@@ -8951,6 +8950,7 @@ function showLiveAutoConfirm(nextEnabled) {
 }
 
 async function applyLiveAutoToggle(nextEnabled) {
+  const previousLiveAutoEnabled = liveAutoEnabled;
   liveAutoEnabled = Boolean(nextEnabled);
 
   try {
@@ -8963,7 +8963,8 @@ async function applyLiveAutoToggle(nextEnabled) {
             "application/json"
         },
         body: JSON.stringify({
-          enabled: liveAutoEnabled
+          enabled: liveAutoEnabled,
+          source: "flowsignal_web_app"
         })
       }
     );
@@ -8995,7 +8996,7 @@ async function applyLiveAutoToggle(nextEnabled) {
 
   } catch (err) {
 
-    liveAutoEnabled = false;
+    liveAutoEnabled = previousLiveAutoEnabled;
 
     console.error(
       "LIVE toggle error:",
@@ -9013,13 +9014,11 @@ if (liveAutoToggleBtn) {
     "click",
     () => {
       if (!isAdminAccount()) {
-        liveAutoEnabled = false;
         updateLiveToggleUI();
         return;
       }
 
       if (!liveConnectionState.connected) {
-        liveAutoEnabled = false;
         updateLiveToggleUI();
         setStatus(
           "● LIVE AUTO BLOCKED • broker disconnected",
@@ -9918,9 +9917,6 @@ function updateLiveToggleUI() {
   );
 
   if (!liveConnectionState.connected) {
-
-    liveAutoEnabled = false;
-
     liveAutoToggleBtn.classList.remove(
       "toggle-on",
       "toggle-off",
@@ -9929,8 +9925,9 @@ function updateLiveToggleUI() {
 
     liveAutoToggleBtn.classList.add("toggle-off");
 
-    liveAutoToggleBtn.textContent =
-      "Live Auto paused — broker disconnected";
+    liveAutoToggleBtn.textContent = liveAutoEnabled
+      ? "Live Auto: ON — paused (broker disconnected)"
+      : "Live Auto: OFF — broker disconnected";
 
     if (brokerConnectionStatus) {
       brokerConnectionStatus.textContent =
