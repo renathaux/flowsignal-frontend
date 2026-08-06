@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FlowSignal Health</title>
+  <link rel="stylesheet" href="style.css?v=22" />
+</head>
+<body class="fit-mode health-page">
+  <main class="health-shell">
+    <h1>FlowSignal System Status</h1>
+    <section id="healthStatus" class="health-card">Loading backend-authoritative status...</section>
+  </main>
+  <script src="apiClient.js?v=1"></script>
+  <script>
+    const baseUrl = location.hostname === "127.0.0.1" || location.hostname === "localhost"
+      ? "http://127.0.0.1:8001"
+      : "https://flowsignal-backend-3.onrender.com";
+
+    const value = (input, fallback = "--") =>
+      input === null || input === undefined || input === "" ? fallback : input;
+    const onOff = (input) => input ? "ON" : "OFF";
+    const age = (input) => input === null || input === undefined
+      ? "--" : `${Number(input).toFixed(1)}s ago`;
+
+    const access = (() => {
+      try { return JSON.parse(localStorage.getItem("flowsignal_access") || "null"); }
+      catch (_) { return null; }
+    })();
+    const frontendAuthenticated = Boolean(
+      access?.granted || ["user", "admin"].includes(localStorage.getItem("flowsignal_role"))
+    );
+
+    fetch(`${baseUrl}/system-status`, { cache: "no-store", timeoutMs: 12000 })
+      .then((response) => response.json())
+      .then((data) => {
+        const auto = data.auto_trade || {};
+        const broker = data.broker || {};
+        const engine = data.trading_engine || {};
+        const eurusd = data.market_data?.EURUSD || {};
+        const xauusd = data.market_data?.XAUUSD || {};
+        const limits = data.limits || {};
+        const changes = data.recent_auto_trade_changes || [];
+        document.getElementById("healthStatus").innerHTML = `
+          <div><strong>Backend online</strong><span>${data.backend_online ? "Yes" : "No"}</span></div>
+          <div><strong>Frontend authenticated</strong><span>${frontendAuthenticated ? "Yes" : "No"}</span></div>
+          <div><strong>Data transport</strong><span>${value(data.data_transport, "REST polling")} · WebSocket ${data.frontend_websocket_expected ? "connected" : "not used"}</span></div>
+          <div><strong>Trading engine</strong><span>${engine.running ? "RUNNING" : "STOPPED"} · heartbeat ${age(engine.heartbeat_age_seconds)}</span></div>
+          <div><strong>Browser required</strong><span>${engine.browser_required ? "Yes" : "No"}</span></div>
+          <div><strong>Auto Trade preference</strong><span>Paper ${onOff(auto.paper_enabled)} · LIVE ${onOff(auto.live_enabled)}</span></div>
+          <div><strong>LIVE execution</strong><span>${auto.live_execution_active ? "ACTIVE" : auto.live_execution_paused ? "PAUSED" : "OFF"}</span></div>
+          <div><strong>Persistence</strong><span>${value(auto.persistence?.backend)} · deployment durable: ${auto.persistence?.durable_across_deployments ? "Yes" : "No"}</span></div>
+          <div><strong>Last Auto change</strong><span>${value(auto.updated_at)} · ${value(auto.updated_by)} · ${value(auto.request_source)}</span></div>
+          <div><strong>cTrader</strong><span>${broker.authorized ? "Authorized" : "Not authorized"} · ${broker.execution_ready ? "execution ready" : "not ready"} · owner ${value(broker.connection_owner)}</span></div>
+          <div><strong>Broker heartbeat</strong><span>${value(broker.last_heartbeat)}</span></div>
+          <div><strong>Active account</strong><span>${value(broker.account_id)} · ${value(broker.environment)}</span></div>
+          <div><strong>EURUSD data</strong><span>${value(eurusd.signal)} · signal ${value(eurusd.last_signal_timestamp)} · M5 ${value(eurusd.latest_5m_time)} · M15 ${value(eurusd.latest_15m_time)} · H1 ${value(eurusd.latest_1h_time)}</span></div>
+          <div><strong>XAUUSD data</strong><span>${value(xauusd.signal)} · signal ${value(xauusd.last_signal_timestamp)} · M5 ${value(xauusd.latest_5m_time)} · M15 ${value(xauusd.latest_15m_time)} · H1 ${value(xauusd.latest_1h_time)}</span></div>
+          <div><strong>Last strategy check</strong><span>${value(data.last_strategy_check?.timestamp)} · ${value(data.last_strategy_check?.symbol)} · ${value(data.last_strategy_check?.reason)}</span></div>
+          <div><strong>Last valid setup</strong><span>${value(data.last_valid_setup?.timestamp)} · ${value(data.last_valid_setup?.symbol)} ${value(data.last_valid_setup?.signal, "")}</span></div>
+          <div><strong>Last order attempt</strong><span>${value(data.last_order_attempt?.timestamp)} · ${value(data.last_order_attempt?.symbol)} ${value(data.last_order_attempt?.side, "")}</span></div>
+          <div><strong>Last broker response</strong><span>${value(data.last_broker_response?.timestamp)} · ${value(data.last_broker_response?.reason, data.last_broker_response?.ok ? "Accepted" : "--")}</span></div>
+          <div><strong>Current blocks</strong><span>EURUSD: ${value(data.block_reasons?.EURUSD?.reason)} · XAUUSD: ${value(data.block_reasons?.XAUUSD?.reason)}</span></div>
+          <div><strong>Daily usage</strong><span>${value(limits.daily_total_pl, 0)} / ${value(limits.max_daily_loss, "disabled")} · reset 5:00 p.m. New York</span></div>
+          <div><strong>Weekly usage</strong><span>${value(limits.weekly_total_pl, 0)} / ${value(limits.max_weekly_loss, "disabled")}</span></div>
+          <div><strong>Recent Auto changes</strong><span>${changes.length ? changes.map((change) => `${change.timestamp}: ${change.mode} ${onOff(change.new_enabled)}`).join(" · ") : "None recorded yet"}</span></div>
+        `;
+      })
+      .catch((error) => {
+        document.getElementById("healthStatus").textContent = `Backend unavailable: ${error.message}`;
+      });
+  </script>
+</body>
+</html>

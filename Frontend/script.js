@@ -18,6 +18,11 @@ let currentUpcomingHighImpactEvents = [];
 const NEWS_PROTECTION_BEFORE_MS = 30 * 60 * 1000;
 const NEWS_RELEASE_PHASE_MS = 60 * 1000;
 const NEWS_PROTECTION_AFTER_MS = 15 * 60 * 1000;
+// These values are needed by early role guards before chart setup begins.
+// Keep them initialized before any top-level UI initializer can call clearTradeLines().
+let currentChartSymbol = "EURUSD";
+let currentChartTimeframe = "5m";
+let chartModuleInitialized = false;
 // ==============================
 // 🌍 LANGUAGE SYSTEM
 // ==============================
@@ -427,6 +432,7 @@ let currentLang = localStorage.getItem("flowsignal_lang") || "en";
 const TRADE_URL = `${BASE_URL}/execute-trade`;
 
 const statusEl = document.getElementById("status");
+const runtimeStatusDetail = document.getElementById("runtimeStatusDetail");
 const mobileLiveStatusEl = document.querySelector(".mobile-live-status");
 const utcLabel = document.getElementById("utcLabel");
 const alertsToggle = document.getElementById("alertsToggle");
@@ -805,11 +811,23 @@ async function establishFlowSignalSession(code = ACCESS_CODE) {
       body: JSON.stringify({ code }),
     });
     const data = await response.json();
-    if (!response.ok || !data.token) return false;
+    if (!response.ok || !data.token) {
+      window.FlowSignalStartup?.record("authentication_restore_failed", {
+        status: response.status,
+      });
+      return false;
+    }
     localStorage.setItem(SESSION_TOKEN_KEY, data.token);
+    window.FlowSignalStartup?.record("authentication_restored", {
+      role: data.role || "user",
+      method: "backend_session",
+    });
     return true;
   } catch (error) {
     console.error("FlowSignal backend session could not be established:", error);
+    window.FlowSignalStartup?.record("authentication_restore_failed", {
+      message: error.message,
+    });
     return false;
   }
 }
@@ -828,6 +846,7 @@ async function authenticatedSettingsFetch(url, options = {}) {
   });
   let response = await send();
   if (response.status === 401 && hasLocalFlowSignalAccess()) {
+    window.FlowSignalStartup?.record("authentication_refresh_started");
     localStorage.removeItem(SESSION_TOKEN_KEY);
     if (await ensureFlowSignalSession(true)) response = await send();
   }
@@ -1487,7 +1506,7 @@ function applyRoleVisibility() {
     element.setAttribute("aria-hidden", admin ? "false" : "true");
   });
 
-  if (!admin) {
+  if (!admin && chartModuleInitialized) {
     clearTradeLines("EURUSD");
     clearTradeLines("XAUUSD");
     hideTradeLevelPreview?.();
@@ -8036,8 +8055,10 @@ async function fetchAutoTradeStatus() {
       updateLiveToggleUI();
     }
     renderAutoTradeStatus();
+    window.FlowSignalStartup?.record("backend_auto_trade_status_loaded");
   } catch (err) {
     console.warn("AUTO TRADE STATUS ERROR:", err);
+    window.FlowSignalStartup?.record("backend_auto_trade_status_failed", { message: err.message });
   }
 }
 
@@ -8051,8 +8072,10 @@ async function fetchMarketDataSourceStatus() {
 
     marketDataSourceStatus = await res.json();
     renderMarketDataSourceStatus();
+    window.FlowSignalStartup?.record("market_data_status_loaded");
   } catch (err) {
     console.warn("MARKET DATA SOURCE STATUS ERROR:", err);
+    window.FlowSignalStartup?.record("market_data_status_failed", { message: err.message });
   }
 }
 
@@ -8068,6 +8091,15 @@ function applyCtraderStatus(status) {
   liveConnectionState.last_error = status.last_error || null;
   liveConnectionState.degraded = Boolean(status.degraded);
 
+  if (runtimeStatusDetail) {
+    const connected = Boolean(status.connected);
+    runtimeStatusDetail.dataset.state = connected ? "connected" : "disconnected";
+    runtimeStatusDetail.textContent = connected
+      ? "Broker connected"
+      : "Broker disconnected";
+    runtimeStatusDetail.title = status.reason || runtimeStatusDetail.textContent;
+  }
+
   if (!liveConnectionState.connected) {
     activeLiveOrders = {
       EURUSD: null,
@@ -8082,15 +8114,6 @@ function applyCtraderStatus(status) {
 }
 
 async function fetchCtraderStatus() {
-  if (!isAdminAccount()) {
-    return {
-      connected: Boolean(liveConnectionState.connected),
-      reason: liveConnectionState.connected
-        ? "connected through shared FlowSignal account"
-        : "broker status hidden for user",
-    };
-  }
-
   try {
     const res = await fetch(`${BASE_URL}/ctrader-status`, {
       method: "GET",
@@ -8107,9 +8130,22 @@ async function fetchCtraderStatus() {
 
     const status = await res.json();
     applyCtraderStatus(status);
+    window.FlowSignalStartup?.record("broker_status_loaded", {
+      connected: Boolean(status.connected),
+      executionReady: Boolean(status.execution_ready),
+    });
     return status;
   } catch (err) {
     console.warn("CTRADER STATUS ERROR:", err);
+    liveConnectionState.connected = false;
+    liveConnectionState.reason = "Broker reconnecting";
+    if (runtimeStatusDetail) {
+      runtimeStatusDetail.dataset.state = "reconnecting";
+      runtimeStatusDetail.textContent = "Broker reconnecting";
+      runtimeStatusDetail.title = err.message || "Broker status unavailable";
+    }
+    updateLiveToggleUI();
+    window.FlowSignalStartup?.record("broker_status_failed", { message: err.message });
     return null;
   }
 }
@@ -8494,6 +8530,9 @@ async function refreshPanel() {
 
   panelRefreshInProgress = true;
   let badgeSettled = false;
+  window.FlowSignalStartup?.record("signals_loading_started", {
+    transport: "rest_polling",
+  });
 
   try {
     if (isForexWeekendClosed()) {
@@ -8719,6 +8758,12 @@ updateUTC();
       setConnectionBadge("live", updateDetail);
     }
     badgeSettled = true;
+    window.FlowSignalStartup?.record("signals_loaded", {
+      source: meta?.source || "backend",
+      EURUSD: data?.EURUSD?.signal || "WAIT",
+      XAUUSD: data?.XAUUSD?.signal || "WAIT",
+    });
+    return true;
   } catch (err) {
   console.error("❌ Refresh error:", err);
   updateUTC();
@@ -8746,9 +8791,11 @@ updateUTC();
     if (isForexWeekendClosed()) {
       setConnectionBadge("closed", "Forex market closed until Sunday 5:00 PM New York time");
     } else {
-      setConnectionBadge("error", `Connection issue: ${err.message}`);
+      setConnectionBadge("error", "Backend unavailable — reconnecting");
     }
     badgeSettled = true;
+    window.FlowSignalStartup?.record("signals_failed", { message: err.message });
+    return false;
   }
 } finally {
     if (!badgeSettled) {
@@ -10098,8 +10145,6 @@ let chartLevelDragState = {
   trade: null,
 };
 let lastKnownTradeLevels = {};
-let currentChartSymbol = "EURUSD";
-let currentChartTimeframe = "5m";
 let chartRefreshInProgress = false;
 let lastChartData = {
   EURUSD: { "5m": [], "15m": [], "1h": [] },
@@ -10107,6 +10152,7 @@ let lastChartData = {
 };
 let _CHART_IDLE_PHASE = 0;
 let _CHART_IDLE_ENABLED = false;
+chartModuleInitialized = true;
 
 function clearTradeLevelDragLayer({ force = false } = {}) {
   const dragLayer = document.getElementById("tradeLevelDragLayer");
@@ -11496,13 +11542,33 @@ document.querySelectorAll(".chart-timeframes button").forEach((button) => {
   });
 });
 
+let mainAppBootStarted = false;
+
 function bootMainApp() {
-  closeTradeLevelConfirmation({ restore: false, reset: true });
-  syncAttachedPanelGeometry();
-  updateUTC();
-  updatePnlVisibility();
-  applyRoleVisibility();
-  loadNewsTradingMode();
+  if (mainAppBootStarted) return;
+  mainAppBootStarted = true;
+  window.FlowSignalStartup?.record("authenticated_application_boot_started");
+
+  const shellInitializers = [
+    ["trade_confirmation_reset", () => closeTradeLevelConfirmation({ restore: false, reset: true })],
+    ["attached_panel_geometry", syncAttachedPanelGeometry],
+    ["utc_clock", updateUTC],
+    ["pnl_visibility", updatePnlVisibility],
+    ["role_visibility", applyRoleVisibility],
+    ["chart_shell", initChart],
+    ["language", () => applyLanguage(currentLang)],
+  ];
+  shellInitializers.forEach(([name, initialize]) => {
+    try {
+      initialize();
+    } catch (error) {
+      window.FlowSignalStartup?.record("shell_initializer_failed", {
+        initializer: name,
+        message: error.message,
+      });
+    }
+  });
+  window.FlowSignalStartup?.setTransportStatus("loading", "Loading latest signal");
 
   let visitorId = localStorage.getItem("flowsignal_visitor_id");
 
@@ -11528,11 +11594,33 @@ fetch(`${BASE_URL}/track-visit`, {
 })
 .catch(err => console.log(err));
 
-  updateTradeButtonsLock();
-  initChart();
-  applyLanguage(currentLang);
-  refreshPanel();
+  try {
+    updateTradeButtonsLock();
+  } catch (error) {
+    window.FlowSignalStartup?.record("shell_initializer_failed", {
+      initializer: "trade_button_lock",
+      message: error.message,
+    });
   }
+
+  const startupRequests = {
+    signals: refreshPanel(),
+    newsMode: loadNewsTradingMode(),
+    broker: fetchCtraderStatus(),
+    autoTrade: fetchAutoTradeStatus(),
+    marketData: fetchMarketDataSourceStatus(),
+  };
+  Promise.allSettled(Object.values(startupRequests)).then((results) => {
+    const names = Object.keys(startupRequests);
+    const summary = {};
+    results.forEach((result, index) => {
+      summary[names[index]] = result.status === "fulfilled"
+        ? (result.value === false ? "failed" : "loaded")
+        : "failed";
+    });
+    window.FlowSignalStartup?.record("application_initialization_completed", summary);
+  });
+}
 
 window.bootMainApp = bootMainApp;
 document.addEventListener("flowsignal:authenticated", () => {
@@ -11622,6 +11710,7 @@ if (isForexWeekendClosed()) {
 }
 
 if (access?.granted || role === "user" || role === "admin") {
+  window.FlowSignalStartup?.record("authentication_restored", { role: role || "user" });
   if (landingPage) {
     landingPage.classList.add("hidden");
     landingPage.style.display = "none";
@@ -11644,6 +11733,16 @@ updatePnlVisibility();
     bootMainApp();
   }, 120);
 }
+else {
+  window.FlowSignalStartup?.record("authentication_restore_failed", {
+    reason: "No valid local FlowSignal session",
+  });
+}
+window.FlowSignalStartup?.record("polling_started", {
+  panelIntervalMs: 15000,
+  newsIntervalMs: 60000,
+  transport: "rest_polling",
+});
 setInterval(() => {
   console.log("🔄 Auto refresh running...");
   refreshPanel();
@@ -11770,17 +11869,30 @@ function setMainMenuOpen(open, options = {}) {
     closeAttachedMenuPage();
   }
 
-  sideMenu.classList.toggle("hidden", !menuOpen);
-  sideMenu.classList.toggle("is-open", menuOpen);
-  sideMenu.setAttribute("aria-hidden", menuOpen ? "false" : "true");
-  mainApp?.classList.toggle("menu-drawer-open", menuOpen);
-  document.body.classList.toggle("menu-drawer-open", menuOpen);
+  if (window.FlowSignalStartup?.setMenuOpen) {
+    window.FlowSignalStartup.setMenuOpen(menuOpen);
+  } else {
+    sideMenu.classList.toggle("hidden", !menuOpen);
+    sideMenu.classList.toggle("is-open", menuOpen);
+    sideMenu.setAttribute("aria-hidden", menuOpen ? "false" : "true");
+    mainApp?.classList.toggle("menu-drawer-open", menuOpen);
+    document.body.classList.toggle("menu-drawer-open", menuOpen);
+  }
 }
 
-if (menuToggleBtn && sideMenu) {
+document.addEventListener("flowsignal:menu-state", (event) => {
+  menuOpen = Boolean(event.detail?.open);
+});
+
+if (
+  menuToggleBtn &&
+  sideMenu &&
+  menuToggleBtn.dataset.flowSignalShellBound !== "true"
+) {
   menuToggleBtn.addEventListener("click", () => {
     setMainMenuOpen(!menuOpen);
   });
+  menuToggleBtn.dataset.flowSignalShellBound = "true";
 }
 
 sideMenu?.addEventListener("click", (event) => {

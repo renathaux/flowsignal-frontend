@@ -4,6 +4,41 @@
     statusCode: null,
     errorMessage: null,
   };
+  const DEFAULT_TIMEOUT_MS = 12000;
+
+  function requestWithTimeout(input, init = {}) {
+    const timeoutMs = Number(init.timeoutMs || DEFAULT_TIMEOUT_MS);
+    const requestInit = { ...init };
+    delete requestInit.timeoutMs;
+
+    if (!Number.isFinite(timeoutMs) || timeoutMs <= 0) {
+      return window.FlowSignalApi.nativeFetch(input, requestInit);
+    }
+
+    const controller = new AbortController();
+    const upstreamSignal = requestInit.signal;
+    const abortFromUpstream = () => controller.abort(upstreamSignal?.reason);
+    if (upstreamSignal) {
+      if (upstreamSignal.aborted) abortFromUpstream();
+      else upstreamSignal.addEventListener("abort", abortFromUpstream, { once: true });
+    }
+    requestInit.signal = controller.signal;
+    const timeout = window.setTimeout(() => controller.abort("FlowSignal request timeout"), timeoutMs);
+
+    return window.FlowSignalApi.nativeFetch(input, requestInit)
+      .catch((error) => {
+        if (controller.signal.aborted && !upstreamSignal?.aborted) {
+          const timeoutError = new Error(`Request timed out after ${timeoutMs}ms`);
+          timeoutError.name = "TimeoutError";
+          throw timeoutError;
+        }
+        throw error;
+      })
+      .finally(() => {
+        window.clearTimeout(timeout);
+        upstreamSignal?.removeEventListener?.("abort", abortFromUpstream);
+      });
+  }
 
   function ensureErrorPanel() {
     let panel = document.getElementById("frontendErrorPanel");
@@ -44,7 +79,7 @@
     state.lastApiCalled = url || "unknown";
 
     try {
-      const response = await window.FlowSignalApi.nativeFetch(input, init);
+      const response = await requestWithTimeout(input, init);
       state.statusCode = response.status;
 
       if (!response.ok) {
@@ -64,6 +99,7 @@
   window.FlowSignalApi = {
     nativeFetch: window.fetch.bind(window),
     fetch: apiFetch,
+    fetchWithTimeout: requestWithTimeout,
     getState: () => ({ ...state }),
     clearError: () => {
       state.errorMessage = null;

@@ -73,6 +73,24 @@ body {
   background: #1a2230;
 }
 
+/* The application shell remains operable above data, chart, and error layers. */
+#mainApp:not(.hidden) > .top-header {
+  position: relative;
+  z-index: 2000000 !important;
+  pointer-events: auto !important;
+}
+
+#mainApp:not(.hidden) #menuToggleBtn {
+  position: relative;
+  z-index: 2000002 !important;
+  pointer-events: auto !important;
+  touch-action: manipulation;
+}
+
+body.fit-mode #mainApp.app:not(.locked) > #sideMenu.app-sidebar.is-open {
+  z-index: 2000001 !important;
+}
+
 .brand-left {
   justify-self: start;
   font-size: 20px;
@@ -313,6 +331,31 @@ body {
   color: #ff7378;
   border-color: rgba(239, 68, 68, 0.5) !important;
   background: rgba(127, 29, 29, 0.26) !important;
+}
+
+.runtime-status-detail {
+  min-height: 28px;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 10px;
+  border: 1px solid #26364a;
+  border-radius: 999px;
+  background: #0c1622;
+  color: #9fb0c4;
+  font-size: 11px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.runtime-status-detail[data-state="connected"] {
+  border-color: rgba(57, 212, 103, 0.42);
+  color: #64e98c;
+}
+
+.runtime-status-detail[data-state="disconnected"],
+.runtime-status-detail[data-state="reconnecting"] {
+  border-color: rgba(255, 180, 70, 0.45);
+  color: #efb95d;
 }
 
 .controls {
