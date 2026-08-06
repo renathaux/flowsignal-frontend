@@ -10,6 +10,7 @@
     const timeoutMs = Number(init.timeoutMs || DEFAULT_TIMEOUT_MS);
     const requestInit = { ...init };
     delete requestInit.timeoutMs;
+    delete requestInit.suppressErrorPanel;
 
     if (!Number.isFinite(timeoutMs) || timeoutMs <= 0) {
       return window.FlowSignalApi.nativeFetch(input, requestInit);
@@ -76,10 +77,19 @@
 
   async function apiFetch(input, init) {
     const url = typeof input === "string" ? input : input?.url;
-    state.lastApiCalled = url || "unknown";
+    const suppressErrorPanel = Boolean(
+      init?.suppressErrorPanel
+      || String(url || "").includes("/news-impact")
+    );
+
+    if (!suppressErrorPanel) {
+      state.lastApiCalled = url || "unknown";
+    }
 
     try {
       const response = await requestWithTimeout(input, init);
+      if (suppressErrorPanel) return response;
+
       state.statusCode = response.status;
 
       if (!response.ok) {
@@ -89,6 +99,8 @@
 
       return response;
     } catch (error) {
+      if (suppressErrorPanel) throw error;
+
       state.statusCode = "network";
       state.errorMessage = error.message || "Network request failed";
       renderErrorPanel();

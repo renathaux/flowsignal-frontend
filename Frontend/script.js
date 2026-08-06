@@ -13,6 +13,12 @@ const API_URL = `${BASE_URL}/panel-data`;
 const NEWS_IMPACT_URL = `${BASE_URL}/news-impact`;
 const NEWS_IMPACT_CACHE = {};
 const NEWS_IMPACT_INFLIGHT = {};
+const NEWS_IMPACT_FETCHED_AT = {};
+const NEWS_IMPACT_RETRY_AFTER = {};
+const NEWS_IMPACT_CACHE_MS = 60 * 1000;
+const NEWS_IMPACT_FAILURE_BACKOFF_MS = 2 * 60 * 1000;
+let lastGoodBrokerAccountsData = null;
+let brokerAccountActionInProgress = false;
 let currentNewsImpactWindow = null;
 let currentUpcomingHighImpactEvents = [];
 const NEWS_PROTECTION_BEFORE_MS = 30 * 60 * 1000;
@@ -5285,17 +5291,24 @@ function updateNewsTradingWindow() {
 async function fetchNewsImpact(symbol, options = {}) {
   const normalizedSymbol = String(symbol || "EURUSD").toUpperCase();
   const shouldRender = options.render !== false;
-  const force = options.force !== false;
+  const force = options.force === true;
+  const now = Date.now();
+  const cached = NEWS_IMPACT_CACHE[normalizedSymbol];
+  const cacheFresh = (
+    cached
+    && now - Number(NEWS_IMPACT_FETCHED_AT[normalizedSymbol] || 0) < NEWS_IMPACT_CACHE_MS
+  );
+  const retryBlocked = now < Number(NEWS_IMPACT_RETRY_AFTER[normalizedSymbol] || 0);
 
-  if (!force && NEWS_IMPACT_CACHE[normalizedSymbol]) {
+  if (cached && ((!force && cacheFresh) || retryBlocked)) {
     if (
       shouldRender
       && typeof currentChartSymbol !== "undefined"
       && normalizedSymbol === currentChartSymbol
     ) {
-      renderNewsImpact(normalizedSymbol, NEWS_IMPACT_CACHE[normalizedSymbol]);
+      renderNewsImpact(normalizedSymbol, cached);
     }
-    return NEWS_IMPACT_CACHE[normalizedSymbol];
+    return cached;
   }
 
   if (NEWS_IMPACT_INFLIGHT[normalizedSymbol]) {
@@ -5306,7 +5319,9 @@ async function fetchNewsImpact(symbol, options = {}) {
     `${NEWS_IMPACT_URL}?symbol=${encodeURIComponent(normalizedSymbol)}`,
     {
       method: "GET",
-      cache: "no-store"
+      cache: "no-store",
+      timeoutMs: 10000,
+      suppressErrorPanel: true
     }
   )
     .then((res) => {
@@ -5317,6 +5332,8 @@ async function fetchNewsImpact(symbol, options = {}) {
     })
     .then((data) => {
       NEWS_IMPACT_CACHE[normalizedSymbol] = data;
+      NEWS_IMPACT_FETCHED_AT[normalizedSymbol] = Date.now();
+      NEWS_IMPACT_RETRY_AFTER[normalizedSymbol] = 0;
       if (
         shouldRender
         && typeof currentChartSymbol !== "undefined"
@@ -5328,15 +5345,20 @@ async function fetchNewsImpact(symbol, options = {}) {
     })
     .catch((err) => {
       console.warn("News impact unavailable:", err);
-      delete NEWS_IMPACT_CACHE[normalizedSymbol];
+      NEWS_IMPACT_RETRY_AFTER[normalizedSymbol] = (
+        Date.now() + NEWS_IMPACT_FAILURE_BACKOFF_MS
+      );
       if (
         shouldRender
         && typeof currentChartSymbol !== "undefined"
         && normalizedSymbol === currentChartSymbol
       ) {
-        renderNewsImpact(normalizedSymbol, { unavailable: true });
+        renderNewsImpact(
+          normalizedSymbol,
+          NEWS_IMPACT_CACHE[normalizedSymbol] || { unavailable: true }
+        );
       }
-      return null;
+      return NEWS_IMPACT_CACHE[normalizedSymbol] || null;
     })
     .finally(() => {
       delete NEWS_IMPACT_INFLIGHT[normalizedSymbol];
@@ -5351,8 +5373,8 @@ function refreshNewsImpact(symbol = currentChartSymbol) {
 
 function refreshAllNewsImpact() {
   return Promise.all([
-    fetchNewsImpact("EURUSD", { force: true, render: true }),
-    fetchNewsImpact("XAUUSD", { force: true, render: true })
+    fetchNewsImpact("EURUSD", { force: false, render: true }),
+    fetchNewsImpact("XAUUSD", { force: false, render: true })
   ]);
 }
 
@@ -8187,6 +8209,14 @@ function renderBrokerAccounts(data = {}) {
   const activeAccount = accounts.find((account) => String(account.account_id) === String(activeAccountId));
   const connected = data.ok !== false && (liveConnectionState.connected || accounts.length > 0 || activeAccountId);
 
+  if (data.ok !== false && accounts.length) {
+    lastGoodBrokerAccountsData = JSON.parse(JSON.stringify({
+      ...data,
+      active_account_id: activeAccountId,
+      accounts,
+    }));
+  }
+
   if (brokerAccountsStatus) {
     brokerAccountsStatus.innerHTML = data.ok === false
       ? `Connection Status: <span>${data.reason || "disconnected"}</span>`
@@ -8262,7 +8292,7 @@ function renderBrokerAccounts(data = {}) {
               <td>
                 ${isActive
                   ? `<span class="broker-active-pill">ACTIVE</span>`
-                  : `<button class="broker-row-action" data-set-active="${accountId}" ${account.unavailable ? "disabled" : ""}>Set Active</button>`}
+                  : `<button class="broker-row-action" data-set-active="${accountId}" data-unavailable="${account.unavailable ? "true" : "false"}" ${account.unavailable ? "disabled" : ""}>Set Active</button>`}
               </td>
             </tr>
           `;
@@ -8286,16 +8316,20 @@ function updateBrokerAccountActionState() {
   const hasAccounts = Array.from(brokerAccountSelect?.options || []).some((option) => option.value);
 
   if (forgetCtraderAccountBtn) {
-    forgetCtraderAccountBtn.disabled = !hasSelection;
+    forgetCtraderAccountBtn.disabled = brokerAccountActionInProgress || !hasSelection;
   }
 
   if (setActiveCtraderAccountBtn) {
-    setActiveCtraderAccountBtn.disabled = !hasSelection;
+    setActiveCtraderAccountBtn.disabled = brokerAccountActionInProgress || !hasSelection;
   }
 
   if (clearAllBrokerAccountsBtn) {
-    clearAllBrokerAccountsBtn.disabled = !hasAccounts;
+    clearAllBrokerAccountsBtn.disabled = brokerAccountActionInProgress || !hasAccounts;
   }
+
+  brokerAccountList?.querySelectorAll("[data-set-active]").forEach((button) => {
+    button.disabled = brokerAccountActionInProgress || button.dataset.unavailable === "true";
+  });
 }
 
 async function loadBrokerAccounts(refresh = false) {
@@ -8318,15 +8352,27 @@ async function loadBrokerAccounts(refresh = false) {
       setBrokerStatusMessage(`Connection Status: ${data.reason || data.message || "Could not load cTrader accounts"}`, true);
     }
 
+    if (data.ok === false && lastGoodBrokerAccountsData) {
+      renderBrokerAccounts(lastGoodBrokerAccountsData);
+      setBrokerStatusMessage(
+        `Connection Status: keeping last confirmed account • ${data.reason || data.message || "refresh unavailable"}`,
+        true
+      );
+      return data;
+    }
+
     renderBrokerAccounts(data);
     return data;
   } catch (err) {
-    setBrokerStatusMessage(`Connection Status: ${err.message}`, true);
-    renderBrokerAccounts({
-      ok: false,
-      reason: err.message,
-      accounts: [],
-    });
+    if (lastGoodBrokerAccountsData) {
+      renderBrokerAccounts(lastGoodBrokerAccountsData);
+      setBrokerStatusMessage(
+        `Connection Status: keeping last confirmed account • ${err.message}`,
+        true
+      );
+    } else {
+      setBrokerStatusMessage(`Connection Status: ${err.message}`, true);
+    }
     return null;
   } finally {
     if (refreshCtraderAccountsBtn) {
@@ -8372,17 +8418,71 @@ async function setActiveBrokerAccount(accountId) {
     return;
   }
 
-  const result = await postBrokerAccountAction("ctrader/accounts/active", {
-    accountId: selectedAccountId,
-  });
+  if (brokerAccountActionInProgress) return;
 
-  if (!result.ok) {
-    setBrokerStatusMessage(`Connection Status: ${result.reason || "Could not set active account."}`, true);
+  const confirmedActiveId = String(
+    lastGoodBrokerAccountsData?.active_account_id || liveConnectionState.account_id || ""
+  );
+  if (String(selectedAccountId) === confirmedActiveId) {
+    setBrokerStatusMessage(`Connection Status: account ${selectedAccountId} is already active`);
+    brokerAccountList
+      ?.querySelector(`tr[data-account-id="${CSS.escape(String(selectedAccountId))}"]`)
+      ?.classList.add("account-click-confirmed");
+    window.setTimeout(() => {
+      brokerAccountList
+        ?.querySelector(`tr[data-account-id="${CSS.escape(String(selectedAccountId))}"]`)
+        ?.classList.remove("account-click-confirmed");
+    }, 900);
     return;
   }
 
-  await fetchCtraderStatus();
-  await loadBrokerAccounts(true);
+  brokerAccountActionInProgress = true;
+  const actionButton = brokerAccountList?.querySelector(
+    `[data-set-active="${CSS.escape(String(selectedAccountId))}"]`
+  );
+  const previousActionLabel = actionButton?.textContent;
+  if (actionButton) actionButton.textContent = "Activating...";
+  if (setActiveCtraderAccountBtn) setActiveCtraderAccountBtn.textContent = "Activating...";
+  brokerAccountList
+    ?.querySelector(`tr[data-account-id="${CSS.escape(String(selectedAccountId))}"]`)
+    ?.classList.add("is-activating");
+  setBrokerStatusMessage(`Connection Status: activating account ${selectedAccountId}...`);
+  updateBrokerAccountActionState();
+
+  try {
+    const result = await postBrokerAccountAction("ctrader/accounts/active", {
+      accountId: selectedAccountId,
+    });
+
+    if (!result.ok) {
+      setBrokerStatusMessage(`Connection Status: ${result.reason || "Could not set active account."}`, true);
+      return;
+    }
+
+    if (lastGoodBrokerAccountsData) {
+      lastGoodBrokerAccountsData.active_account_id = String(selectedAccountId);
+      renderBrokerAccounts(lastGoodBrokerAccountsData);
+    }
+    setBrokerStatusMessage(`Connection Status: account ${selectedAccountId} is active`);
+    await Promise.allSettled([
+      fetchCtraderStatus(),
+      loadBrokerAccounts(true),
+    ]);
+  } catch (err) {
+    setBrokerStatusMessage(`Connection Status: ${err.message || "Could not activate account"}`, true);
+  } finally {
+    brokerAccountActionInProgress = false;
+    if (actionButton && actionButton.isConnected) {
+      actionButton.textContent = previousActionLabel || "Set Active";
+    }
+    if (setActiveCtraderAccountBtn?.isConnected) {
+      setActiveCtraderAccountBtn.textContent = "Change Active Account";
+    }
+    brokerAccountList?.querySelectorAll("tr.is-activating").forEach((row) => {
+      row.classList.remove("is-activating");
+    });
+    updateBrokerAccountActionState();
+  }
 }
 
 function openBrokerAccountsModal() {
