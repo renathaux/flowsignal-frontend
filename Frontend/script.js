@@ -1600,6 +1600,7 @@ let latestRawPanelData = null;
 let latestPanelFetchedAt = 0;
 let lastGoodPanelData = null;
 let latestPanelData = null;
+let latestPanelMeta = {};
 let lastLiveOrderKey = null;
 let activeLiveOrders = {
   EURUSD: null,
@@ -5391,6 +5392,51 @@ function numericValue(value) {
   return Number.isFinite(number) ? number : null;
 }
 
+const STRATEGY_STAGE_STATES = new Set([
+  "PASSED",
+  "FAILED",
+  "BLOCKED",
+  "NOT_EVALUATED",
+]);
+
+function normalizeStrategyStageState(value, fallback = "NOT_EVALUATED") {
+  const raw = typeof value === "object" && value !== null
+    ? value.state
+    : value;
+  const normalized = String(raw || "").trim().toUpperCase().replace(/\s+/g, "_");
+  return STRATEGY_STAGE_STATES.has(normalized) ? normalized : fallback;
+}
+
+function getStrategyStageStates(data = {}, strategyDebug = {}) {
+  const states = strategyDebug?.stage_states
+    || data?.strategy_stage_states
+    || data?.strategy_cycle?.stage_states
+    || {};
+  return {
+    swingDetection: normalizeStrategyStageState(states.swing_detection),
+    bos: normalizeStrategyStageState(states.fifteen_m_bos),
+    fifteenClose: normalizeStrategyStageState(states.fifteen_m_close),
+    ema: normalizeStrategyStageState(states.ema),
+    fiveMinute: normalizeStrategyStageState(states.five_m_confirmation),
+    consolidation: normalizeStrategyStageState(states.consolidation_gate),
+    swingSl: normalizeStrategyStageState(states.swing_sl),
+    tpRr: normalizeStrategyStageState(states.tp_rr),
+    execution: normalizeStrategyStageState(states.execution),
+  };
+}
+
+function strategyStagePassed(value) {
+  return normalizeStrategyStageState(value) === "PASSED";
+}
+
+function strategyStageDisplay(value, blockedReason = "") {
+  const state = normalizeStrategyStageState(value);
+  if (state === "BLOCKED" && String(blockedReason).toUpperCase().includes("CONSOLIDATION")) {
+    return "BLOCKED BY CONSOLIDATION";
+  }
+  return state.replace(/_/g, " ");
+}
+
 function getSmcStrategyDebug(data = {}) {
   const merged = {
     ...(data?.signal_diagnostics || {}),
@@ -5399,6 +5445,11 @@ function getSmcStrategyDebug(data = {}) {
   };
   const breakData = data?.fifteen_m_swing_break || {};
   const confirmation5m = data?.confirmation_5m || {};
+  const canonicalStages = data?.strategy_stage_states
+    || data?.strategy_cycle?.stage_states
+    || merged?.stage_states
+    || {};
+  merged.stage_states = canonicalStages;
   const breakSide = String(breakData?.side || data?.fifteen_m_setup || "").toUpperCase();
 
   if (merged.bos_detected == null) {
@@ -5563,9 +5614,13 @@ function hasReachedSwingSlEvaluation(data = {}, strategyDebug = {}) {
 }
 
 function getSwingSlCheckStatus(data = {}, strategyDebug = {}) {
+  const stages = getStrategyStageStates(data, strategyDebug);
+  if (stages.swingSl === "PASSED") return "PASSED";
+  if (stages.swingSl === "FAILED") return "FAILED";
+  if (stages.swingSl === "BLOCKED") return "BLOCKED";
   if (hasConfirmedSwingSl(data, strategyDebug)) return "YES";
   if (hasReachedSwingSlEvaluation(data, strategyDebug)) return "NO";
-  return "NOT CHECKED";
+  return "NOT_CALCULATED_YET";
 }
 
 function getFifteenMinuteBreak(data = {}, strategyDebug = {}) {
@@ -5748,18 +5803,34 @@ function updateSmcPlanIntelligence(symbol, data, signal, strategyDebug = {}) {
     side === "SELL" ? data?.structure_support : data?.structure_resistance
   );
 
-  const smcShiftComplete = Boolean(
-    strategyDebug.bos_detected
-      || strategyDebug.choch_detected
-      || ["BUY", "SELL"].includes(String(strategyDebug.smc_direction || "").toUpperCase())
+  const stageStates = getStrategyStageStates(data, strategyDebug);
+  const hasCanonicalStages = Boolean(
+    data?.strategy_stage_states
+      || data?.strategy_cycle?.stage_states
+      || strategyDebug?.stage_states
   );
-  const swingBreakComplete = hasConfirmedFifteenMinuteBreak(data, strategyDebug);
-  const fifteenCloseComplete = Boolean(
-    strategyDebug.fifteen_m_close_confirmed
-      ?? strategyDebug.fifteen_m_candle_close_confirmed
-  );
-  const swingSlComplete = hasConfirmedSwingSl(data, strategyDebug);
-  const fiveMinuteComplete = Boolean(strategyDebug.five_m_confirmation);
+  const smcShiftComplete = hasCanonicalStages
+    ? strategyStagePassed(stageStates.bos)
+    : Boolean(
+      strategyDebug.bos_detected
+        || strategyDebug.choch_detected
+        || ["BUY", "SELL"].includes(String(strategyDebug.smc_direction || "").toUpperCase())
+    );
+  const swingBreakComplete = hasCanonicalStages
+    ? strategyStagePassed(stageStates.bos)
+    : hasConfirmedFifteenMinuteBreak(data, strategyDebug);
+  const fifteenCloseComplete = hasCanonicalStages
+    ? strategyStagePassed(stageStates.fifteenClose)
+    : Boolean(
+      strategyDebug.fifteen_m_close_confirmed
+        ?? strategyDebug.fifteen_m_candle_close_confirmed
+    );
+  const swingSlComplete = hasCanonicalStages
+    ? strategyStagePassed(stageStates.swingSl)
+    : hasConfirmedSwingSl(data, strategyDebug);
+  const fiveMinuteComplete = hasCanonicalStages
+    ? strategyStagePassed(stageStates.fiveMinute)
+    : Boolean(strategyDebug.five_m_confirmation);
   const rrBlocked = hasStructureTpRrBlock(data, strategyDebug);
   const reachedTpRrValidation = Boolean(
     rrBlocked
@@ -5794,7 +5865,11 @@ function updateSmcPlanIntelligence(symbol, data, signal, strategyDebug = {}) {
   );
   const liveTriggerLevel = expiredSetupActive ? null : triggerLevel;
 
-  const triggerText = rrBlocked
+  const panelMeta = data?._panel_meta || latestPanelMeta || {};
+  const stalePanel = Boolean(panelMeta.stale_data);
+  const triggerText = stalePanel
+    ? "STALE DATA"
+    : rrBlocked
     ? "TP swing found but RR is outside allowed window"
     : expiredSetupActive
     ? "Setup expired — waiting for fresh 15m BOS/CHOCH"
@@ -5885,19 +5960,23 @@ function updateMainPanel(symbol) {
   const marketClosed = Boolean(data.market_closed);
   const mainLive = document.querySelector(".main-live");
   const candleSourceState = data.signal_data_source || {};
+  const panelMeta = data?._panel_meta || latestPanelMeta || {};
+  const stalePanel = Boolean(panelMeta.stale_data);
   const feedAvailable = candleSourceState.available !== false;
   const feedStale =
     String(candleSourceState.tf_5m_source || "").toLowerCase().includes("stale")
     || String(candleSourceState.candle_source || "").toLowerCase().includes("stale");
 
   if (mainLive) {
-    mainLive.textContent = marketClosed
+    mainLive.textContent = stalePanel
+      ? "• STALE DATA"
+      : marketClosed
       ? `• ${LANG[currentLang].marketClosed}`
       : (!feedAvailable || feedStale)
       ? "• FEED STALE"
       : `• ${LANG[currentLang].live}`;
     mainLive.style.color =
-      marketClosed || !feedAvailable || feedStale
+      stalePanel || marketClosed || !feedAvailable || feedStale
         ? "#ef4444"
         : "#35ff8a";
   }
@@ -5941,14 +6020,29 @@ if (priceEl) {
       lastCandleTime,
       currentChartTimeframe
     );
+    const strategyCycle = data?.strategy_cycle || {};
+    const decisionTime = strategyCycle.evaluation_time
+      || panelMeta?.backend_decision_timestamps?.[symbol]
+      || "--";
+    const evaluatedM15 = strategyCycle.evaluated_m15_candle
+      || panelMeta?.evaluated_m15_candles?.[symbol]
+      || "--";
+    const cacheAge = Number(panelMeta.cache_age_seconds);
+    const lastSuccessfulRefresh = panelMeta.last_successful_refresh
+      || panelMeta?.brain_refresh?.last_success
+      || "--";
     candleDebugEl.textContent =
       `Candle ${currentChartTimeframe}: ${formatCandleDebugTime(lastCandleTime)}${candleFreshness.text} · `
       + `Source: ${String(candleSource.candle_source || candleSource.tf_5m_source || "cache")} · `
       + `Last fetch: ${formatCandleDebugTime(lastFetch)} · `
-      + `Misses: ${missedFetches}`;
+      + `Misses: ${missedFetches} · `
+      + `Decision: ${formatCandleDebugTime(decisionTime)} · `
+      + `M15 evaluated: ${formatCandleDebugTime(evaluatedM15)} · `
+      + `Cache age: ${Number.isFinite(cacheAge) ? `${cacheAge}s` : "--"} · `
+      + `Last success: ${formatCandleDebugTime(lastSuccessfulRefresh)}`;
     candleDebugEl.classList.toggle(
       "is-stale",
-      candleFreshness.stale || missedFetches > 0 || !feedAvailable || feedStale
+      stalePanel || candleFreshness.stale || missedFetches > 0 || !feedAvailable || feedStale
     );
   }
 
@@ -6040,47 +6134,69 @@ if (priceEl) {
 
   const strategyDebug = getSmcStrategyDebug(data);
   updateSmcPlanIntelligence(symbol, data, signal, strategyDebug);
-  const setStrategyCheck = (id, value) => {
+  const strategyStages = getStrategyStageStates(data, strategyDebug);
+  const hasCanonicalStrategyStages = Boolean(
+    data?.strategy_stage_states
+      || data?.strategy_cycle?.stage_states
+      || strategyDebug?.stage_states
+  );
+  const setStrategyCheck = (id, value, blockedReason = "") => {
     const element = document.getElementById(id);
     if (!element) return;
 
-    const status = value === true
-      ? "YES"
-      : value === false
-        ? "NO"
-        : String(value || "WAITING").toUpperCase().replace(/_/g, " ");
-    const passed = status === "YES";
-    const failed = status === "NO";
-    const waiting = status === "WAITING";
-    const notChecked = status === "NOT CHECKED";
+    const isCanonical = STRATEGY_STAGE_STATES.has(
+      String(value || "").toUpperCase()
+    );
+    const status = isCanonical
+      ? strategyStageDisplay(value, blockedReason)
+      : value === true
+        ? "PASSED"
+        : value === false
+          ? "FAILED"
+          : String(value || "NOT_EVALUATED").toUpperCase().replace(/_/g, " ");
+    const passed = status === "PASSED";
+    const failed = status === "FAILED";
+    const blocked = status.startsWith("BLOCKED");
+    const notEvaluated = status === "NOT EVALUATED" || status === "NOT CALCULATED YET";
 
     element.textContent = status;
     element.classList.toggle("check-pass", passed);
     element.classList.toggle("check-fail", failed);
-    element.classList.toggle("check-waiting", waiting);
-    element.classList.toggle("check-not-checked", notChecked);
+    element.classList.toggle("check-blocked", blocked);
+    element.classList.toggle("check-waiting", blocked);
+    element.classList.toggle("check-not-checked", notEvaluated);
   };
 
   setStrategyCheck(
     "strategy-debug-smc",
-    Boolean(
-      strategyDebug.bos_detected
-      || strategyDebug.choch_detected
-      || ["BUY", "SELL"].includes(String(strategyDebug.smc_direction || "").toUpperCase())
-    )
+    hasCanonicalStrategyStages
+      ? strategyStages.bos
+      : Boolean(
+        strategyDebug.bos_detected
+        || strategyDebug.choch_detected
+        || ["BUY", "SELL"].includes(String(strategyDebug.smc_direction || "").toUpperCase())
+      ),
+    strategyDebug.blocked_reason || data.blocked_reason
   );
   setStrategyCheck(
     "strategy-debug-swing-break",
-    hasConfirmedFifteenMinuteBreak(data, strategyDebug)
+    hasCanonicalStrategyStages
+      ? strategyStages.bos
+      : hasConfirmedFifteenMinuteBreak(data, strategyDebug),
+    strategyDebug.blocked_reason || data.blocked_reason
   );
   setStrategyCheck(
     "strategy-debug-15m-close",
-    strategyDebug.fifteen_m_close_confirmed
-      ?? strategyDebug.fifteen_m_candle_close_confirmed
+    hasCanonicalStrategyStages
+      ? strategyStages.fifteenClose
+      : strategyDebug.fifteen_m_close_confirmed
+        ?? strategyDebug.fifteen_m_candle_close_confirmed
   );
   setStrategyCheck(
     "strategy-debug-5m-confirm",
-    strategyDebug.five_m_confirmation
+    hasCanonicalStrategyStages
+      ? strategyStages.fiveMinute
+      : strategyDebug.five_m_confirmation
   );
   setStrategyCheck(
     "strategy-debug-swing-sl",
@@ -8677,6 +8793,7 @@ async function refreshPanel() {
      await res.json(),
      lastGoodPanelData
    );
+const meta = rawData?._meta || {};
 
 const liveCandles = rawData?.candles?.[currentChartSymbol]?.[currentChartTimeframe] || [];
 const lastCandle = liveCandles[liveCandles.length - 1];
@@ -8710,10 +8827,11 @@ lastGoodPanelData = rawData;
 console.log("🔥 Raw panel data:", rawData);
 
 const data = normalizePanelData(rawData);
+latestPanelMeta = meta;
+data.EURUSD._panel_meta = meta;
+data.XAUUSD._panel_meta = meta;
 latestPanelData = data;
 refreshAllNewsImpact();
-
-const meta = rawData?._meta || {};
 
 if (typeof meta.paper_auto_enabled === "boolean") {
   paperAutoEnabled = meta.paper_auto_enabled;
@@ -8890,10 +9008,29 @@ updateUTC();
   if (lastGoodPanelData) {
     console.log("🟡 Using last good panel data");
 
+    const staleAgeSeconds = latestPanelFetchedAt
+      ? Math.max(0, Math.round((Date.now() - latestPanelFetchedAt) / 1000))
+      : null;
+    lastGoodPanelData._meta = {
+      ...(lastGoodPanelData._meta || {}),
+      stale_data: true,
+      error: err.message,
+      cache_age_seconds: staleAgeSeconds,
+      last_successful_refresh:
+        lastGoodPanelData?._meta?.last_successful_refresh
+        || latestPanelFetchedAt
+        || null,
+    };
+
     const cachedData = normalizePanelData(lastGoodPanelData);
+    latestPanelMeta = lastGoodPanelData._meta;
+    cachedData.EURUSD._panel_meta = latestPanelMeta;
+    cachedData.XAUUSD._panel_meta = latestPanelMeta;
+    latestPanelData = cachedData;
 
     updateCard("EURUSD", cachedData.EURUSD);
     updateCard("XAUUSD", cachedData.XAUUSD);
+    updateMainPanel(currentChartSymbol);
 
     if (lastGoodPanelData?.candles?.[currentChartSymbol]?.[currentChartTimeframe]?.length) {
   latestRawPanelData = lastGoodPanelData;

@@ -5473,6 +5473,10 @@ body.fit-mode .chart-box {
   color: #f5b84b;
 }
 
+.entry-strategy-debug-grid .check-blocked {
+  color: #f5b84b;
+}
+
 .entry-strategy-debug-grid .check-not-checked {
   color: #8fa1b8;
 }
