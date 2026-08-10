@@ -2699,6 +2699,11 @@
     padding: 12px 8px;
   }
 
+  .fundamental-versus {
+    display: block !important;
+    visibility: visible !important;
+  }
+
   .fundamental-strength-value { gap: 6px; }
   .fundamental-currency-mark {
     width: 36px;
@@ -2717,7 +2722,11 @@
   }
   .fundamental-reasons { border-right: 0; border-bottom: 1px solid rgba(91, 118, 148, 0.2); }
   .fundamental-reason { grid-template-columns: 28px minmax(0, 1fr); }
-  .fundamental-reason-icon { width: 28px; height: 28px; }
+  .fundamental-reason-icon {
+    display: grid !important;
+    width: 28px;
+    height: 28px;
+  }
   .fundamental-reason em { display: none; }
   .fundamental-reason div span { white-space: normal; }
 
