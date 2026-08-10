@@ -3949,8 +3949,6 @@ if (smcRows[8]) smcRows[8].textContent = LANG[lang].reason;
 refreshNewsImpact(
   typeof currentChartSymbol !== "undefined" ? currentChartSymbol : "EURUSD"
 );
-if (structureLabels[3]) structureLabels[3].textContent = LANG[lang].keyLevel;
-if (structureLabels[4]) structureLabels[4].textContent = LANG[lang].keyLevel;
 
 // History empty row
 const noHistoryCell = document.querySelector("#historyBody td");
