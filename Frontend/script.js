@@ -5575,7 +5575,7 @@ async function fetchFundamentalInsight(options = {}) {
   fundamentalInsightInflight = fetch(FUNDAMENTAL_INSIGHT_URL, {
     method: "GET",
     cache: "no-store",
-    timeoutMs: 12000,
+    timeoutMs: 30000,
     suppressErrorPanel: true,
   })
     .then((response) => {
