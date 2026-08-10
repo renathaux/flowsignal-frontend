@@ -10,11 +10,9 @@ const DISPLAY_NAMES = {
 };
 
 const API_URL = `${BASE_URL}/panel-data`;
-const FUNDAMENTAL_INSIGHT_URL = `${BASE_URL}/fundamentals/insight?symbol=EURUSD`;
-let fundamentalInsightCache = null;
-let fundamentalInsightInflight = null;
-let fundamentalInsightFetchedAt = 0;
-let fundamentalInsightRetryAfter = 0;
+const FUNDAMENTAL_INSIGHT_SYMBOLS = new Set(["EURUSD", "XAUUSD"]);
+const fundamentalInsightStates = new Map();
+let fundamentalInsightRenderRequest = 0;
 const FUNDAMENTAL_INSIGHT_CACHE_MS = 5 * 60 * 1000;
 const FUNDAMENTAL_INSIGHT_FAILURE_BACKOFF_MS = 2 * 60 * 1000;
 let lastGoodBrokerAccountsData = null;
@@ -5293,6 +5291,42 @@ function formatFundamentalNumber(value, digits = 2) {
   return `${number > 0 ? "+" : ""}${number.toFixed(digits)}`;
 }
 
+function normalizeFundamentalSymbol(value) {
+  const symbol = String(value || "EURUSD").trim().toUpperCase();
+  return FUNDAMENTAL_INSIGHT_SYMBOLS.has(symbol) ? symbol : "EURUSD";
+}
+
+function getFundamentalInsightState(symbol) {
+  const normalized = normalizeFundamentalSymbol(symbol);
+  if (!fundamentalInsightStates.has(normalized)) {
+    fundamentalInsightStates.set(normalized, {
+      cache: null,
+      inflight: null,
+      fetchedAt: 0,
+      retryAfter: 0,
+    });
+  }
+  return fundamentalInsightStates.get(normalized);
+}
+
+function setFundamentalSymbolPresentation(symbol) {
+  const normalized = normalizeFundamentalSymbol(symbol);
+  const isGold = normalized === "XAUUSD";
+  const values = {
+    "fundamental-symbol": normalized,
+    "fundamental-primary-label": isGold ? "USD MACRO" : "USD STRENGTH",
+    "fundamental-primary-mark": "USD",
+    "fundamental-secondary-label": isGold ? "GOLD SUPPORT" : "EUR STRENGTH",
+    "fundamental-secondary-mark": isGold ? "GOLD" : "EUR",
+  };
+  Object.entries(values).forEach(([id, text]) => {
+    const element = document.getElementById(id);
+    if (element) element.textContent = text;
+  });
+  const card = document.getElementById("fundamental-insight-card");
+  if (card) card.dataset.symbol = normalized;
+}
+
 function formatFundamentalUpdate(value) {
   const date = new Date(value);
   if (!value || Number.isNaN(date.getTime())) return "Last update: --";
@@ -5314,9 +5348,11 @@ function fundamentalFactorLabel(value) {
 function fundamentalFactorIcon(value) {
   const factor = String(value || "").toLowerCase();
   if (factor.includes("policy")) return "🏛";
+  if (factor.includes("yield")) return "⌁";
   if (factor.includes("employment")) return "▥";
   if (factor.includes("inflation")) return "◉";
   if (factor.includes("growth")) return "↗";
+  if (factor.includes("risk")) return "◇";
   return "✦";
 }
 
@@ -5361,7 +5397,12 @@ function renderFundamentalReasons(reasons) {
   items.forEach((reason) => {
     const row = document.createElement("article");
     const direction = String(reason.direction || "NEUTRAL").toUpperCase();
-    row.className = `fundamental-reason fundamental-reason-${direction.toLowerCase()}`;
+    const tone = direction.includes("BULLISH")
+      ? "bullish"
+      : direction.includes("BEARISH")
+        ? "bearish"
+        : "neutral";
+    row.className = `fundamental-reason fundamental-reason-${tone}`;
 
     const icon = document.createElement("span");
     icon.className = "fundamental-reason-icon";
@@ -5370,7 +5411,7 @@ function renderFundamentalReasons(reasons) {
 
     const copy = document.createElement("div");
     const title = document.createElement("strong");
-    title.textContent = `${reason.currency || "--"} ${fundamentalFactorLabel(reason.factor)}`;
+    title.textContent = [reason.currency, fundamentalFactorLabel(reason.factor)].filter(Boolean).join(" ");
     const summary = document.createElement("span");
     summary.textContent = reason.summary || "Evidence-backed fundamental factor.";
     const badge = document.createElement("em");
@@ -5444,8 +5485,26 @@ function fundamentalQualityMessages(data) {
       messages.push(`${currency} ${fundamentalFactorLabel(factor).toLowerCase()} missing`);
     });
   });
+  const drivers = data?.drivers || {};
+  Object.entries(drivers).forEach(([factor, detail]) => {
+    const status = String(detail?.status || "").toUpperCase();
+    if (status === "STALE") {
+      messages.push(`${fundamentalFactorLabel(factor)} stale`);
+    } else if (status === "INSUFFICIENT_DATA") {
+      messages.push(`${fundamentalFactorLabel(factor)} unavailable`);
+    }
+  });
   const quality = data?.data_quality || {};
-  const provisional = Number(quality.provisional_factor_count || 0);
+  (quality.missing_factors || []).forEach((factor) => {
+    const label = fundamentalFactorLabel(factor);
+    const alreadyReported = messages.some((message) => message.toLowerCase().startsWith(label.toLowerCase()));
+    if (!alreadyReported) messages.push(`${label} unavailable`);
+  });
+  const driverProvisional = Object.values(drivers).reduce(
+    (total, detail) => total + Number(detail?.provisional_count || 0),
+    0,
+  );
+  const provisional = Number(quality.provisional_factor_count ?? driverProvisional);
   if (provisional > 0) messages.push(`${provisional} provisional evidence item${provisional === 1 ? "" : "s"}`);
   const failures = Number(quality.provider_failures_recent || 0);
   if (failures > 0) messages.push(`${failures} recent provider warning${failures === 1 ? "" : "s"}`);
@@ -5471,15 +5530,22 @@ function applyFundamentalStrengthTone(element, score) {
 function renderFundamentalInsight(data, options = {}) {
   const card = document.getElementById("fundamental-insight-card");
   if (!card) return;
+  const symbol = normalizeFundamentalSymbol(options.symbol || data?.symbol || currentChartSymbol);
+  const isGold = symbol === "XAUUSD";
   const overall = data?.overall_bias || {};
   const insufficient = String(overall.status || "").toUpperCase() !== "ACTIVE";
   const direction = insufficient ? "NEUTRAL" : String(overall.direction || "NEUTRAL").toUpperCase();
   const confidence = Number(overall.confidence);
-  const usd = data?.currency_strength?.USD || {};
-  const eur = data?.currency_strength?.EUR || {};
+  const usd = isGold
+    ? { score: data?.usd_macro_score }
+    : data?.currency_strength?.USD || {};
+  const secondary = isGold
+    ? { score: data?.gold_support_score }
+    : data?.currency_strength?.EUR || {};
   const statusLine = document.getElementById("fundamental-status-line");
   const refreshButton = document.getElementById("fundamental-refresh-btn");
 
+  setFundamentalSymbolPresentation(symbol);
   card.dataset.bias = ["BUY", "SELL"].includes(direction) ? direction : "NEUTRAL";
   card.dataset.state = options.error ? "error" : insufficient ? "insufficient" : "ready";
   document.getElementById("fundamental-bias").textContent = direction;
@@ -5487,11 +5553,11 @@ function renderFundamentalInsight(data, options = {}) {
     ? "Insufficient fundamental data"
     : `${Number.isFinite(confidence) ? confidence.toFixed(2) : "--"}% Confidence`;
   document.getElementById("fundamental-usd-strength").textContent = formatFundamentalNumber(usd.score);
-  document.getElementById("fundamental-eur-strength").textContent = formatFundamentalNumber(eur.score);
+  document.getElementById("fundamental-eur-strength").textContent = formatFundamentalNumber(secondary.score);
   document.getElementById("fundamental-usd-label").textContent = fundamentalStrengthLabel(usd.score);
-  document.getElementById("fundamental-eur-label").textContent = fundamentalStrengthLabel(eur.score);
+  document.getElementById("fundamental-eur-label").textContent = fundamentalStrengthLabel(secondary.score);
   applyFundamentalStrengthTone(card.querySelector(".fundamental-strength-usd"), usd.score);
-  applyFundamentalStrengthTone(card.querySelector(".fundamental-strength-eur"), eur.score);
+  applyFundamentalStrengthTone(card.querySelector(".fundamental-strength-eur"), secondary.score);
   document.getElementById("fundamental-last-update").textContent = formatFundamentalUpdate(data?.generated_at);
 
   renderFundamentalReasons(insufficient ? [] : data?.top_reasons);
@@ -5525,10 +5591,46 @@ function renderFundamentalInsight(data, options = {}) {
   if (refreshButton) refreshButton.disabled = false;
 }
 
-function renderFundamentalUnavailable(error) {
+function renderFundamentalLoading(symbol) {
+  const normalized = normalizeFundamentalSymbol(symbol);
+  const card = document.getElementById("fundamental-insight-card");
+  const statusLine = document.getElementById("fundamental-status-line");
+  setFundamentalSymbolPresentation(normalized);
+  if (card) {
+    card.dataset.bias = "NEUTRAL";
+    card.dataset.state = "loading";
+  }
+  ["fundamental-bias", "fundamental-usd-strength", "fundamental-eur-strength",
+    "fundamental-usd-label", "fundamental-eur-label"].forEach((id) => {
+    const element = document.getElementById(id);
+    if (element) element.textContent = id === "fundamental-bias" ? "NEUTRAL" : "--";
+  });
+  const confidence = document.getElementById("fundamental-confidence");
+  if (confidence) confidence.textContent = "--% Confidence";
+  const update = document.getElementById("fundamental-last-update");
+  if (update) update.textContent = "Last update: --";
+  renderFundamentalReasons([]);
+  renderFundamentalEvent(null);
+  const preference = document.getElementById("fundamental-guidance-preference");
+  const message = document.getElementById("fundamental-guidance-message");
+  if (preference) preference.textContent = "Loading";
+  if (message) message.textContent = `Loading ${normalized} fundamental data.`;
+  const quality = document.getElementById("fundamental-quality-note");
+  if (quality) {
+    quality.textContent = "";
+    quality.classList.add("hidden");
+  }
+  if (statusLine) {
+    statusLine.textContent = `Loading ${normalized} fundamental insight…`;
+    statusLine.classList.remove("hidden");
+  }
+}
+
+function renderFundamentalUnavailable(error, symbol = currentChartSymbol) {
   const card = document.getElementById("fundamental-insight-card");
   const statusLine = document.getElementById("fundamental-status-line");
   const refreshButton = document.getElementById("fundamental-refresh-btn");
+  setFundamentalSymbolPresentation(symbol);
   if (card) {
     card.dataset.bias = "NEUTRAL";
     card.dataset.state = "error";
@@ -5551,72 +5653,93 @@ function updateFundamentalEventCountdown() {
 
 async function fetchFundamentalInsight(options = {}) {
   const force = options.force === true;
+  const symbol = normalizeFundamentalSymbol(options.symbol || currentChartSymbol);
+  const state = getFundamentalInsightState(symbol);
+  const renderRequest = ++fundamentalInsightRenderRequest;
+  const isCurrentRequest = () => (
+    normalizeFundamentalSymbol(currentChartSymbol) === symbol
+    && renderRequest === fundamentalInsightRenderRequest
+  );
   const now = Date.now();
-  const cacheFresh = fundamentalInsightCache
-    && now - fundamentalInsightFetchedAt < FUNDAMENTAL_INSIGHT_CACHE_MS;
-  const retryBlocked = now < fundamentalInsightRetryAfter;
+  const cacheFresh = state.cache && now - state.fetchedAt < FUNDAMENTAL_INSIGHT_CACHE_MS;
+  const retryBlocked = now < state.retryAfter;
 
-  if (fundamentalInsightCache && ((!force && cacheFresh) || retryBlocked)) {
-    renderFundamentalInsight(fundamentalInsightCache, retryBlocked ? { error: "Retry scheduled" } : {});
-    return fundamentalInsightCache;
+  if (options.symbolSwitch) renderFundamentalLoading(symbol);
+  else setFundamentalSymbolPresentation(symbol);
+
+  if (state.cache && !force && (cacheFresh || retryBlocked)) {
+    if (isCurrentRequest()) {
+      renderFundamentalInsight(state.cache, {
+        symbol,
+        ...(retryBlocked ? { error: "Retry scheduled" } : {}),
+      });
+    }
+    const refreshButton = document.getElementById("fundamental-refresh-btn");
+    if (refreshButton) refreshButton.disabled = false;
+    return state.cache;
   }
-  if (fundamentalInsightInflight) return fundamentalInsightInflight;
 
   const refreshButton = document.getElementById("fundamental-refresh-btn");
   const statusLine = document.getElementById("fundamental-status-line");
   if (refreshButton) refreshButton.disabled = true;
-  if (statusLine && !fundamentalInsightCache) {
-    statusLine.textContent = "Loading fundamental insight…";
+  if (statusLine && !state.cache && !options.symbolSwitch) {
+    statusLine.textContent = `Loading ${symbol} fundamental insight…`;
     statusLine.classList.remove("hidden");
   }
 
-  fundamentalInsightInflight = fetch(FUNDAMENTAL_INSIGHT_URL, {
-    method: "GET",
-    cache: "no-store",
-    timeoutMs: 30000,
-    suppressErrorPanel: true,
-  })
-    .then((response) => {
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
-      return response.json();
+  if (!state.inflight) {
+    const request = fetch(`${BASE_URL}/fundamentals/insight?symbol=${encodeURIComponent(symbol)}`, {
+      method: "GET",
+      cache: "no-store",
+      timeoutMs: 30000,
+      suppressErrorPanel: true,
     })
-    .then((data) => {
-      if (!data || data.symbol !== "EURUSD" || !data.overall_bias || !data.currency_strength) {
-        throw new Error("Invalid Fundamental Insight response");
-      }
-      fundamentalInsightCache = data;
-      fundamentalInsightFetchedAt = Date.now();
-      fundamentalInsightRetryAfter = 0;
-      renderFundamentalInsight(data);
-      return data;
-    })
-    .catch((error) => {
-      console.warn("Fundamental insight unavailable:", error);
-      fundamentalInsightRetryAfter = Date.now() + FUNDAMENTAL_INSIGHT_FAILURE_BACKOFF_MS;
-      if (fundamentalInsightCache) {
-        renderFundamentalInsight(fundamentalInsightCache, { error: error.message || "Request failed" });
-      } else {
-        renderFundamentalUnavailable(error.message || "Request failed");
-      }
-      return fundamentalInsightCache;
-    })
-    .finally(() => {
-      fundamentalInsightInflight = null;
-      if (refreshButton) refreshButton.disabled = false;
-    });
-  return fundamentalInsightInflight;
+      .then((response) => {
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        return response.json();
+      })
+      .then((data) => {
+        const validModel = symbol === "XAUUSD"
+          ? data?.drivers && Number.isFinite(Number(data?.usd_macro_score))
+          : data?.currency_strength?.USD && data?.currency_strength?.EUR;
+        if (!data || normalizeFundamentalSymbol(data.symbol) !== symbol || !data.overall_bias || !validModel) {
+          throw new Error("Invalid Fundamental Insight response");
+        }
+        state.cache = data;
+        state.fetchedAt = Date.now();
+        state.retryAfter = 0;
+        return { data, error: null };
+      })
+      .catch((error) => {
+        console.warn(`${symbol} fundamental insight unavailable:`, error);
+        state.retryAfter = Date.now() + FUNDAMENTAL_INSIGHT_FAILURE_BACKOFF_MS;
+        return { data: state.cache, error: error.message || "Request failed" };
+      })
+      .finally(() => {
+        if (state.inflight === request) state.inflight = null;
+      });
+    state.inflight = request;
+  }
+
+  const result = await state.inflight;
+  if (isCurrentRequest()) {
+    if (result.data) renderFundamentalInsight(result.data, { symbol, ...(result.error ? { error: result.error } : {}) });
+    else renderFundamentalUnavailable(result.error, symbol);
+    if (refreshButton) refreshButton.disabled = false;
+  }
+  return result.data;
 }
 
-function refreshNewsImpact() {
-  return fetchFundamentalInsight({ force: false });
+function refreshNewsImpact(symbol = currentChartSymbol, options = {}) {
+  return fetchFundamentalInsight({ symbol, force: options.force === true, symbolSwitch: options.symbolSwitch === true });
 }
 
 function refreshAllNewsImpact() {
-  return fetchFundamentalInsight({ force: false });
+  return fetchFundamentalInsight({ symbol: currentChartSymbol, force: false });
 }
 
 function refreshFundamentalInsight() {
-  return fetchFundamentalInsight({ force: true });
+  return fetchFundamentalInsight({ symbol: currentChartSymbol, force: true });
 }
 
 document.getElementById("fundamental-refresh-btn")?.addEventListener("click", () => {
@@ -11971,7 +12094,11 @@ function switchChart(symbol, timeframe = currentChartTimeframe) {
   document.getElementById("tradeLevelDragLayer")?.replaceChildren();
   currentChartSymbol = normalizeTradeChartSymbol(symbol);
   currentChartTimeframe = timeframe;
-  refreshNewsImpact(currentChartSymbol);
+  const fundamentalSymbolChanged = previousSymbol !== currentChartSymbol;
+  refreshNewsImpact(currentChartSymbol, {
+    force: fundamentalSymbolChanged,
+    symbolSwitch: fundamentalSymbolChanged,
+  });
 
   initChart(); // 🔥 FORCE NEW PRECISION
 

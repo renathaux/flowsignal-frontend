@@ -11,6 +11,9 @@ const phone = fs.readFileSync(path.join(frontend, "phone.css"), "utf8");
 
 assert.ok(html.includes("FUNDAMENTAL INSIGHT"));
 assert.ok(html.includes('id="fundamental-bias"'));
+assert.ok(html.includes('id="fundamental-symbol"'));
+assert.ok(html.includes('id="fundamental-primary-label"'));
+assert.ok(html.includes('id="fundamental-secondary-label"'));
 assert.ok(html.includes('id="fundamental-usd-strength"'));
 assert.ok(html.includes('id="fundamental-eur-strength"'));
 assert.ok(html.includes('id="fundamental-reasons-list"'));
@@ -18,7 +21,12 @@ assert.ok(html.includes('id="fundamental-event-content"'));
 assert.ok(html.includes('id="fundamental-guidance-preference"'));
 assert.ok(html.includes('id="fundamental-quality-note"'));
 
-assert.ok(script.includes('/fundamentals/insight?symbol=EURUSD'));
+assert.ok(script.includes('/fundamentals/insight?symbol=${encodeURIComponent(symbol)}'));
+assert.ok(script.includes('const fundamentalSymbolChanged = previousSymbol !== currentChartSymbol'));
+assert.ok(script.includes('force: fundamentalSymbolChanged'));
+assert.ok(script.includes('symbolSwitch: fundamentalSymbolChanged'));
+assert.ok(script.includes('renderRequest === fundamentalInsightRenderRequest'));
+assert.ok(script.includes('const fundamentalInsightStates = new Map()'));
 assert.ok(script.includes("FUNDAMENTAL_INSIGHT_CACHE_MS = 5 * 60 * 1000"));
 assert.ok(script.includes('overall.status || "").toUpperCase() !== "ACTIVE"'));
 assert.ok(script.includes('card.dataset.bias = ["BUY", "SELL"].includes(direction)'));
@@ -68,6 +76,8 @@ class TestElement {
 
 const ids = [
   "fundamental-insight-card", "fundamental-status-line", "fundamental-refresh-btn",
+  "fundamental-symbol", "fundamental-primary-label", "fundamental-primary-mark",
+  "fundamental-secondary-label", "fundamental-secondary-mark",
   "fundamental-bias", "fundamental-confidence", "fundamental-usd-strength",
   "fundamental-eur-strength", "fundamental-usd-label", "fundamental-eur-label",
   "fundamental-last-update", "fundamental-reasons-list", "fundamental-event-content",
@@ -88,7 +98,11 @@ const documentStub = {
 const helperStart = script.indexOf("function formatFundamentalNumber");
 const helperEnd = script.indexOf("async function fetchFundamentalInsight");
 assert.ok(helperStart >= 0 && helperEnd > helperStart, "fundamental renderer helpers are extractable");
-const context = vm.createContext({ document: documentStub, Date, Number, String, Object, Array, Math, Set });
+const context = vm.createContext({
+  document: documentStub, Date, Number, String, Object, Array, Math, Set,
+  FUNDAMENTAL_INSIGHT_SYMBOLS: new Set(["EURUSD", "XAUUSD"]),
+  currentChartSymbol: "EURUSD",
+});
 vm.runInContext(script.slice(helperStart, helperEnd), context);
 
 function renderState(direction, status = "ACTIVE", event = null) {
@@ -145,5 +159,33 @@ context.renderFundamentalInsight({
 });
 assert.match(elements["fundamental-quality-note"].textContent, /USD employment stale/);
 assert.match(elements["fundamental-quality-note"].textContent, /provisional evidence/);
+
+context.renderFundamentalInsight({
+  symbol: "XAUUSD",
+  generated_at: "2026-08-10T10:30:24Z",
+  overall_bias: { direction: "NEUTRAL", score: -9.89, confidence: 69.93, status: "ACTIVE" },
+  usd_macro_score: 17.16,
+  gold_support_score: -9.89,
+  drivers: {
+    policy: { status: "ACTIVE", provisional_count: 0 },
+    employment: { status: "STALE", provisional_count: 0 },
+    risk_sentiment: { status: "INSUFFICIENT_DATA", provisional_count: 0 },
+  },
+  top_reasons: [
+    { factor: "growth", direction: "BEARISH_GOLD", summary: "Growth is bearish for gold." },
+  ],
+  next_high_impact_event: null,
+  trading_guidance: { preference: "NEUTRAL", message: "No strong fundamental directional advantage for gold." },
+  data_quality: { missing_factors: ["employment", "risk_sentiment"] },
+});
+assert.equal(elements["fundamental-symbol"].textContent, "XAUUSD");
+assert.equal(elements["fundamental-primary-label"].textContent, "USD MACRO");
+assert.equal(elements["fundamental-secondary-label"].textContent, "GOLD SUPPORT");
+assert.equal(elements["fundamental-usd-strength"].textContent, "+17.16");
+assert.equal(elements["fundamental-eur-strength"].textContent, "-9.89");
+assert.equal(elements["fundamental-bias"].textContent, "NEUTRAL");
+assert.equal(elements["fundamental-guidance-preference"].textContent, "Neutral fundamental guidance");
+assert.match(elements["fundamental-quality-note"].textContent, /Employment stale/);
+assert.match(elements["fundamental-quality-note"].textContent, /Risk Sentiment unavailable/);
 
 console.log("fundamental insight card tests passed");
