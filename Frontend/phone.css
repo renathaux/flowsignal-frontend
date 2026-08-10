@@ -2628,3 +2628,119 @@
     pointer-events: none !important;
   }
 }
+
+/* Fundamental Insight remains available and readable on phones. */
+@media (max-width: 700px) {
+  .news-impact-panel,
+  body.fit-mode .news-impact-panel {
+    display: block !important;
+    width: 100% !important;
+    min-height: 0 !important;
+    margin: 7px 0 0 !important;
+  }
+
+  .news-impact-card.fundamental-insight-card,
+  body.fit-mode .news-impact-card.fundamental-insight-card {
+    min-height: 0 !important;
+    padding: 0 !important;
+    border-radius: 14px !important;
+  }
+
+  .fundamental-insight-header {
+    min-height: 46px;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 9px 11px;
+  }
+
+  .fundamental-insight-title {
+    flex-wrap: wrap;
+    gap: 5px 7px;
+    font-size: 12px;
+    line-height: 1.15;
+  }
+
+  .fundamental-title-icon {
+    width: 24px;
+    height: 24px;
+    flex-basis: 24px;
+    font-size: 15px;
+  }
+
+  .fundamental-header-actions {
+    gap: 5px;
+    font-size: 8px;
+  }
+
+  .fundamental-refresh-btn {
+    width: 28px;
+    height: 28px;
+    font-size: 18px;
+  }
+
+  .fundamental-status-line { padding: 5px 11px; font-size: 9px; }
+
+  .fundamental-summary {
+    min-height: 0;
+    grid-template-columns: 1fr;
+  }
+
+  .fundamental-bias-block {
+    padding: 13px 10px;
+    border-right: 0;
+    border-bottom: 1px solid rgba(91, 118, 148, 0.2);
+  }
+
+  .fundamental-bias { font-size: 38px; }
+  .fundamental-confidence { min-width: 138px; margin-top: 7px; padding: 5px 10px; font-size: 11px; }
+
+  .fundamental-strengths {
+    grid-template-columns: minmax(0, 1fr) 24px minmax(0, 1fr);
+    padding: 12px 8px;
+  }
+
+  .fundamental-strength-value { gap: 6px; }
+  .fundamental-currency-mark {
+    width: 36px;
+    height: 36px;
+    border-width: 6px;
+    font-size: 8px;
+  }
+  .fundamental-strength strong { font-size: clamp(21px, 8vw, 30px); }
+  .fundamental-strength em { font-size: 9px; }
+
+  .fundamental-detail-grid { grid-template-columns: 1fr; }
+  .fundamental-reasons,
+  .fundamental-next-event {
+    min-height: 0;
+    padding: 13px 11px;
+  }
+  .fundamental-reasons { border-right: 0; border-bottom: 1px solid rgba(91, 118, 148, 0.2); }
+  .fundamental-reason { grid-template-columns: 28px minmax(0, 1fr); }
+  .fundamental-reason-icon { width: 28px; height: 28px; }
+  .fundamental-reason em { display: none; }
+  .fundamental-reason div span { white-space: normal; }
+
+  .fundamental-event-content {
+    min-height: 0;
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+  .fundamental-event-countdown { grid-column: 1; grid-row: auto; font-size: 20px; }
+  .fundamental-event-values { grid-column: 1; grid-row: auto; }
+
+  .fundamental-guidance {
+    min-height: 0;
+    grid-template-columns: 1fr;
+    gap: 10px;
+    padding: 12px 11px;
+  }
+  .fundamental-guidance-heading {
+    padding: 0 0 9px;
+    border-right: 0;
+    border-bottom: 1px solid rgba(91, 118, 148, 0.2);
+  }
+  .fundamental-guidance-copy { padding-left: 0; }
+  .fundamental-guidance-copy strong { font-size: 16px; }
+  .fundamental-quality-note { padding: 6px 10px; line-height: 1.35; }
+}

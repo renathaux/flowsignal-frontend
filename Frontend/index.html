@@ -4,9 +4,9 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>nathaux.Fx</title>
-  <link rel="stylesheet" href="style.css?v=58" />
+  <link rel="stylesheet" href="style.css?v=59" />
   <link rel="stylesheet" href="desktop.css?v=1" media="(min-width: 701px)" />
-  <link rel="stylesheet" href="phone.css?v=48" media="(max-width: 700px)" />
+  <link rel="stylesheet" href="phone.css?v=49" media="(max-width: 700px)" />
   <script>
     window.openFlowSignalAccess = function (event) {
       if (event) {
@@ -696,122 +696,84 @@
 </div>
 
 <div class="news-impact-panel">
-  <div class="news-impact-card">
-    <div class="news-impact-header">
-      <div class="news-impact-title">
-        <span class="news-impact-title-icon" aria-hidden="true">▤</span>
-        <span id="news-impact-title">NEWS IMPACT • EURUSD</span>
+  <div id="fundamental-insight-card" class="news-impact-card fundamental-insight-card" data-bias="NEUTRAL" data-state="loading">
+    <header class="fundamental-insight-header">
+      <div class="fundamental-insight-title">
+        <span class="fundamental-title-icon" aria-hidden="true">◎</span>
+        <span>FUNDAMENTAL INSIGHT</span>
+        <i aria-hidden="true">•</i>
+        <strong>EURUSD</strong>
       </div>
-      <div class="news-impact-updated">
-        <span id="news-trading-mode-badge" class="news-trading-mode-badge">NEWS MODE: OFF</span>
-        <span id="news-impact-updated">Last update: --</span>
-        <span class="news-impact-refresh" aria-hidden="true">↻</span>
+      <div class="fundamental-header-actions">
+        <span id="fundamental-last-update">Last update: --</span>
+        <button id="fundamental-refresh-btn" class="fundamental-refresh-btn" type="button" aria-label="Refresh Fundamental Insight">
+          <span aria-hidden="true">↻</span>
+        </button>
       </div>
-    </div>
+    </header>
 
-    <div id="news-impact-empty" class="news-impact-empty">
-      News unavailable.
-    </div>
+    <div id="fundamental-status-line" class="fundamental-status-line" role="status">Loading fundamental insight…</div>
 
-    <div id="news-impact-content" class="news-impact-content hidden">
-      <div class="news-impact-event">
-        <span>NEXT HIGH-IMPACT NEWS</span>
-        <strong id="news-impact-event-name">--</strong>
-        <em id="news-impact-currency">Currency affected: --</em>
-        <b id="news-impact-time">--</b>
-        <small id="news-impact-countdown">Countdown: --</small>
-      </div>
-
-      <div class="news-impact-item">
-        <span>IMPACT</span>
-        <strong id="news-impact-level">--</strong>
-        <div class="news-impact-dots" aria-hidden="true">
-          <i></i><i></i><i></i>
+    <div id="fundamental-insight-content" class="fundamental-insight-content" aria-live="polite">
+      <section class="fundamental-summary" aria-label="Fundamental summary">
+        <div class="fundamental-bias-block">
+          <span class="fundamental-eyebrow">OVERALL BIAS</span>
+          <strong id="fundamental-bias" class="fundamental-bias">NEUTRAL</strong>
+          <span id="fundamental-confidence" class="fundamental-confidence">--% Confidence</span>
         </div>
-      </div>
 
-      <div class="news-impact-item">
-        <span>NEWS BIAS</span>
-        <strong id="news-impact-bias">--</strong>
-        <em id="news-impact-bias-note">Waiting for release</em>
-      </div>
-
-      <div class="news-impact-item">
-        <span id="news-impact-effect-label">EFFECT ON EURUSD</span>
-        <strong id="news-impact-effect">--</strong>
-        <em id="news-impact-effect-note">Normal SMC rules active</em>
-      </div>
-
-      <div class="news-impact-upcoming">
-        <div class="news-impact-upcoming-heading">
-          <span>UPCOMING HIGH IMPACT</span>
-          <em>Next 2 relevant events</em>
-        </div>
-        <div id="news-impact-upcoming-list" class="news-impact-upcoming-list">
-          <div class="news-impact-upcoming-empty">No upcoming high-impact events.</div>
-        </div>
-      </div>
-
-      <div class="news-impact-details">
-        <div>
-          <span>FORECAST</span>
-          <strong id="news-impact-forecast">--</strong>
-        </div>
-        <div>
-          <span>PREVIOUS</span>
-          <strong id="news-impact-previous">--</strong>
-        </div>
-        <div>
-          <span>ACTUAL</span>
-          <strong id="news-impact-actual">--</strong>
-        </div>
-        <div>
-          <span>SOURCE</span>
-          <strong id="news-impact-source">--</strong>
-        </div>
-      </div>
-
-      <div class="news-impact-score">
-        <span>NEWS SCORE</span>
-        <strong id="news-impact-score">0</strong>
-        <em>-25 to +25</em>
-      </div>
-
-      <div class="news-impact-decision">
-        <span>STATUS</span>
-        <strong id="news-impact-decision">Waiting for release</strong>
-        <em id="news-impact-decision-note">Informational only</em>
-      </div>
-
-      <div class="news-impact-trading-window">
-        <div class="news-impact-trading-summary">
-          <span>TRADING WINDOW</span>
-          <strong id="news-trading-window-status">NORMAL TRADING</strong>
-          <em id="news-trading-window-countdown">News protection inactive.</em>
-        </div>
-        <div class="news-impact-window-phases">
-          <div id="news-window-normal-start" class="news-window-phase">
-            <b>🟢 Normal</b>
-            <span>Inactive</span>
+        <div class="fundamental-strengths">
+          <div class="fundamental-strength fundamental-strength-usd">
+            <span class="fundamental-eyebrow">USD STRENGTH</span>
+            <div class="fundamental-strength-value">
+              <span class="fundamental-currency-mark" aria-hidden="true">USD</span>
+              <strong id="fundamental-usd-strength">--</strong>
+            </div>
+            <em id="fundamental-usd-label">--</em>
           </div>
-          <div id="news-window-before" class="news-window-phase">
-            <b>🟡 30m Before</b>
-            <span>Avoid new entries</span>
-          </div>
-          <div id="news-window-release" class="news-window-phase">
-            <b>🔴 Release</b>
-            <span>Extreme volatility</span>
-          </div>
-          <div id="news-window-after" class="news-window-phase">
-            <b>🟡 15m After</b>
-            <span>Stabilizing</span>
-          </div>
-          <div id="news-window-normal" class="news-window-phase">
-            <b>🟢 Normal</b>
-            <span>Clear</span>
+          <span class="fundamental-versus" aria-hidden="true">VS</span>
+          <div class="fundamental-strength fundamental-strength-eur">
+            <span class="fundamental-eyebrow">EUR STRENGTH</span>
+            <div class="fundamental-strength-value">
+              <span class="fundamental-currency-mark" aria-hidden="true">EUR</span>
+              <strong id="fundamental-eur-strength">--</strong>
+            </div>
+            <em id="fundamental-eur-label">--</em>
           </div>
         </div>
+      </section>
+
+      <div class="fundamental-detail-grid">
+        <section class="fundamental-reasons" aria-labelledby="fundamental-reasons-title">
+          <h3 id="fundamental-reasons-title">WHY THIS BIAS?</h3>
+          <div id="fundamental-reasons-list" class="fundamental-reasons-list">
+            <p class="fundamental-empty-copy">Waiting for evidence-backed reasons.</p>
+          </div>
+        </section>
+
+        <section class="fundamental-next-event" aria-labelledby="fundamental-event-title">
+          <h3 id="fundamental-event-title">NEXT HIGH-IMPACT EVENT</h3>
+          <div id="fundamental-event-content" class="fundamental-event-content">
+            <p class="fundamental-empty-copy">No trusted high-impact event currently available.</p>
+          </div>
+        </section>
       </div>
+
+      <section class="fundamental-guidance" aria-labelledby="fundamental-guidance-title">
+        <div class="fundamental-guidance-heading">
+          <span class="fundamental-guidance-icon" aria-hidden="true">⌖</span>
+          <div>
+            <h3 id="fundamental-guidance-title">TRADING GUIDANCE</h3>
+            <small>Informational only</small>
+          </div>
+        </div>
+        <div class="fundamental-guidance-copy">
+          <strong id="fundamental-guidance-preference">Neutral</strong>
+          <span id="fundamental-guidance-message">Fundamental data is loading.</span>
+        </div>
+      </section>
+
+      <footer id="fundamental-quality-note" class="fundamental-quality-note hidden"></footer>
     </div>
   </div>
 </div>
@@ -1520,7 +1482,7 @@
   <script src="performance.js?v=1"></script>
   <script src="history.js?v=1"></script>
   <script src="responsiveLayout.js?v=1"></script>
-  <script src="script.js?v=105"></script>
+  <script src="script.js?v=106"></script>
 </body>
 </html>
   

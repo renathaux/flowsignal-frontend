@@ -10,13 +10,13 @@ const DISPLAY_NAMES = {
 };
 
 const API_URL = `${BASE_URL}/panel-data`;
-const NEWS_IMPACT_URL = `${BASE_URL}/news-impact`;
-const NEWS_IMPACT_CACHE = {};
-const NEWS_IMPACT_INFLIGHT = {};
-const NEWS_IMPACT_FETCHED_AT = {};
-const NEWS_IMPACT_RETRY_AFTER = {};
-const NEWS_IMPACT_CACHE_MS = 60 * 1000;
-const NEWS_IMPACT_FAILURE_BACKOFF_MS = 2 * 60 * 1000;
+const FUNDAMENTAL_INSIGHT_URL = `${BASE_URL}/fundamentals/insight?symbol=EURUSD`;
+let fundamentalInsightCache = null;
+let fundamentalInsightInflight = null;
+let fundamentalInsightFetchedAt = 0;
+let fundamentalInsightRetryAfter = 0;
+const FUNDAMENTAL_INSIGHT_CACHE_MS = 5 * 60 * 1000;
+const FUNDAMENTAL_INSIGHT_FAILURE_BACKOFF_MS = 2 * 60 * 1000;
 let lastGoodBrokerAccountsData = null;
 let brokerAccountActionInProgress = false;
 let currentNewsImpactWindow = null;
@@ -5289,95 +5289,341 @@ function updateNewsTradingWindow() {
   setNewsWindowPhase("news-window-normal", "active", "Active now");
 }
 
-async function fetchNewsImpact(symbol, options = {}) {
-  const normalizedSymbol = String(symbol || "EURUSD").toUpperCase();
-  const shouldRender = options.render !== false;
-  const force = options.force === true;
-  const now = Date.now();
-  const cached = NEWS_IMPACT_CACHE[normalizedSymbol];
-  const cacheFresh = (
-    cached
-    && now - Number(NEWS_IMPACT_FETCHED_AT[normalizedSymbol] || 0) < NEWS_IMPACT_CACHE_MS
-  );
-  const retryBlocked = now < Number(NEWS_IMPACT_RETRY_AFTER[normalizedSymbol] || 0);
-
-  if (cached && ((!force && cacheFresh) || retryBlocked)) {
-    if (
-      shouldRender
-      && typeof currentChartSymbol !== "undefined"
-      && normalizedSymbol === currentChartSymbol
-    ) {
-      renderNewsImpact(normalizedSymbol, cached);
-    }
-    return cached;
-  }
-
-  if (NEWS_IMPACT_INFLIGHT[normalizedSymbol]) {
-    return NEWS_IMPACT_INFLIGHT[normalizedSymbol];
-  }
-
-  NEWS_IMPACT_INFLIGHT[normalizedSymbol] = fetch(
-    `${NEWS_IMPACT_URL}?symbol=${encodeURIComponent(normalizedSymbol)}`,
-    {
-      method: "GET",
-      cache: "no-store",
-      timeoutMs: 10000,
-      suppressErrorPanel: true
-    }
-  )
-    .then((res) => {
-      if (!res.ok) {
-        throw new Error(`HTTP ${res.status}`);
-      }
-      return res.json();
-    })
-    .then((data) => {
-      NEWS_IMPACT_CACHE[normalizedSymbol] = data;
-      NEWS_IMPACT_FETCHED_AT[normalizedSymbol] = Date.now();
-      NEWS_IMPACT_RETRY_AFTER[normalizedSymbol] = 0;
-      if (
-        shouldRender
-        && typeof currentChartSymbol !== "undefined"
-        && normalizedSymbol === currentChartSymbol
-      ) {
-        renderNewsImpact(normalizedSymbol, data);
-      }
-      return data;
-    })
-    .catch((err) => {
-      console.warn("News impact unavailable:", err);
-      NEWS_IMPACT_RETRY_AFTER[normalizedSymbol] = (
-        Date.now() + NEWS_IMPACT_FAILURE_BACKOFF_MS
-      );
-      if (
-        shouldRender
-        && typeof currentChartSymbol !== "undefined"
-        && normalizedSymbol === currentChartSymbol
-      ) {
-        renderNewsImpact(
-          normalizedSymbol,
-          NEWS_IMPACT_CACHE[normalizedSymbol] || { unavailable: true }
-        );
-      }
-      return NEWS_IMPACT_CACHE[normalizedSymbol] || null;
-    })
-    .finally(() => {
-      delete NEWS_IMPACT_INFLIGHT[normalizedSymbol];
-    });
-
-  return NEWS_IMPACT_INFLIGHT[normalizedSymbol];
+function formatFundamentalNumber(value, digits = 2) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) return "--";
+  return `${number > 0 ? "+" : ""}${number.toFixed(digits)}`;
 }
 
-function refreshNewsImpact(symbol = currentChartSymbol) {
-  return fetchNewsImpact(symbol, { force: true, render: true });
+function formatFundamentalUpdate(value) {
+  const date = new Date(value);
+  if (!value || Number.isNaN(date.getTime())) return "Last update: --";
+  return `Last update: ${date.toLocaleTimeString([], {
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone: "UTC",
+    timeZoneName: "short",
+  })}`;
+}
+
+function fundamentalFactorLabel(value) {
+  return String(value || "Fundamental")
+    .replace(/_score$/i, "")
+    .replaceAll("_", " ")
+    .replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+function fundamentalFactorIcon(value) {
+  const factor = String(value || "").toLowerCase();
+  if (factor.includes("policy")) return "🏛";
+  if (factor.includes("employment")) return "▥";
+  if (factor.includes("inflation")) return "◉";
+  if (factor.includes("growth")) return "↗";
+  return "✦";
+}
+
+function fundamentalStrengthLabel(value) {
+  const score = Number(value);
+  if (!Number.isFinite(score)) return "--";
+  if (score >= 35) return "STRONG";
+  if (score > 5) return "POSITIVE";
+  if (score <= -35) return "VERY WEAK";
+  if (score < -5) return "WEAK";
+  return "NEUTRAL";
+}
+
+function formatFundamentalCountdown(releaseTime, fallbackSeconds = null) {
+  const parsed = new Date(releaseTime);
+  let seconds = Number.isNaN(parsed.getTime())
+    ? Number(fallbackSeconds)
+    : Math.max(0, Math.floor((parsed.getTime() - Date.now()) / 1000));
+  if (!Number.isFinite(seconds)) return "--";
+  seconds = Math.max(0, Math.floor(seconds));
+  const days = Math.floor(seconds / 86400);
+  const hours = Math.floor((seconds % 86400) / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+  const remainder = seconds % 60;
+  if (days > 0) return `${days}d ${hours}h ${minutes}m`;
+  if (hours > 0) return `${hours}h ${minutes}m`;
+  return `${minutes}m ${String(remainder).padStart(2, "0")}s`;
+}
+
+function renderFundamentalReasons(reasons) {
+  const list = document.getElementById("fundamental-reasons-list");
+  if (!list) return;
+  list.replaceChildren();
+  const items = Array.isArray(reasons) ? reasons.slice(0, 3) : [];
+  if (!items.length) {
+    const empty = document.createElement("p");
+    empty.className = "fundamental-empty-copy";
+    empty.textContent = "No evidence-backed directional reasons are available.";
+    list.appendChild(empty);
+    return;
+  }
+  items.forEach((reason) => {
+    const row = document.createElement("article");
+    const direction = String(reason.direction || "NEUTRAL").toUpperCase();
+    row.className = `fundamental-reason fundamental-reason-${direction.toLowerCase()}`;
+
+    const icon = document.createElement("span");
+    icon.className = "fundamental-reason-icon";
+    icon.setAttribute("aria-hidden", "true");
+    icon.textContent = fundamentalFactorIcon(reason.factor);
+
+    const copy = document.createElement("div");
+    const title = document.createElement("strong");
+    title.textContent = `${reason.currency || "--"} ${fundamentalFactorLabel(reason.factor)}`;
+    const summary = document.createElement("span");
+    summary.textContent = reason.summary || "Evidence-backed fundamental factor.";
+    const badge = document.createElement("em");
+    badge.textContent = direction;
+    copy.append(title, summary);
+    row.append(icon, copy, badge);
+    list.appendChild(row);
+  });
+}
+
+function renderFundamentalEvent(event) {
+  const container = document.getElementById("fundamental-event-content");
+  if (!container) return;
+  container.replaceChildren();
+  if (!event || typeof event !== "object") {
+    const empty = document.createElement("p");
+    empty.className = "fundamental-empty-copy";
+    empty.textContent = "No trusted high-impact event currently available.";
+    container.appendChild(empty);
+    return;
+  }
+
+  const heading = document.createElement("div");
+  heading.className = "fundamental-event-heading";
+  const currency = document.createElement("span");
+  currency.className = "fundamental-event-currency";
+  currency.textContent = event.currency || "--";
+  const name = document.createElement("strong");
+  name.textContent = event.event_name || "High-impact event";
+  heading.append(currency, name);
+
+  const countdown = document.createElement("div");
+  countdown.className = "fundamental-event-countdown";
+  countdown.dataset.releaseTime = event.release_time || "";
+  countdown.dataset.fallbackSeconds = Number.isFinite(Number(event.countdown))
+    ? String(event.countdown)
+    : "";
+  countdown.textContent = formatFundamentalCountdown(event.release_time, event.countdown);
+
+  const values = document.createElement("dl");
+  values.className = "fundamental-event-values";
+  const fields = [
+    ["Previous", event.previous],
+    ["Forecast", event.forecast],
+    ...(event.actual !== null && event.actual !== undefined && String(event.actual).trim() !== ""
+      ? [["Actual", event.actual]]
+      : []),
+    ["Impact", event.impact || "UNKNOWN"],
+  ];
+  fields.forEach(([label, value]) => {
+    const term = document.createElement("dt");
+    term.textContent = label;
+    const detail = document.createElement("dd");
+    detail.textContent = value === null || value === undefined || String(value).trim() === "" ? "--" : value;
+    if (label === "Impact") detail.className = `impact-${String(value || "unknown").toLowerCase()}`;
+    values.append(term, detail);
+  });
+  container.append(heading, countdown, values);
+}
+
+function fundamentalQualityMessages(data) {
+  const messages = [];
+  const currencies = data?.currency_strength || {};
+  Object.entries(currencies).forEach(([currency, state]) => {
+    Object.entries(state?.factors || {}).forEach(([factor, detail]) => {
+      if (String(detail?.status || "").toUpperCase() === "STALE") {
+        messages.push(`${currency} ${fundamentalFactorLabel(factor).toLowerCase()} stale`);
+      }
+    });
+    (state?.missing_factors || []).forEach((factor) => {
+      messages.push(`${currency} ${fundamentalFactorLabel(factor).toLowerCase()} missing`);
+    });
+  });
+  const quality = data?.data_quality || {};
+  const provisional = Number(quality.provisional_factor_count || 0);
+  if (provisional > 0) messages.push(`${provisional} provisional evidence item${provisional === 1 ? "" : "s"}`);
+  const failures = Number(quality.provider_failures_recent || 0);
+  if (failures > 0) messages.push(`${failures} recent provider warning${failures === 1 ? "" : "s"}`);
+  if (String(data?.overall_bias?.status || "").toUpperCase() === "INSUFFICIENT_DATA") {
+    messages.push("Insufficient fundamental coverage");
+  }
+  return [...new Set(messages)].slice(0, 4);
+}
+
+function applyFundamentalStrengthTone(element, score) {
+  if (!element) return;
+  const value = Number(score);
+  element.classList.remove("is-positive", "is-negative", "is-neutral");
+  element.classList.add(
+    !Number.isFinite(value) || Math.abs(value) < 0.005
+      ? "is-neutral"
+      : value > 0
+        ? "is-positive"
+        : "is-negative"
+  );
+}
+
+function renderFundamentalInsight(data, options = {}) {
+  const card = document.getElementById("fundamental-insight-card");
+  if (!card) return;
+  const overall = data?.overall_bias || {};
+  const insufficient = String(overall.status || "").toUpperCase() !== "ACTIVE";
+  const direction = insufficient ? "NEUTRAL" : String(overall.direction || "NEUTRAL").toUpperCase();
+  const confidence = Number(overall.confidence);
+  const usd = data?.currency_strength?.USD || {};
+  const eur = data?.currency_strength?.EUR || {};
+  const statusLine = document.getElementById("fundamental-status-line");
+  const refreshButton = document.getElementById("fundamental-refresh-btn");
+
+  card.dataset.bias = ["BUY", "SELL"].includes(direction) ? direction : "NEUTRAL";
+  card.dataset.state = options.error ? "error" : insufficient ? "insufficient" : "ready";
+  document.getElementById("fundamental-bias").textContent = direction;
+  document.getElementById("fundamental-confidence").textContent = insufficient
+    ? "Insufficient fundamental data"
+    : `${Number.isFinite(confidence) ? confidence.toFixed(2) : "--"}% Confidence`;
+  document.getElementById("fundamental-usd-strength").textContent = formatFundamentalNumber(usd.score);
+  document.getElementById("fundamental-eur-strength").textContent = formatFundamentalNumber(eur.score);
+  document.getElementById("fundamental-usd-label").textContent = fundamentalStrengthLabel(usd.score);
+  document.getElementById("fundamental-eur-label").textContent = fundamentalStrengthLabel(eur.score);
+  applyFundamentalStrengthTone(card.querySelector(".fundamental-strength-usd"), usd.score);
+  applyFundamentalStrengthTone(card.querySelector(".fundamental-strength-eur"), eur.score);
+  document.getElementById("fundamental-last-update").textContent = formatFundamentalUpdate(data?.generated_at);
+
+  renderFundamentalReasons(insufficient ? [] : data?.top_reasons);
+  renderFundamentalEvent(data?.next_high_impact_event);
+
+  const guidance = data?.trading_guidance || {};
+  const preference = insufficient ? "INSUFFICIENT_DATA" : String(guidance.preference || "NEUTRAL").toUpperCase();
+  document.getElementById("fundamental-guidance-preference").textContent = preference === "PREFER_BUY"
+    ? "Prefer BUY setups"
+    : preference === "PREFER_SELL"
+      ? "Prefer SELL setups"
+      : preference === "INSUFFICIENT_DATA"
+        ? "Neutral — insufficient data"
+        : "Neutral fundamental guidance";
+  document.getElementById("fundamental-guidance-message").textContent = guidance.message
+    || (insufficient ? "Fundamental evidence is currently insufficient." : "No strong fundamental directional advantage.");
+
+  const qualityNote = document.getElementById("fundamental-quality-note");
+  const qualityMessages = fundamentalQualityMessages(data);
+  qualityNote.textContent = qualityMessages.join(" • ");
+  qualityNote.classList.toggle("hidden", !qualityMessages.length);
+
+  if (statusLine) {
+    statusLine.textContent = options.error
+      ? `Showing last successful result • Refresh failed: ${options.error}`
+      : insufficient
+        ? "Fundamental evidence is incomplete."
+        : "";
+    statusLine.classList.toggle("hidden", !statusLine.textContent);
+  }
+  if (refreshButton) refreshButton.disabled = false;
+}
+
+function renderFundamentalUnavailable(error) {
+  const card = document.getElementById("fundamental-insight-card");
+  const statusLine = document.getElementById("fundamental-status-line");
+  const refreshButton = document.getElementById("fundamental-refresh-btn");
+  if (card) {
+    card.dataset.bias = "NEUTRAL";
+    card.dataset.state = "error";
+  }
+  if (statusLine) {
+    statusLine.textContent = `Fundamental insight unavailable${error ? ` • ${error}` : ""}`;
+    statusLine.classList.remove("hidden");
+  }
+  if (refreshButton) refreshButton.disabled = false;
+}
+
+function updateFundamentalEventCountdown() {
+  const countdown = document.querySelector(".fundamental-event-countdown[data-release-time]");
+  if (!countdown) return;
+  countdown.textContent = formatFundamentalCountdown(
+    countdown.dataset.releaseTime,
+    countdown.dataset.fallbackSeconds,
+  );
+}
+
+async function fetchFundamentalInsight(options = {}) {
+  const force = options.force === true;
+  const now = Date.now();
+  const cacheFresh = fundamentalInsightCache
+    && now - fundamentalInsightFetchedAt < FUNDAMENTAL_INSIGHT_CACHE_MS;
+  const retryBlocked = now < fundamentalInsightRetryAfter;
+
+  if (fundamentalInsightCache && ((!force && cacheFresh) || retryBlocked)) {
+    renderFundamentalInsight(fundamentalInsightCache, retryBlocked ? { error: "Retry scheduled" } : {});
+    return fundamentalInsightCache;
+  }
+  if (fundamentalInsightInflight) return fundamentalInsightInflight;
+
+  const refreshButton = document.getElementById("fundamental-refresh-btn");
+  const statusLine = document.getElementById("fundamental-status-line");
+  if (refreshButton) refreshButton.disabled = true;
+  if (statusLine && !fundamentalInsightCache) {
+    statusLine.textContent = "Loading fundamental insight…";
+    statusLine.classList.remove("hidden");
+  }
+
+  fundamentalInsightInflight = fetch(FUNDAMENTAL_INSIGHT_URL, {
+    method: "GET",
+    cache: "no-store",
+    timeoutMs: 12000,
+    suppressErrorPanel: true,
+  })
+    .then((response) => {
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      return response.json();
+    })
+    .then((data) => {
+      if (!data || data.symbol !== "EURUSD" || !data.overall_bias || !data.currency_strength) {
+        throw new Error("Invalid Fundamental Insight response");
+      }
+      fundamentalInsightCache = data;
+      fundamentalInsightFetchedAt = Date.now();
+      fundamentalInsightRetryAfter = 0;
+      renderFundamentalInsight(data);
+      return data;
+    })
+    .catch((error) => {
+      console.warn("Fundamental insight unavailable:", error);
+      fundamentalInsightRetryAfter = Date.now() + FUNDAMENTAL_INSIGHT_FAILURE_BACKOFF_MS;
+      if (fundamentalInsightCache) {
+        renderFundamentalInsight(fundamentalInsightCache, { error: error.message || "Request failed" });
+      } else {
+        renderFundamentalUnavailable(error.message || "Request failed");
+      }
+      return fundamentalInsightCache;
+    })
+    .finally(() => {
+      fundamentalInsightInflight = null;
+      if (refreshButton) refreshButton.disabled = false;
+    });
+  return fundamentalInsightInflight;
+}
+
+function refreshNewsImpact() {
+  return fetchFundamentalInsight({ force: false });
 }
 
 function refreshAllNewsImpact() {
-  return Promise.all([
-    fetchNewsImpact("EURUSD", { force: false, render: true }),
-    fetchNewsImpact("XAUUSD", { force: false, render: true })
-  ]);
+  return fetchFundamentalInsight({ force: false });
 }
+
+function refreshFundamentalInsight() {
+  return fetchFundamentalInsight({ force: true });
+}
+
+document.getElementById("fundamental-refresh-btn")?.addEventListener("click", () => {
+  refreshFundamentalInsight();
+});
 
 function firstUsableValue(...values) {
   return values.find((value) => {
@@ -11996,7 +12242,7 @@ else {
 }
 window.FlowSignalStartup?.record("polling_started", {
   panelIntervalMs: 15000,
-  newsIntervalMs: 60000,
+  fundamentalIntervalMs: FUNDAMENTAL_INSIGHT_CACHE_MS,
   transport: "rest_polling",
 });
 setInterval(() => {
@@ -12005,13 +12251,13 @@ setInterval(() => {
 }, 15000);
 
 setInterval(() => {
-  if (typeof currentChartSymbol === "undefined") return;
-  refreshNewsImpact(currentChartSymbol);
-}, 60000);
+  fetchFundamentalInsight({ force: true });
+}, FUNDAMENTAL_INSIGHT_CACHE_MS);
 
 setInterval(() => {
   updateNewsTradingWindow();
   updateUpcomingHighImpactCountdowns();
+  updateFundamentalEventCountdown();
 }, 1000);
 
 setInterval(refreshConnectionBadgeFreshness, 5000);
