@@ -12926,6 +12926,7 @@ body[data-active-settings-page="settings:strategy"] #settingsModal .settings-mod
   align-items: flex-start;
   margin-bottom: 14px;
 }
+.strategy-parameter-card header > div { min-width: 0; flex: 1 1 auto; }
 .strategy-parameter-card header > span { color: #68a8ff; font-size: 22px; }
 .strategy-parameter-card h3,
 .strategy-settings-placeholder h3 { margin: 0 0 4px; font-size: 16px; }
@@ -13023,6 +13024,48 @@ body[data-active-settings-page="settings:strategy"] #settingsModal .settings-mod
   font-weight: 800;
 }
 
+.strategy-control-state {
+  flex: 0 0 auto;
+  border: 1px solid rgba(245, 185, 66, 0.4);
+  border-radius: 999px;
+  padding: 4px 7px;
+  color: #f5b942;
+  font-size: 9px;
+  font-style: normal;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.strategy-control-state.is-wired {
+  border-color: rgba(74, 222, 128, 0.42);
+  color: #86efac;
+}
+
+.strategy-risk-link-card > strong {
+  color: #cbd6e4;
+  font-size: 13px;
+}
+.strategy-risk-link-card ul {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 7px 20px;
+  margin: 10px 0 16px;
+  padding-left: 20px;
+  color: #9fb0c4;
+  font-size: 12px;
+}
+.strategy-risk-link-card button {
+  width: 100%;
+  min-height: 40px;
+  border: 1px solid #4d93ff;
+  border-radius: 9px;
+  background: rgba(77, 147, 255, 0.11);
+  color: #9bc8ff;
+  font-weight: 900;
+  cursor: pointer;
+}
+
 .strategy-safety-notice {
   margin-top: 14px;
   border: 1px solid rgba(77, 147, 255, 0.35);
@@ -13058,9 +13101,25 @@ body[data-active-settings-page="settings:strategy"] #settingsModal .settings-mod
 @media (max-width: 520px) {
   .strategy-parameter-card { padding: 14px; }
   .strategy-parameter-card > label { grid-template-columns: minmax(0, 1fr) 112px; }
+  .strategy-parameter-card header { flex-wrap: wrap; }
+  .strategy-control-state { margin-left: 33px; }
+  .strategy-risk-link-card ul { grid-template-columns: 1fr; }
   .strategy-settings-actions { align-items: stretch; flex-direction: column; }
   .strategy-settings-actions > div { display: grid; grid-template-columns: 1fr 1fr; }
   .strategy-settings-actions button { width: 100%; }
+}
+
+@media (max-width: 800px) {
+  body[data-active-settings-page="settings:strategy"] #settingsModal .settings-modal-box {
+    padding-top: max(28px, calc(env(safe-area-inset-top) + 18px)) !important;
+    scroll-padding-top: 28px;
+  }
+
+  body[data-active-settings-page="settings:strategy"] .settings-modal-header {
+    position: relative;
+    z-index: 2;
+    min-height: 58px;
+  }
 }
 
 .news-mode-settings-card {

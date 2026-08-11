@@ -33,12 +33,23 @@ assert.equal(context.translate("72.50% Confidence", "fr"), "72.50 % de confiance
 assert.equal(context.translate("72.50% Confidence", "es"), "72.50 % de confianza");
 assert.equal(context.translate("● Active Account", "fr"), "● Compte actif");
 assert.equal(context.translate("↻ Reset to Defaults", "es"), "↻ Restablecer valores");
+assert.equal(context.translate("Strategy profile controls.", "fr"), "Contrôles du profil de stratégie.");
+assert.equal(context.translate("Loaded backend settings · production defaults", "es"), "Ajustes del backend cargados · valores de producción predeterminados");
+assert.equal(context.translate("Disabled · 9/21", "fr"), "Désactivé · 9/21");
+assert.equal(context.translate("Disabled · 9/21", "es"), "Desactivado · 9/21");
+assert.equal(context.translate("points", "es"), "puntos");
+assert.equal(context.translate("minutes", "es"), "minutos");
+assert.equal(context.translate("Foundation only — not active in execution.", "fr"), "Base seulement — non actif dans l’exécution.");
+assert.equal(context.translate("Minimum BOS Buffer", "fr"), "Marge BOS minimale");
+assert.equal(context.translate("Wired — sets the minimum allowed SL distance; it does not choose the swing.", "es"), "Conectado: define la distancia SL mínima permitida; no elige el swing.");
+assert.equal(context.translate("Open Risk Management →", "es"), "Abrir gestión de riesgo →");
+assert.equal(context.translate("Allowed: 1–5 R", "fr"), "Autorisé : 1–5 R");
 assert.equal(context.translate("Dashboard", "en"), "Dashboard");
 assert.equal(context.canTranslate("Current mode: BLOCK ONLY"), true);
 
 assert.ok(source.includes("translateFullInterface(lang);"), "language changes translate the full app");
 assert.ok(source.includes("new MutationObserver"), "dynamic UI refreshes remain translated");
 assert.ok(source.includes("document.documentElement.lang = safeLang"), "document language follows selection");
-assert.ok(html.includes('script.js?v=107'), "browser cache is busted for the translation release");
+assert.ok(html.includes('script.js?v=108'), "browser cache is busted for the translation release");
 
 console.log("full app translation tests passed");

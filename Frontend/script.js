@@ -619,17 +619,23 @@ const FULL_UI_TRANSLATIONS = Object.fromEntries([
   ["News Trading Mode", "Mode de trading des nouvelles", "Modo de trading de noticias"],
   ["Strategy Parameters", "Paramètres de stratégie", "Parámetros de estrategia"],
   ["Risk / Reward", "Risque / Rendement", "Riesgo / Beneficio"],
-  ["Trade exposure and target requirements.", "Exposition du trade et exigences de cible.", "Exposición de la operación y requisitos de objetivo."],
+  ["Trade qualification and target requirements.", "Qualification du trade et exigences de cible.", "Calificación de la operación y requisitos de objetivo."],
   ["Minimum RR", "RR minimal", "RR mínimo"],
   ["Maximum RR", "RR maximal", "RR máximo"],
-  ["Risk Per Trade", "Risque par trade", "Riesgo por operación"],
   ["Structure", "Structure", "Estructura"],
-  ["Price structure and protection thresholds.", "Structure des prix et seuils de protection.", "Estructura de precio y umbrales de protección."],
-  ["Controls where TP1 is placed between entry and TP2. It does not control how much of the position is closed.", "Contrôle le placement de TP1 entre l’entrée et TP2. Cela ne contrôle pas la portion de position clôturée.", "Controla dónde se coloca TP1 entre la entrada y TP2. No controla cuánto de la posición se cierra."],
-  ["After TP1 is touched, this is the SL distance from entry toward TP2. Current production behavior is 50%.", "Après que TP1 est touché, il s’agit de la distance du SL depuis l’entrée vers TP2. Le comportement actuel en production est de 50 %.", "Después de tocar TP1, esta es la distancia del SL desde la entrada hacia TP2. El comportamiento actual en producción es 50 %."],
-  ["BOS Buffer", "Marge BOS", "Margen BOS"],
-  ["Minimum only; current BOS also requires 10% of ATR14 when larger.", "Minimum seulement ; le BOS actuel exige aussi 10 % de l’ATR14 si cette valeur est supérieure.", "Solo mínimo; el BOS actual también exige 10 % del ATR14 si es mayor."],
+  ["Price-structure qualification controls.", "Contrôles de qualification de la structure des prix.", "Controles de calificación de la estructura del precio."],
+  ["Minimum BOS Buffer", "Marge BOS minimale", "Margen BOS mínimo"],
+  ["Wired — the strategy uses the greater of this value or its ATR-based buffer.", "Connecté — la stratégie utilise la valeur la plus élevée entre celle-ci et son tampon basé sur l’ATR.", "Conectado: la estrategia usa el valor mayor entre este y su margen basado en ATR."],
   ["Minimum SL Distance", "Distance SL minimale", "Distancia SL mínima"],
+  ["Wired — sets the minimum allowed SL distance; it does not choose the swing.", "Connecté — définit la distance SL minimale autorisée ; ne choisit pas le swing.", "Conectado: define la distancia SL mínima permitida; no elige el swing."],
+  ["Require M15 Candle Close", "Exiger la clôture de la bougie M15", "Exigir cierre de vela M15"],
+  ["Require Later M5 Confirmation", "Exiger une confirmation M5 ultérieure", "Exigir confirmación M5 posterior"],
+  ["Require Fresh BOS After Consolidation Clears", "Exiger un nouveau BOS après la consolidation", "Exigir un BOS nuevo tras finalizar la consolidación"],
+  ["Foundation only", "Base seulement", "Solo base"],
+  ["Foundation only — not active in execution.", "Base seulement — non actif dans l’exécution.", "Solo base: no está activo en la ejecución."],
+  ["Wired", "Connecté", "Conectado"],
+  ["Enabled", "Activé", "Activado"],
+  ["Disabled", "Désactivé", "Desactivado"],
   ["Trend Filters", "Filtres de tendance", "Filtros de tendencia"],
   ["Closed-candle EMA direction controls.", "Contrôles de direction EMA sur bougies clôturées.", "Controles de dirección EMA con velas cerradas."],
   ["EMA Filter", "Filtre EMA", "Filtro EMA"],
@@ -639,26 +645,47 @@ const FULL_UI_TRANSLATIONS = Object.fromEntries([
   ["Market Filters", "Filtres de marché", "Filtros de mercado"],
   ["Noise and event protection.", "Protection contre le bruit et les événements.", "Protección contra ruido y eventos."],
   ["Consolidation Filter", "Filtre de consolidation", "Filtro de consolidación"],
-  ["Blocks when at least two current consolidation tests pass.", "Bloque lorsque au moins deux tests de consolidation sont positifs.", "Bloquea cuando al menos dos pruebas de consolidación son positivas."],
   ["Manage", "Gérer", "Gestionar"],
-  ["Execution", "Exécution", "Ejecución"],
-  ["Confirmation and post-trade timing.", "Confirmation et délai après trade.", "Confirmación y tiempo posterior a la operación."],
+  ["Execution Timing", "Calendrier d’exécution", "Tiempos de ejecución"],
+  ["Post-trade timing controls.", "Contrôles du délai après trade.", "Controles de tiempo posteriores a la operación."],
   ["Post Trade Cooldown", "Pause après trade", "Pausa posterior a la operación"],
-  ["Closed M15 BOS required", "BOS M15 clôturé requis", "BOS M15 cerrado requerido"],
-  ["Later closed M5 confirmation required", "Confirmation M5 clôturée ultérieure requise", "Confirmación M5 cerrada posterior requerida"],
-  ["Fresh BOS required after consolidation", "Nouveau BOS requis après consolidation", "BOS nuevo requerido tras consolidación"],
+  ["points", "points", "puntos"],
+  ["minutes", "minutes", "minutos"],
+  ["Money, exposure, and position-management controls.", "Contrôles de l’argent, de l’exposition et de la gestion des positions.", "Controles de dinero, exposición y gestión de posiciones."],
+  ["Manage:", "Gérer :", "Gestionar:"],
+  ["Daily loss limits", "Limites de perte quotidienne", "Límites de pérdida diaria"],
+  ["Weekly loss limits", "Limites de perte hebdomadaire", "Límites de pérdida semanal"],
+  ["Position limits", "Limites de positions", "Límites de posiciones"],
+  ["TP1 placement", "Placement de TP1", "Ubicación de TP1"],
+  ["Open Risk Management →", "Ouvrir la gestion du risque →", "Abrir gestión de riesgo →"],
   ["Current Config Summary", "Résumé de la configuration actuelle", "Resumen de configuración actual"],
-  ["Backend-authoritative Phase 2 values.", "Valeurs de Phase 2 contrôlées par le backend.", "Valores de Fase 2 controlados por el backend."],
+  ["Backend-authoritative Phase 3 values.", "Valeurs de Phase 3 contrôlées par le backend.", "Valores de Fase 3 controlados por el backend."],
   ["No settings loaded.", "Aucun paramètre chargé.", "No hay ajustes cargados."],
-  ["Wired: Minimum RR, Maximum RR, and Post Trade Cooldown only", "Connectés : RR minimal, RR maximal et pause après trade uniquement", "Conectados: RR mínimo, RR máximo y pausa posterior a la operación solamente"],
+  ["Wired: Minimum RR, Maximum RR, Minimum BOS Buffer, Minimum SL Distance, and Post Trade Cooldown.", "Connectés : RR minimal, RR maximal, marge BOS minimale, distance SL minimale et pause après trade.", "Conectados: RR mínimo, RR máximo, margen BOS mínimo, distancia SL mínima y pausa posterior a la operación."],
   ["Strategy changes apply only to future evaluations. Existing open positions and broker orders are not modified.", "Les changements de stratégie s’appliquent uniquement aux évaluations futures. Les positions ouvertes et ordres existants ne sont pas modifiés.", "Los cambios de estrategia solo se aplican a evaluaciones futuras. Las posiciones abiertas y órdenes existentes no se modifican."],
   ["Restore Defaults", "Rétablir les valeurs", "Restaurar valores"],
   ["Discard Changes", "Annuler les modifications", "Descartar cambios"],
   ["Save Strategy", "Enregistrer la stratégie", "Guardar estrategia"],
+  ["Strategy profile controls.", "Contrôles du profil de stratégie.", "Controles del perfil de estrategia."],
+  ["Loading strategy settings…", "Chargement des paramètres de stratégie…", "Cargando ajustes de estrategia…"],
+  ["Loaded backend settings · production defaults", "Paramètres du backend chargés · valeurs de production par défaut", "Ajustes del backend cargados · valores de producción predeterminados"],
+  ["Saving strategy settings…", "Enregistrement des paramètres de stratégie…", "Guardando ajustes de estrategia…"],
+  ["Strategy settings saved successfully.", "Paramètres de stratégie enregistrés.", "Ajustes de estrategia guardados correctamente."],
+  ["Restoring production defaults…", "Restauration des valeurs de production par défaut…", "Restaurando valores de producción predeterminados…"],
+  ["Production defaults restored.", "Valeurs de production par défaut restaurées.", "Valores de producción predeterminados restaurados."],
+  ["Unsaved strategy changes.", "Modifications de stratégie non enregistrées.", "Cambios de estrategia sin guardar."],
+  ["Unsaved changes discarded.", "Modifications non enregistrées annulées.", "Cambios sin guardar descartados."],
+  ["🔒 Sign in to view or change Strategy Settings.", "🔒 Connectez-vous pour consulter ou modifier les paramètres de stratégie.", "🔒 Inicia sesión para ver o modificar los ajustes de estrategia."],
+  ["🔒 Sign in to modify Strategy Settings.", "🔒 Connectez-vous pour modifier les paramètres de stratégie.", "🔒 Inicia sesión para modificar los ajustes de estrategia."],
+  ["Could not establish the FlowSignal session.", "Impossible d’établir la session FlowSignal.", "No se pudo establecer la sesión de FlowSignal."],
+  ["Could not load strategy settings", "Impossible de charger les paramètres de stratégie", "No se pudieron cargar los ajustes de estrategia"],
+  ["Could not save strategy settings", "Impossible d’enregistrer les paramètres de stratégie", "No se pudieron guardar los ajustes de estrategia"],
+  ["Could not restore defaults", "Impossible de restaurer les valeurs par défaut", "No se pudieron restaurar los valores predeterminados"],
+  ["Restore the original production strategy defaults?", "Restaurer les valeurs de stratégie de production d’origine ?", "¿Restaurar los valores originales de estrategia de producción?"],
   ["About", "À propos", "Acerca de"],
   ["Advanced controls will be added only after their trading behavior is reviewed and approved.", "Les contrôles avancés seront ajoutés uniquement après examen et approbation de leur comportement de trading.", "Los controles avanzados se añadirán solo tras revisar y aprobar su comportamiento de trading."],
   ["About Strategy Settings", "À propos des paramètres de stratégie", "Acerca de los ajustes de estrategia"],
-  ["Settings are stored by the backend and shared across signed-in browsers. Only Minimum RR, Maximum RR, and Post Trade Cooldown are connected in Phase 2.", "Les paramètres sont stockés par le backend et partagés entre les navigateurs connectés. Seuls le RR minimal, le RR maximal et la pause après trade sont connectés en Phase 2.", "Los ajustes se guardan en el backend y se comparten entre navegadores conectados. Solo RR mínimo, RR máximo y la pausa posterior a la operación están conectados en la Fase 2."],
+  ["Settings are stored by the backend and shared across signed-in browsers. Phase 3 connects only Minimum RR, Maximum RR, Minimum BOS Buffer, Minimum SL Distance, and Post Trade Cooldown.", "Les paramètres sont stockés par le backend et partagés entre les navigateurs connectés. La Phase 3 connecte uniquement le RR minimal, le RR maximal, la marge BOS minimale, la distance SL minimale et la pause après trade.", "Los ajustes se guardan en el backend y se comparten entre navegadores conectados. La Fase 3 conecta únicamente RR mínimo, RR máximo, margen BOS mínimo, distancia SL mínima y la pausa posterior a la operación."],
   ["Choose how high-impact economic news affects new entries.", "Choisissez comment les nouvelles économiques à fort impact affectent les nouvelles entrées.", "Elige cómo las noticias económicas de alto impacto afectan nuevas entradas."],
   ["OFF", "DÉSACTIVÉ", "DESACTIVADO"],
   ["BLOCK ONLY", "BLOCAGE SEULEMENT", "SOLO BLOQUEO"],
@@ -772,6 +799,10 @@ function translateDynamicUiText(source, lang) {
     [/^Countdown: (.+)$/, "Compte à rebours : $1"],
     [/^(\d+) provisional evidence items?$/, "$1 éléments de preuve provisoires"],
     [/^(\d+) recent provider warnings?$/, "$1 avertissements récents du fournisseur"],
+    [/^Enabled( · .+)$/, "Activé$1"],
+    [/^Disabled( · .+)$/, "Désactivé$1"],
+    [/^Allowed: (.+)$/, "Autorisé : $1"],
+    [/^Loaded backend settings · (.+)$/, "Paramètres du backend chargés · $1"],
   ] : [
     [/^(\d+(?:\.\d+)?)% Confidence$/, "$1 % de confianza"],
     [/^Last update: (.+)$/, "Última actualización: $1"],
@@ -793,6 +824,10 @@ function translateDynamicUiText(source, lang) {
     [/^Countdown: (.+)$/, "Cuenta regresiva: $1"],
     [/^(\d+) provisional evidence items?$/, "$1 elementos de evidencia provisionales"],
     [/^(\d+) recent provider warnings?$/, "$1 advertencias recientes del proveedor"],
+    [/^Enabled( · .+)$/, "Activado$1"],
+    [/^Disabled( · .+)$/, "Desactivado$1"],
+    [/^Allowed: (.+)$/, "Permitido: $1"],
+    [/^Loaded backend settings · (.+)$/, "Ajustes del backend cargados · $1"],
   ];
   for (const [pattern, replacement] of replacements) {
     if (pattern.test(source)) return source.replace(pattern, replacement);
@@ -811,7 +846,8 @@ function isTranslatableUiText(text) {
     /^Live Broker:/, /^Loading (EURUSD|XAUUSD) fundamental/,
     /^Fundamental insight unavailable/, /^Showing last successful result/,
     /^Currency affected:/, /^Countdown:/, /provisional evidence item/,
-    /recent provider warning/,
+    /recent provider warning/, /^(Enabled|Disabled) · /,
+    /^Allowed:/, /^Loaded backend settings ·/,
   ].some((pattern) => pattern.test(text));
 }
 
@@ -1379,13 +1415,17 @@ function readStrategySettingInput(input) {
 
 function renderStrategyConfigSummary(settings = {}) {
   if (!strategyConfigSummary) return;
-  const yesNo = (value) => value ? "ON" : "OFF";
+  const yesNo = (value) => value ? "Enabled" : "Disabled";
   strategyConfigSummary.innerHTML = [
     ["RR", `${Number(settings.minimum_rr).toFixed(2)} – ${Number(settings.maximum_rr).toFixed(2)}`],
-    ["Risk", `${settings.risk_per_trade_percent}%`],
+    ["Minimum BOS Buffer", `${settings.bos_buffer_points} points`],
+    ["Minimum SL Distance", `${settings.minimum_sl_distance_points} points`],
     ["EMA", `${yesNo(settings.ema_filter_enabled)} · ${settings.ema_fast_period}/${settings.ema_slow_period}`],
-    ["Consolidation", yesNo(settings.consolidation_filter_enabled)],
-    ["Cooldown", `${settings.post_trade_cooldown_minutes} min`],
+    ["Consolidation Filter", yesNo(settings.consolidation_filter_enabled)],
+    ["Require M15 Candle Close", yesNo(settings.m15_close_required)],
+    ["Require Later M5 Confirmation", yesNo(settings.m5_confirmation_required)],
+    ["Require Fresh BOS After Consolidation Clears", yesNo(settings.fresh_bos_after_consolidation)],
+    ["Post Trade Cooldown", `${settings.post_trade_cooldown_minutes} min`],
   ].map(([label, value]) => `<span>${label}<strong>${value}</strong></span>`).join("");
 }
 
@@ -1469,7 +1509,7 @@ async function persistStrategySettings() {
 
 async function restoreStrategySettingsDefaults() {
   if (strategySettingsSaveInProgress) return;
-  if (!window.confirm("Restore the original production strategy defaults?")) return;
+  if (!window.confirm(translateDynamicUiText("Restore the original production strategy defaults?", currentLang))) return;
   strategySettingsSaveInProgress = true;
   setStrategySettingsControlsDisabled(true);
   setStrategySettingsStatus("Restoring production defaults…");
@@ -13271,6 +13311,10 @@ document.querySelectorAll("[data-strategy-tab]").forEach((button) => {
 
 document.querySelectorAll("[data-open-strategy-news]").forEach((button) => {
   button.addEventListener("click", () => selectStrategySettingsTab("news"));
+});
+
+document.querySelectorAll("[data-open-risk-management]").forEach((button) => {
+  button.addEventListener("click", () => openSettingsPage("risk"));
 });
 
 strategySettingInputs().forEach((input) => {

@@ -5,24 +5,44 @@ const vm = require("node:vm");
 
 const html = fs.readFileSync(path.join(__dirname, "..", "index.html"), "utf8");
 const script = fs.readFileSync(path.join(__dirname, "..", "script.js"), "utf8");
+const style = fs.readFileSync(path.join(__dirname, "..", "style.css"), "utf8");
+
+const strategyPanel = html.slice(
+  html.indexOf('<section id="strategySettingsPanel"'),
+  html.indexOf('<div id="newsModeConfirmModal"')
+);
 
 for (const field of [
-  "minimum_rr", "maximum_rr", "risk_per_trade_percent", "tp1_percent_of_tp2",
-  "protected_sl_percent_of_tp2", "bos_buffer_min_points",
-  "minimum_sl_distance_points", "ema_filter_enabled", "ema_fast_period",
+  "minimum_rr", "maximum_rr", "bos_buffer_points",
+  "minimum_sl_distance_points", "m15_close_required", "m5_confirmation_required",
+  "fresh_bos_after_consolidation", "ema_filter_enabled", "ema_fast_period",
   "ema_slow_period", "consolidation_filter_enabled", "post_trade_cooldown_minutes",
 ]) {
   assert.match(html, new RegExp(`data-strategy-setting="${field}"`));
 }
+for (const duplicatedRiskField of [
+  "risk_per_trade_percent", "tp1_percent_of_tp2", "protected_sl_percent_of_tp2",
+  "max_open_trades",
+]) {
+  assert.doesNotMatch(strategyPanel, new RegExp(`data-strategy-setting="${duplicatedRiskField}"`));
+}
 assert.match(html, /Strategy changes apply only to future evaluations/);
-assert.match(html, /TP1 Distance Toward TP2 \(%\)/);
-assert.match(html, /It does not control how much of the position is closed/);
-assert.match(html, /Current production behavior is 50%/);
-assert.match(html, /Wired: Minimum RR, Maximum RR, and Post Trade Cooldown only/);
+assert.match(strategyPanel, /Wired: Minimum RR, Maximum RR, Minimum BOS Buffer, Minimum SL Distance, and Post Trade Cooldown/);
+assert.match(strategyPanel, /data-open-risk-management/);
+assert.match(strategyPanel, /Open Risk Management/);
+assert.match(strategyPanel, /Foundation only — not active in execution/);
+assert.match(strategyPanel, /the strategy uses the greater of this value or its ATR-based buffer/);
+assert.match(strategyPanel, /does not choose the swing/);
+assert.match(script, /data-open-risk-management/);
+assert.match(script, /openSettingsPage\("risk"\)/);
 assert.match(script, /\/strategy\/settings\/reset/);
 assert.match(script, /function strategySettingsDirty/);
 assert.match(script, /protectedSlPercentOfTp2: "50"/);
 assert.match(script, /protectedSlPercentOfTp2: DEFAULT_RISK_PREFS\.protectedSlPercentOfTp2/);
+assert.match(style, /@media \(max-width: 800px\)[\s\S]*body\[data-active-settings-page="settings:strategy"\] #settingsModal \.settings-modal-box/);
+assert.match(style, /body\[data-active-settings-page="settings:strategy"\] \.settings-modal-header[\s\S]*min-height: 58px/);
+assert.match(style, /\.strategy-settings-grid \{ grid-template-columns: 1fr; \}/);
+assert.match(style, /\.strategy-risk-link-card button \{[\s\S]*width: 100%/);
 
 class ClassList {
   toggle() {}
@@ -65,6 +85,11 @@ const initial = {
   ema_fast_period: 9,
   ema_slow_period: 21,
   consolidation_filter_enabled: true,
+  bos_buffer_points: 10,
+  minimum_sl_distance_points: 100,
+  m15_close_required: true,
+  m5_confirmation_required: true,
+  fresh_bos_after_consolidation: true,
   post_trade_cooldown_minutes: 15,
 };
 let capturedRequest = null;
