@@ -1056,13 +1056,13 @@
         </article>
         <article class="risk-pro-card" data-risk-card="tp1PercentOfTp2">
           <span class="risk-card-icon">◎</span>
-          <h3>TP1 % of TP2</h3><p>Take Profit 1 as % of TP2</p>
+          <h3>TP1 Distance Toward TP2 (%)</h3><p>Controls where TP1 is placed between entry and TP2; not position size.</p>
           <div class="risk-stepper"><button type="button" data-risk-adjust="tp1PercentOfTp2:-5">−</button><input type="number" step="1" min="0" max="100" data-risk-pref="tp1PercentOfTp2"><button type="button" data-risk-adjust="tp1PercentOfTp2:5">+</button></div>
           <div class="risk-bar"><span style="width:56%"></span></div><small>Recommended: 50% – 90%</small>
         </article>
         <article class="risk-pro-card" data-risk-card="protectedSlPercentOfTp2">
           <span class="risk-card-icon">♙</span>
-          <h3>Protected SL % of TP2</h3><p>Move SL to break-even after TP1</p>
+          <h3>Protected SL Distance Toward TP2 (%)</h3><p>After TP1, controls where SL moves between entry and TP2. Current behavior: 50%.</p>
           <div class="risk-stepper"><button type="button" data-risk-adjust="protectedSlPercentOfTp2:-5">−</button><input type="number" step="1" min="0" max="100" data-risk-pref="protectedSlPercentOfTp2"><button type="button" data-risk-adjust="protectedSlPercentOfTp2:5">+</button></div>
           <div class="risk-bar"><span style="width:57%"></span></div><small>Recommended: 30% – 60%</small>
         </article>
@@ -1105,6 +1105,77 @@
     </section>
 
     <section id="strategySettingsPanel" class="settings-panel hidden">
+      <div class="strategy-settings-shell">
+        <div class="strategy-settings-tabs" role="tablist" aria-label="Strategy settings sections">
+          <button type="button" class="is-active" data-strategy-tab="parameters">Strategy Parameters</button>
+          <button type="button" data-strategy-tab="news">News Trading Mode</button>
+          <button type="button" data-strategy-tab="advanced">Advanced Settings</button>
+          <button type="button" data-strategy-tab="about">About</button>
+        </div>
+
+        <div id="strategySettingsLoadState" class="strategy-settings-status" role="status">Loading strategy settings…</div>
+
+        <div class="strategy-settings-pane" data-strategy-pane="parameters">
+          <div class="strategy-settings-grid">
+            <article class="strategy-parameter-card">
+              <header><span>◎</span><div><h3>Risk / Reward</h3><p>Trade exposure and target requirements.</p></div></header>
+              <label>Minimum RR <input type="number" data-strategy-setting="minimum_rr"><small data-strategy-limit="minimum_rr"></small></label>
+              <label>Maximum RR <input type="number" data-strategy-setting="maximum_rr"><small data-strategy-limit="maximum_rr"></small></label>
+              <label>Risk Per Trade <span class="strategy-input-with-unit"><input type="number" data-strategy-setting="risk_per_trade_percent"><b>%</b></span><small data-strategy-limit="risk_per_trade_percent"></small></label>
+            </article>
+
+            <article class="strategy-parameter-card">
+              <header><span>⌁</span><div><h3>Structure</h3><p>Price structure and protection thresholds.</p></div></header>
+              <label>TP1 Distance Toward TP2 (%) <span class="strategy-input-with-unit"><input type="number" data-strategy-setting="tp1_percent_of_tp2"><b>%</b></span><small>Controls where TP1 is placed between entry and TP2. It does not control how much of the position is closed.</small><small data-strategy-limit="tp1_percent_of_tp2"></small></label>
+              <label>Protected SL Distance Toward TP2 (%) <span class="strategy-input-with-unit"><input type="number" data-strategy-setting="protected_sl_percent_of_tp2"><b>%</b></span><small>After TP1 is touched, this is the SL distance from entry toward TP2. Current production behavior is 50%.</small><small data-strategy-limit="protected_sl_percent_of_tp2"></small></label>
+              <label>BOS Buffer <span class="strategy-input-with-unit"><input type="number" data-strategy-setting="bos_buffer_min_points"><b>points</b></span><small>Minimum only; current BOS also requires 10% of ATR14 when larger.</small><small data-strategy-limit="bos_buffer_min_points"></small></label>
+              <label>Minimum SL Distance <span class="strategy-input-with-unit"><input type="number" data-strategy-setting="minimum_sl_distance_points"><b>points</b></span><small data-strategy-limit="minimum_sl_distance_points"></small></label>
+            </article>
+
+            <article class="strategy-parameter-card">
+              <header><span>⌁</span><div><h3>Trend Filters</h3><p>Closed-candle EMA direction controls.</p></div></header>
+              <label class="strategy-toggle-row"><span>EMA Filter<small>BUY/SELL permission from closed M15 candles.</small></span><input type="checkbox" data-strategy-setting="ema_filter_enabled"></label>
+              <label>EMA Fast <input type="number" data-strategy-setting="ema_fast_period"><small data-strategy-limit="ema_fast_period"></small></label>
+              <label>EMA Slow <input type="number" data-strategy-setting="ema_slow_period"><small data-strategy-limit="ema_slow_period"></small></label>
+            </article>
+
+            <article class="strategy-parameter-card">
+              <header><span>◫</span><div><h3>Market Filters</h3><p>Noise and event protection.</p></div></header>
+              <label class="strategy-toggle-row"><span>Consolidation Filter<small>Blocks when at least two current consolidation tests pass.</small></span><input type="checkbox" data-strategy-setting="consolidation_filter_enabled"></label>
+              <div class="strategy-linked-setting">
+                <span><strong>News Trading Mode</strong><small id="strategyNewsModeSummary">Current mode: --</small></span>
+                <button type="button" data-open-strategy-news>Manage</button>
+              </div>
+            </article>
+
+            <article class="strategy-parameter-card">
+              <header><span>▷</span><div><h3>Execution</h3><p>Confirmation and post-trade timing.</p></div></header>
+              <label>Post Trade Cooldown <span class="strategy-input-with-unit"><input type="number" data-strategy-setting="post_trade_cooldown_minutes"><b>minutes</b></span><small data-strategy-limit="post_trade_cooldown_minutes"></small></label>
+              <div class="strategy-rule-list">
+                <span>✓ Closed M15 BOS required</span>
+                <span>✓ Later closed M5 confirmation required</span>
+                <span>✓ Fresh BOS required after consolidation</span>
+              </div>
+            </article>
+
+            <article class="strategy-parameter-card strategy-summary-card">
+              <header><span>▤</span><div><h3>Current Config Summary</h3><p>Backend-authoritative Phase 2 values.</p></div></header>
+              <div id="strategyConfigSummary" class="strategy-config-summary">No settings loaded.</div>
+              <span class="strategy-foundation-badge">Wired: Minimum RR, Maximum RR, and Post Trade Cooldown only</span>
+            </article>
+          </div>
+
+          <div class="strategy-safety-notice">Strategy changes apply only to future evaluations. Existing open positions and broker orders are not modified.</div>
+          <div class="strategy-settings-actions">
+            <button id="strategyRestoreBtn" type="button">Restore Defaults</button>
+            <div>
+              <button id="strategyDiscardBtn" type="button" disabled>Discard Changes</button>
+              <button id="strategySaveBtn" type="button" disabled>Save Strategy</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="strategy-settings-pane hidden" data-strategy-pane="news">
       <div class="news-mode-settings-card">
         <div class="news-mode-settings-heading">
           <div>
@@ -1137,6 +1208,18 @@
         <div class="news-mode-settings-actions">
           <span id="newsModeSaveStatus" role="status">Loading current mode…</span>
           <button id="newsModeSaveBtn" type="button" disabled>Save</button>
+        </div>
+      </div>
+        </div>
+
+        <div class="strategy-settings-pane hidden strategy-settings-placeholder" data-strategy-pane="advanced">
+          <h3>Advanced Settings</h3>
+          <p>Advanced controls will be added only after their trading behavior is reviewed and approved.</p>
+        </div>
+
+        <div class="strategy-settings-pane hidden strategy-settings-placeholder" data-strategy-pane="about">
+          <h3>About Strategy Settings</h3>
+          <p>Settings are stored by the backend and shared across signed-in browsers. Only Minimum RR, Maximum RR, and Post Trade Cooldown are connected in Phase 2.</p>
         </div>
       </div>
     </section>

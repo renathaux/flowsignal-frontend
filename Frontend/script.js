@@ -603,10 +603,10 @@ const FULL_UI_TRANSLATIONS = Object.fromEntries([
   ["Maximum loss per week", "Perte maximale par semaine", "Pérdida máxima por semana"],
   ["Max open trades", "Nombre maximal de trades ouverts", "Máximo de operaciones abiertas"],
   ["Maximum trades at the same time", "Nombre maximal de trades simultanés", "Máximo de operaciones simultáneas"],
-  ["TP1 % of TP2", "TP1 en % de TP2", "TP1 como % de TP2"],
-  ["Take Profit 1 as % of TP2", "Take Profit 1 en % de TP2", "Take Profit 1 como % de TP2"],
-  ["Protected SL % of TP2", "SL protégé en % de TP2", "SL protegido como % de TP2"],
-  ["Move SL to break-even after TP1", "Déplacer le SL au seuil de rentabilité après TP1", "Mover el SL al punto de equilibrio después de TP1"],
+  ["TP1 Distance Toward TP2 (%)", "Distance de TP1 vers TP2 (%)", "Distancia de TP1 hacia TP2 (%)"],
+  ["Controls where TP1 is placed between entry and TP2; not position size.", "Contrôle le placement de TP1 entre l’entrée et TP2, pas la taille de la position.", "Controla dónde se coloca TP1 entre la entrada y TP2, no el tamaño de la posición."],
+  ["Protected SL Distance Toward TP2 (%)", "Distance du SL protégé vers TP2 (%)", "Distancia del SL protegido hacia TP2 (%)"],
+  ["After TP1, controls where SL moves between entry and TP2. Current behavior: 50%.", "Après TP1, contrôle le déplacement du SL entre l’entrée et TP2. Comportement actuel : 50 %.", "Después de TP1, controla dónde se mueve el SL entre la entrada y TP2. Comportamiento actual: 50 %."],
   ["Break-even rule", "Règle du seuil de rentabilité", "Regla de punto de equilibrio"],
   ["Allowed symbols", "Symboles autorisés", "Símbolos permitidos"],
   ["Default trading mode", "Mode de trading par défaut", "Modo de trading predeterminado"],
@@ -617,6 +617,48 @@ const FULL_UI_TRANSLATIONS = Object.fromEntries([
   ["Play sound and show a desktop notification when EURUSD or XAUUSD changes to BUY or SELL.", "Émettre un son et afficher une notification quand EURUSD ou XAUUSD passe à ACHAT ou VENTE.", "Reproducir sonido y mostrar una notificación cuando EURUSD o XAUUSD cambie a COMPRA o VENTA."],
   ["Test Alert", "Tester l’alerte", "Probar alerta"],
   ["News Trading Mode", "Mode de trading des nouvelles", "Modo de trading de noticias"],
+  ["Strategy Parameters", "Paramètres de stratégie", "Parámetros de estrategia"],
+  ["Risk / Reward", "Risque / Rendement", "Riesgo / Beneficio"],
+  ["Trade exposure and target requirements.", "Exposition du trade et exigences de cible.", "Exposición de la operación y requisitos de objetivo."],
+  ["Minimum RR", "RR minimal", "RR mínimo"],
+  ["Maximum RR", "RR maximal", "RR máximo"],
+  ["Risk Per Trade", "Risque par trade", "Riesgo por operación"],
+  ["Structure", "Structure", "Estructura"],
+  ["Price structure and protection thresholds.", "Structure des prix et seuils de protection.", "Estructura de precio y umbrales de protección."],
+  ["Controls where TP1 is placed between entry and TP2. It does not control how much of the position is closed.", "Contrôle le placement de TP1 entre l’entrée et TP2. Cela ne contrôle pas la portion de position clôturée.", "Controla dónde se coloca TP1 entre la entrada y TP2. No controla cuánto de la posición se cierra."],
+  ["After TP1 is touched, this is the SL distance from entry toward TP2. Current production behavior is 50%.", "Après que TP1 est touché, il s’agit de la distance du SL depuis l’entrée vers TP2. Le comportement actuel en production est de 50 %.", "Después de tocar TP1, esta es la distancia del SL desde la entrada hacia TP2. El comportamiento actual en producción es 50 %."],
+  ["BOS Buffer", "Marge BOS", "Margen BOS"],
+  ["Minimum only; current BOS also requires 10% of ATR14 when larger.", "Minimum seulement ; le BOS actuel exige aussi 10 % de l’ATR14 si cette valeur est supérieure.", "Solo mínimo; el BOS actual también exige 10 % del ATR14 si es mayor."],
+  ["Minimum SL Distance", "Distance SL minimale", "Distancia SL mínima"],
+  ["Trend Filters", "Filtres de tendance", "Filtros de tendencia"],
+  ["Closed-candle EMA direction controls.", "Contrôles de direction EMA sur bougies clôturées.", "Controles de dirección EMA con velas cerradas."],
+  ["EMA Filter", "Filtre EMA", "Filtro EMA"],
+  ["BUY/SELL permission from closed M15 candles.", "Permission ACHAT/VENTE selon les bougies M15 clôturées.", "Permiso COMPRA/VENTA según velas M15 cerradas."],
+  ["EMA Fast", "EMA rapide", "EMA rápida"],
+  ["EMA Slow", "EMA lente", "EMA lenta"],
+  ["Market Filters", "Filtres de marché", "Filtros de mercado"],
+  ["Noise and event protection.", "Protection contre le bruit et les événements.", "Protección contra ruido y eventos."],
+  ["Consolidation Filter", "Filtre de consolidation", "Filtro de consolidación"],
+  ["Blocks when at least two current consolidation tests pass.", "Bloque lorsque au moins deux tests de consolidation sont positifs.", "Bloquea cuando al menos dos pruebas de consolidación son positivas."],
+  ["Manage", "Gérer", "Gestionar"],
+  ["Execution", "Exécution", "Ejecución"],
+  ["Confirmation and post-trade timing.", "Confirmation et délai après trade.", "Confirmación y tiempo posterior a la operación."],
+  ["Post Trade Cooldown", "Pause après trade", "Pausa posterior a la operación"],
+  ["Closed M15 BOS required", "BOS M15 clôturé requis", "BOS M15 cerrado requerido"],
+  ["Later closed M5 confirmation required", "Confirmation M5 clôturée ultérieure requise", "Confirmación M5 cerrada posterior requerida"],
+  ["Fresh BOS required after consolidation", "Nouveau BOS requis après consolidation", "BOS nuevo requerido tras consolidación"],
+  ["Current Config Summary", "Résumé de la configuration actuelle", "Resumen de configuración actual"],
+  ["Backend-authoritative Phase 2 values.", "Valeurs de Phase 2 contrôlées par le backend.", "Valores de Fase 2 controlados por el backend."],
+  ["No settings loaded.", "Aucun paramètre chargé.", "No hay ajustes cargados."],
+  ["Wired: Minimum RR, Maximum RR, and Post Trade Cooldown only", "Connectés : RR minimal, RR maximal et pause après trade uniquement", "Conectados: RR mínimo, RR máximo y pausa posterior a la operación solamente"],
+  ["Strategy changes apply only to future evaluations. Existing open positions and broker orders are not modified.", "Les changements de stratégie s’appliquent uniquement aux évaluations futures. Les positions ouvertes et ordres existants ne sont pas modifiés.", "Los cambios de estrategia solo se aplican a evaluaciones futuras. Las posiciones abiertas y órdenes existentes no se modifican."],
+  ["Restore Defaults", "Rétablir les valeurs", "Restaurar valores"],
+  ["Discard Changes", "Annuler les modifications", "Descartar cambios"],
+  ["Save Strategy", "Enregistrer la stratégie", "Guardar estrategia"],
+  ["About", "À propos", "Acerca de"],
+  ["Advanced controls will be added only after their trading behavior is reviewed and approved.", "Les contrôles avancés seront ajoutés uniquement après examen et approbation de leur comportement de trading.", "Los controles avanzados se añadirán solo tras revisar y aprobar su comportamiento de trading."],
+  ["About Strategy Settings", "À propos des paramètres de stratégie", "Acerca de los ajustes de estrategia"],
+  ["Settings are stored by the backend and shared across signed-in browsers. Only Minimum RR, Maximum RR, and Post Trade Cooldown are connected in Phase 2.", "Les paramètres sont stockés par le backend et partagés entre les navigateurs connectés. Seuls le RR minimal, le RR maximal et la pause après trade sont connectés en Phase 2.", "Los ajustes se guardan en el backend y se comparten entre navegadores conectados. Solo RR mínimo, RR máximo y la pausa posterior a la operación están conectados en la Fase 2."],
   ["Choose how high-impact economic news affects new entries.", "Choisissez comment les nouvelles économiques à fort impact affectent les nouvelles entrées.", "Elige cómo las noticias económicas de alto impacto afectan nuevas entradas."],
   ["OFF", "DÉSACTIVÉ", "DESACTIVADO"],
   ["BLOCK ONLY", "BLOCAGE SEULEMENT", "SOLO BLOQUEO"],
@@ -1137,6 +1179,12 @@ const generalSettingsPanel = document.getElementById("generalSettingsPanel");
 const riskSettingsPanel = document.getElementById("riskSettingsPanel");
 const notificationsSettingsPanel = document.getElementById("notificationsSettingsPanel");
 const strategySettingsPanel = document.getElementById("strategySettingsPanel");
+const strategySettingsLoadState = document.getElementById("strategySettingsLoadState");
+const strategySaveBtn = document.getElementById("strategySaveBtn");
+const strategyDiscardBtn = document.getElementById("strategyDiscardBtn");
+const strategyRestoreBtn = document.getElementById("strategyRestoreBtn");
+const strategyConfigSummary = document.getElementById("strategyConfigSummary");
+const strategyNewsModeSummary = document.getElementById("strategyNewsModeSummary");
 const newsModeSaveBtn = document.getElementById("newsModeSaveBtn");
 const newsModeSaveStatus = document.getElementById("newsModeSaveStatus");
 const newsModeCurrentLabel = document.getElementById("newsModeCurrentLabel");
@@ -1156,6 +1204,10 @@ const SESSION_TOKEN_KEY = "flowsignal_session_token";
 const NEWS_MODE_VALUES = new Set(["OFF", "BLOCK_ONLY", "TRADE_CONFIRMED"]);
 let confirmedNewsTradingMode = null;
 let newsModeSaveInProgress = false;
+let confirmedStrategySettings = null;
+let draftStrategySettings = null;
+let strategySettingsLimits = {};
+let strategySettingsSaveInProgress = false;
 // This state is read by early role/layout guards before the chart initializes.
 let tradeVisualPriceLines = {
   EURUSD: {},
@@ -1201,6 +1253,9 @@ function applyConfirmedNewsMode(data, statusMessage = "") {
   if (newsModeEnvironment) {
     const environment = String(data?.broker_environment || "unknown");
     newsModeEnvironment.textContent = environment.charAt(0).toUpperCase() + environment.slice(1);
+  }
+  if (strategyNewsModeSummary) {
+    strategyNewsModeSummary.textContent = `Current mode: ${displayNewsMode(mode)}`;
   }
   const badge = document.getElementById("news-trading-mode-badge");
   if (badge) badge.textContent = `NEWS MODE: ${displayNewsMode(mode)}`;
@@ -1274,6 +1329,176 @@ async function authenticatedSettingsFetch(url, options = {}) {
     if (await ensureFlowSignalSession(true)) response = await send();
   }
   return response;
+}
+
+function strategySettingInputs() {
+  return Array.from(document.querySelectorAll("[data-strategy-setting]"));
+}
+
+function setStrategySettingsStatus(message, state = "") {
+  if (!strategySettingsLoadState) return;
+  strategySettingsLoadState.textContent = message;
+  strategySettingsLoadState.classList.toggle("is-success", state === "success");
+  strategySettingsLoadState.classList.toggle("is-error", state === "error");
+  strategySettingsLoadState.classList.toggle("is-dirty", state === "dirty");
+}
+
+function setStrategySettingsControlsDisabled(disabled) {
+  strategySettingInputs().forEach((input) => { input.disabled = Boolean(disabled); });
+  if (strategyRestoreBtn) strategyRestoreBtn.disabled = Boolean(disabled);
+  syncStrategySettingsActions();
+}
+
+function strategySettingsDirty() {
+  return Boolean(
+    confirmedStrategySettings
+    && draftStrategySettings
+    && JSON.stringify(confirmedStrategySettings) !== JSON.stringify(draftStrategySettings)
+  );
+}
+
+function syncStrategySettingsActions() {
+  const dirty = strategySettingsDirty();
+  if (strategySaveBtn) {
+    strategySaveBtn.disabled = strategySettingsSaveInProgress || !dirty;
+  }
+  if (strategyDiscardBtn) {
+    strategyDiscardBtn.disabled = strategySettingsSaveInProgress || !dirty;
+  }
+}
+
+function readStrategySettingInput(input) {
+  const key = input.dataset.strategySetting;
+  const definition = strategySettingsLimits[key] || {};
+  if (definition.type === "boolean" || input.type === "checkbox") {
+    return Boolean(input.checked);
+  }
+  const value = Number(input.value);
+  return definition.type === "integer" ? Math.trunc(value) : value;
+}
+
+function renderStrategyConfigSummary(settings = {}) {
+  if (!strategyConfigSummary) return;
+  const yesNo = (value) => value ? "ON" : "OFF";
+  strategyConfigSummary.innerHTML = [
+    ["RR", `${Number(settings.minimum_rr).toFixed(2)} – ${Number(settings.maximum_rr).toFixed(2)}`],
+    ["Risk", `${settings.risk_per_trade_percent}%`],
+    ["EMA", `${yesNo(settings.ema_filter_enabled)} · ${settings.ema_fast_period}/${settings.ema_slow_period}`],
+    ["Consolidation", yesNo(settings.consolidation_filter_enabled)],
+    ["Cooldown", `${settings.post_trade_cooldown_minutes} min`],
+  ].map(([label, value]) => `<span>${label}<strong>${value}</strong></span>`).join("");
+}
+
+function renderStrategySettings(settings, limits = strategySettingsLimits) {
+  draftStrategySettings = { ...(settings || {}) };
+  strategySettingInputs().forEach((input) => {
+    const key = input.dataset.strategySetting;
+    const definition = limits[key] || {};
+    if (definition.type === "boolean" || input.type === "checkbox") {
+      input.checked = Boolean(draftStrategySettings[key]);
+    } else {
+      input.value = draftStrategySettings[key] ?? "";
+      if (definition.min !== undefined) input.min = definition.min;
+      if (definition.max !== undefined) input.max = definition.max;
+      if (definition.step !== undefined) input.step = definition.step;
+    }
+    const range = document.querySelector(`[data-strategy-limit="${key}"]`);
+    if (range && definition.min !== undefined && definition.max !== undefined) {
+      const unit = definition.unit ? ` ${definition.unit}` : "";
+      range.textContent = `Allowed: ${definition.min}–${definition.max}${unit}`;
+    }
+  });
+  renderStrategyConfigSummary(draftStrategySettings);
+  syncStrategySettingsActions();
+}
+
+function applyConfirmedStrategySettings(data, message = "") {
+  confirmedStrategySettings = { ...(data?.current || {}) };
+  strategySettingsLimits = { ...(data?.limits || {}) };
+  renderStrategySettings(confirmedStrategySettings, strategySettingsLimits);
+  setStrategySettingsControlsDisabled(false);
+  const updated = data?.last_updated
+    ? new Date(data.last_updated).toLocaleString()
+    : "production defaults";
+  setStrategySettingsStatus(message || `Loaded backend settings · ${updated}`, message ? "success" : "");
+}
+
+async function loadStrategySettings() {
+  setStrategySettingsControlsDisabled(true);
+  if (!hasLocalFlowSignalAccess()) {
+    setStrategySettingsStatus("🔒 Sign in to view or change Strategy Settings.", "error");
+    return false;
+  }
+  setStrategySettingsStatus("Loading strategy settings…");
+  try {
+    const response = await authenticatedSettingsFetch(`${BASE_URL}/strategy/settings`);
+    if (!response) throw new Error("Could not establish the FlowSignal session.");
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.detail || "Could not load strategy settings");
+    applyConfirmedStrategySettings(data);
+    return true;
+  } catch (error) {
+    setStrategySettingsControlsDisabled(true);
+    setStrategySettingsStatus(error.message || "Could not load strategy settings", "error");
+    return false;
+  }
+}
+
+async function persistStrategySettings() {
+  if (strategySettingsSaveInProgress || !strategySettingsDirty()) return;
+  strategySettingsSaveInProgress = true;
+  setStrategySettingsControlsDisabled(true);
+  setStrategySettingsStatus("Saving strategy settings…");
+  try {
+    const response = await authenticatedSettingsFetch(`${BASE_URL}/strategy/settings`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", "X-Request-Source": "flowsignal_web_app" },
+      body: JSON.stringify({ settings: draftStrategySettings }),
+    });
+    if (!response) throw new Error("🔒 Sign in to modify Strategy Settings.");
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.detail || "Could not save strategy settings");
+    applyConfirmedStrategySettings(data, "Strategy settings saved successfully.");
+  } catch (error) {
+    setStrategySettingsStatus(error.message || "Could not save strategy settings", "error");
+  } finally {
+    strategySettingsSaveInProgress = false;
+    setStrategySettingsControlsDisabled(!confirmedStrategySettings);
+  }
+}
+
+async function restoreStrategySettingsDefaults() {
+  if (strategySettingsSaveInProgress) return;
+  if (!window.confirm("Restore the original production strategy defaults?")) return;
+  strategySettingsSaveInProgress = true;
+  setStrategySettingsControlsDisabled(true);
+  setStrategySettingsStatus("Restoring production defaults…");
+  try {
+    const response = await authenticatedSettingsFetch(`${BASE_URL}/strategy/settings/reset`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Request-Source": "flowsignal_web_app" },
+      body: JSON.stringify({ confirm: true }),
+    });
+    if (!response) throw new Error("🔒 Sign in to modify Strategy Settings.");
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.detail || "Could not restore defaults");
+    applyConfirmedStrategySettings(data, "Production defaults restored.");
+  } catch (error) {
+    setStrategySettingsStatus(error.message || "Could not restore defaults", "error");
+  } finally {
+    strategySettingsSaveInProgress = false;
+    setStrategySettingsControlsDisabled(!confirmedStrategySettings);
+  }
+}
+
+function selectStrategySettingsTab(tabName) {
+  document.querySelectorAll("[data-strategy-tab]").forEach((button) => {
+    button.classList.toggle("is-active", button.dataset.strategyTab === tabName);
+  });
+  document.querySelectorAll("[data-strategy-pane]").forEach((pane) => {
+    pane.classList.toggle("hidden", pane.dataset.strategyPane !== tabName);
+  });
+  if (tabName === "news") loadNewsTradingMode();
 }
 
 async function loadNewsTradingMode() {
@@ -1354,7 +1579,7 @@ const DEFAULT_RISK_PREFS = {
   maxWeeklyLoss: "",
   maxOpenTrades: "1",
   tp1PercentOfTp2: "80",
-  protectedSlPercentOfTp2: "40",
+  protectedSlPercentOfTp2: "50",
   breakEvenEnabled: true,
   allowedSymbols: "EURUSD,XAUUSD",
   defaultTradingMode: "PAPER",
@@ -1513,6 +1738,9 @@ async function loadRiskSettingsFromBackend() {
     const prefs = {
       ...DEFAULT_RISK_PREFS,
       ...data.risk,
+      // The legacy endpoint still reports 40 although production protection is
+      // hard-coded at 50. Keep the UI honest until that field is wired later.
+      protectedSlPercentOfTp2: DEFAULT_RISK_PREFS.protectedSlPercentOfTp2,
       allowedSymbols: Array.isArray(data.risk.allowedSymbols)
         ? data.risk.allowedSymbols.join(",")
         : data.risk.allowedSymbols,
@@ -1619,6 +1847,8 @@ function openSettingsPage(page = "general") {
     initializeSignalAlertSettings();
   }
   if (page === "strategy") {
+    selectStrategySettingsTab("parameters");
+    loadStrategySettings();
     loadNewsTradingMode();
   }
   if (page === "risk") {
@@ -13034,6 +13264,36 @@ menuRiskSettingsBtn?.addEventListener("click", () => {
 });
 menuNotificationsSettingsBtn?.addEventListener("click", () => openSettingsPage("notifications"));
 menuStrategySettingsBtn?.addEventListener("click", () => openSettingsPage("strategy"));
+
+document.querySelectorAll("[data-strategy-tab]").forEach((button) => {
+  button.addEventListener("click", () => selectStrategySettingsTab(button.dataset.strategyTab));
+});
+
+document.querySelectorAll("[data-open-strategy-news]").forEach((button) => {
+  button.addEventListener("click", () => selectStrategySettingsTab("news"));
+});
+
+strategySettingInputs().forEach((input) => {
+  input.addEventListener("input", () => {
+    if (!draftStrategySettings) return;
+    draftStrategySettings[input.dataset.strategySetting] = readStrategySettingInput(input);
+    renderStrategyConfigSummary(draftStrategySettings);
+    syncStrategySettingsActions();
+    if (strategySettingsDirty()) {
+      setStrategySettingsStatus("Unsaved strategy changes.", "dirty");
+    }
+  });
+  input.addEventListener("change", () => input.dispatchEvent(new Event("input")));
+});
+
+strategyDiscardBtn?.addEventListener("click", () => {
+  if (!confirmedStrategySettings) return;
+  renderStrategySettings(confirmedStrategySettings, strategySettingsLimits);
+  setStrategySettingsStatus("Unsaved changes discarded.");
+});
+
+strategySaveBtn?.addEventListener("click", persistStrategySettings);
+strategyRestoreBtn?.addEventListener("click", restoreStrategySettingsDefaults);
 
 document.querySelectorAll('input[name="newsTradingMode"]').forEach((input) => {
   input.addEventListener("change", () => {
