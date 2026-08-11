@@ -12979,6 +12979,29 @@ body[data-active-settings-page="settings:strategy"] #settingsModal .settings-mod
   font-size: 10px;
 }
 
+.strategy-edit-control,
+.strategy-toggle-actions {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+}
+.strategy-edit-control > input,
+.strategy-edit-control > .strategy-input-with-unit { flex: 1 1 auto; min-width: 0; }
+.strategy-edit-control button,
+.strategy-toggle-actions button {
+  flex: 0 0 auto;
+  border: 1px solid #3a506b;
+  border-radius: 7px;
+  padding: 7px 8px;
+  background: #101e2d;
+  color: #b9c9dc;
+  font-size: 10px;
+  font-weight: 800;
+  cursor: pointer;
+}
+[data-strategy-value-meta].is-draft { color: #f5b942 !important; }
+
 .strategy-toggle-row,
 .strategy-linked-setting {
   grid-template-columns: minmax(0, 1fr) auto !important;
@@ -13042,6 +13065,20 @@ body[data-active-settings-page="settings:strategy"] #settingsModal .settings-mod
   color: #86efac;
 }
 
+.strategy-fixed-rules { display: grid; gap: 9px; }
+.strategy-fixed-rules > span {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 10px;
+  border-bottom: 1px solid rgba(70, 95, 123, 0.26);
+  padding: 0 0 9px;
+}
+.strategy-fixed-rules > span:last-child { border-bottom: 0; padding-bottom: 0; }
+.strategy-fixed-rules b { color: #cbd6e4; font-size: 12px; }
+.strategy-fixed-rules strong { color: #fff; font-size: 11px; text-align: right; }
+.strategy-fixed-rules em { color: #f5b942; font-size: 9px; font-style: normal; font-weight: 900; }
+
 .strategy-risk-link-card > strong {
   color: #cbd6e4;
   font-size: 13px;
@@ -13075,13 +13112,39 @@ body[data-active-settings-page="settings:strategy"] #settingsModal .settings-mod
   color: #bcd8ff;
   font-size: 12px;
 }
+.strategy-unsaved-summary {
+  display: grid;
+  gap: 8px;
+  margin-top: 14px;
+  border: 1px solid rgba(245, 185, 66, 0.4);
+  border-radius: 10px;
+  padding: 12px 14px;
+  background: rgba(245, 185, 66, 0.07);
+}
+.strategy-unsaved-summary > strong { color: #f5b942; font-size: 12px; }
+.strategy-unsaved-summary > span { display: flex; justify-content: space-between; gap: 12px; font-size: 11px; }
+.strategy-unsaved-summary b { color: #cbd6e4; }
+.strategy-unsaved-summary em { color: #f8d98d; font-style: normal; text-align: right; }
+.strategy-history-state { color: #91a2b8; font-size: 12px; }
+.strategy-history-list { display: grid; gap: 8px; }
+.strategy-history-list article {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 5px 12px;
+  border: 1px solid rgba(70, 95, 123, 0.35);
+  border-radius: 9px;
+  padding: 11px 12px;
+  background: #08111c;
+}
+.strategy-history-list strong { color: #dce7f5; font-size: 12px; }
+.strategy-history-list span { color: #9bc8ff; font-size: 11px; text-align: right; }
+.strategy-history-list small { grid-column: 1 / -1; color: #73869d; font-size: 10px; }
 .strategy-settings-actions {
   display: flex;
   justify-content: space-between;
   gap: 12px;
   margin-top: 14px;
 }
-.strategy-settings-actions > div { display: flex; gap: 9px; }
 .strategy-settings-actions button {
   border: 1px solid #3a506b;
   border-radius: 8px;
@@ -13105,8 +13168,13 @@ body[data-active-settings-page="settings:strategy"] #settingsModal .settings-mod
   .strategy-control-state { margin-left: 33px; }
   .strategy-risk-link-card ul { grid-template-columns: 1fr; }
   .strategy-settings-actions { align-items: stretch; flex-direction: column; }
-  .strategy-settings-actions > div { display: grid; grid-template-columns: 1fr 1fr; }
   .strategy-settings-actions button { width: 100%; }
+  .strategy-fixed-rules > span { grid-template-columns: minmax(0, 1fr) auto; }
+  .strategy-fixed-rules em { grid-column: 2; }
+  .strategy-unsaved-summary > span { align-items: flex-start; flex-direction: column; gap: 3px; }
+  .strategy-unsaved-summary em { text-align: left; }
+  .strategy-history-list article { grid-template-columns: 1fr; }
+  .strategy-history-list span { text-align: left; }
 }
 
 @media (max-width: 800px) {

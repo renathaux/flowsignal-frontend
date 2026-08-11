@@ -1109,7 +1109,7 @@
         <div class="strategy-settings-tabs" role="tablist" aria-label="Strategy settings sections">
           <button type="button" class="is-active" data-strategy-tab="parameters">Strategy Parameters</button>
           <button type="button" data-strategy-tab="news">News Trading Mode</button>
-          <button type="button" data-strategy-tab="advanced">Advanced Settings</button>
+          <button type="button" data-strategy-tab="history">Change History</button>
           <button type="button" data-strategy-tab="about">About</button>
         </div>
 
@@ -1119,29 +1119,19 @@
           <div class="strategy-settings-grid">
             <article class="strategy-parameter-card">
               <header><span>◎</span><div><h3>Risk / Reward</h3><p>Trade qualification and target requirements.</p></div><em class="strategy-control-state is-wired">Wired</em></header>
-              <label>Minimum RR <input type="number" data-strategy-setting="minimum_rr"><small data-strategy-limit="minimum_rr"></small></label>
-              <label>Maximum RR <input type="number" data-strategy-setting="maximum_rr"><small data-strategy-limit="maximum_rr"></small></label>
+              <label>Minimum RR <span class="strategy-edit-control"><input type="number" data-strategy-setting="minimum_rr"><button type="button" data-strategy-reset="minimum_rr">Reset</button></span><small data-strategy-value-meta="minimum_rr"></small><small data-strategy-limit="minimum_rr"></small></label>
+              <label>Maximum RR <span class="strategy-edit-control"><input type="number" data-strategy-setting="maximum_rr"><button type="button" data-strategy-reset="maximum_rr">Reset</button></span><small data-strategy-value-meta="maximum_rr"></small><small data-strategy-limit="maximum_rr"></small></label>
             </article>
 
             <article class="strategy-parameter-card">
               <header><span>⌁</span><div><h3>Structure</h3><p>Price-structure qualification controls.</p></div></header>
-              <label>Minimum BOS Buffer <span class="strategy-input-with-unit"><input type="number" data-strategy-setting="bos_buffer_points"><b>points</b></span><small>Wired — the strategy uses the greater of this value or its ATR-based buffer.</small><small data-strategy-limit="bos_buffer_points"></small></label>
-              <label>Minimum SL Distance <span class="strategy-input-with-unit"><input type="number" data-strategy-setting="minimum_sl_distance_points"><b>points</b></span><small>Wired — sets the minimum allowed SL distance; it does not choose the swing.</small><small data-strategy-limit="minimum_sl_distance_points"></small></label>
-              <label class="strategy-toggle-row"><span>Require M15 Candle Close<small>Foundation only — not active in execution.</small></span><input type="checkbox" data-strategy-setting="m15_close_required"></label>
-              <label class="strategy-toggle-row"><span>Require Later M5 Confirmation<small>Foundation only — not active in execution.</small></span><input type="checkbox" data-strategy-setting="m5_confirmation_required"></label>
-              <label class="strategy-toggle-row"><span>Require Fresh BOS After Consolidation Clears<small>Foundation only — not active in execution.</small></span><input type="checkbox" data-strategy-setting="fresh_bos_after_consolidation"></label>
+              <label>Minimum BOS Buffer <span class="strategy-edit-control"><span class="strategy-input-with-unit"><input type="number" data-strategy-setting="bos_buffer_points"><b>points</b></span><button type="button" data-strategy-reset="bos_buffer_points">Reset</button></span><small data-strategy-value-meta="bos_buffer_points"></small><small>Wired — the strategy uses the greater of this value or its ATR-based buffer.</small><small data-strategy-limit="bos_buffer_points"></small></label>
+              <label>Minimum SL Distance <span class="strategy-edit-control"><span class="strategy-input-with-unit"><input type="number" data-strategy-setting="minimum_sl_distance_points"><b>points</b></span><button type="button" data-strategy-reset="minimum_sl_distance_points">Reset</button></span><small data-strategy-value-meta="minimum_sl_distance_points"></small><small>Wired — sets the minimum allowed SL distance; it does not choose the swing.</small><small data-strategy-limit="minimum_sl_distance_points"></small></label>
             </article>
 
             <article class="strategy-parameter-card">
-              <header><span>⌁</span><div><h3>Trend Filters</h3><p>Closed-candle EMA direction controls.</p></div><em class="strategy-control-state is-foundation">Foundation only</em></header>
-              <label class="strategy-toggle-row"><span>EMA Filter<small>BUY/SELL permission from closed M15 candles.</small></span><input type="checkbox" data-strategy-setting="ema_filter_enabled"></label>
-              <label>EMA Fast <input type="number" data-strategy-setting="ema_fast_period"><small data-strategy-limit="ema_fast_period"></small></label>
-              <label>EMA Slow <input type="number" data-strategy-setting="ema_slow_period"><small data-strategy-limit="ema_slow_period"></small></label>
-            </article>
-
-            <article class="strategy-parameter-card">
-              <header><span>◫</span><div><h3>Market Filters</h3><p>Noise and event protection.</p></div></header>
-              <label class="strategy-toggle-row"><span>Consolidation Filter<small>Foundation only — not active in execution.</small></span><input type="checkbox" data-strategy-setting="consolidation_filter_enabled"></label>
+              <header><span>◫</span><div><h3>Market Filters</h3><p>Noise and event protection.</p></div><em class="strategy-control-state is-wired">Wired</em></header>
+              <label class="strategy-toggle-row"><span>Consolidation Filter<small data-strategy-value-meta="consolidation_filter_enabled"></small><small>When ON, the existing 2-of-3 consolidation detector blocks new setups.</small></span><span class="strategy-toggle-actions"><input type="checkbox" data-strategy-setting="consolidation_filter_enabled"><button type="button" data-strategy-reset="consolidation_filter_enabled">Reset</button></span></label>
               <div class="strategy-linked-setting">
                 <span><strong>News Trading Mode</strong><small id="strategyNewsModeSummary">Current mode: --</small></span>
                 <button type="button" data-open-strategy-news>Manage</button>
@@ -1150,7 +1140,18 @@
 
             <article class="strategy-parameter-card">
               <header><span>▷</span><div><h3>Execution Timing</h3><p>Post-trade timing controls.</p></div><em class="strategy-control-state is-wired">Wired</em></header>
-              <label>Post Trade Cooldown <span class="strategy-input-with-unit"><input type="number" data-strategy-setting="post_trade_cooldown_minutes"><b>minutes</b></span><small data-strategy-limit="post_trade_cooldown_minutes"></small></label>
+              <label>Post Trade Cooldown <span class="strategy-edit-control"><span class="strategy-input-with-unit"><input type="number" data-strategy-setting="post_trade_cooldown_minutes"><b>minutes</b></span><button type="button" data-strategy-reset="post_trade_cooldown_minutes">Reset</button></span><small data-strategy-value-meta="post_trade_cooldown_minutes"></small><small data-strategy-limit="post_trade_cooldown_minutes"></small></label>
+            </article>
+
+            <article class="strategy-parameter-card strategy-fixed-rules-card">
+              <header><span>⌘</span><div><h3>Fixed Strategy Rules</h3><p>Core rules shown for clarity; these are not editable.</p></div><em class="strategy-control-state">Fixed</em></header>
+              <div class="strategy-fixed-rules">
+                <span><b>EMA Trend Filter</b><strong data-fixed-rule="ema">ON · EMA 9 / EMA 21</strong><em>FIXED</em></span>
+                <span><b>M15 Closed Break</b><strong data-fixed-rule="m15">REQUIRED</strong><em>FIXED</em></span>
+                <span><b>Later M5 Confirmation</b><strong data-fixed-rule="m5">REQUIRED</strong><em>FIXED</em></span>
+                <span><b>Fresh BOS After Consolidation</b><strong data-fixed-rule="fresh_bos">REQUIRED</strong><em>FIXED</em></span>
+                <span><b>ATR BOS Buffer Component</b><strong data-fixed-rule="atr">10% ATR14</strong><em>FIXED</em></span>
+              </div>
             </article>
 
             <article class="strategy-parameter-card strategy-risk-link-card">
@@ -1168,19 +1169,17 @@
             </article>
 
             <article class="strategy-parameter-card strategy-summary-card">
-              <header><span>▤</span><div><h3>Current Config Summary</h3><p>Backend-authoritative Phase 3 values.</p></div></header>
+              <header><span>▤</span><div><h3>Current Config Summary</h3><p>Backend-authoritative V1 values.</p></div></header>
               <div id="strategyConfigSummary" class="strategy-config-summary">No settings loaded.</div>
-              <span class="strategy-foundation-badge">Wired: Minimum RR, Maximum RR, Minimum BOS Buffer, Minimum SL Distance, and Post Trade Cooldown.</span>
+              <span class="strategy-foundation-badge">Six wired settings: RR window, BOS floor, minimum SL, cooldown, and consolidation permission.</span>
             </article>
           </div>
 
-          <div class="strategy-safety-notice">Strategy changes apply only to future evaluations. Existing open positions and broker orders are not modified.</div>
+          <div id="strategyUnsavedSummary" class="strategy-unsaved-summary hidden" aria-live="polite"></div>
+          <div class="strategy-safety-notice">Strategy changes apply to future evaluations only. Existing open positions and broker orders are not modified.</div>
           <div class="strategy-settings-actions">
-            <button id="strategyRestoreBtn" type="button">Restore Defaults</button>
-            <div>
-              <button id="strategyDiscardBtn" type="button" disabled>Discard Changes</button>
-              <button id="strategySaveBtn" type="button" disabled>Save Strategy</button>
-            </div>
+            <button id="strategyDiscardBtn" type="button" disabled>Discard Changes</button>
+            <button id="strategySaveBtn" type="button" disabled>Save Strategy</button>
           </div>
         </div>
 
@@ -1221,14 +1220,17 @@
       </div>
         </div>
 
-        <div class="strategy-settings-pane hidden strategy-settings-placeholder" data-strategy-pane="advanced">
-          <h3>Advanced Settings</h3>
-          <p>Advanced controls will be added only after their trading behavior is reviewed and approved.</p>
+        <div class="strategy-settings-pane hidden" data-strategy-pane="history">
+          <article class="strategy-parameter-card strategy-history-card">
+            <header><span>↺</span><div><h3>Change History</h3><p>Recent saved Strategy Settings changes, newest first.</p></div></header>
+            <div id="strategyHistoryState" class="strategy-history-state">Open this tab to load recent changes.</div>
+            <div id="strategyHistoryList" class="strategy-history-list"></div>
+          </article>
         </div>
 
         <div class="strategy-settings-pane hidden strategy-settings-placeholder" data-strategy-pane="about">
           <h3>About Strategy Settings</h3>
-          <p>Settings are stored by the backend and shared across signed-in browsers. Phase 3 connects only Minimum RR, Maximum RR, Minimum BOS Buffer, Minimum SL Distance, and Post Trade Cooldown.</p>
+          <p>Settings are stored by the backend and shared across signed-in browsers. V1 connects exactly six controls: Minimum RR, Maximum RR, Minimum BOS Buffer, Minimum SL Distance, Post Trade Cooldown, and Consolidation Filter.</p>
         </div>
       </div>
     </section>

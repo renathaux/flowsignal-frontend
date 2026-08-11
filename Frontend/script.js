@@ -645,6 +645,26 @@ const FULL_UI_TRANSLATIONS = Object.fromEntries([
   ["Market Filters", "Filtres de marché", "Filtros de mercado"],
   ["Noise and event protection.", "Protection contre le bruit et les événements.", "Protección contra ruido y eventos."],
   ["Consolidation Filter", "Filtre de consolidation", "Filtro de consolidación"],
+  ["When ON, the existing 2-of-3 consolidation detector blocks new setups.", "Lorsqu’il est activé, le détecteur de consolidation 2 sur 3 existant bloque les nouvelles configurations.", "Cuando está activado, el detector de consolidación existente de 2 de 3 bloque nuevas configuraciones."],
+  ["Fixed Strategy Rules", "Règles de stratégie fixes", "Reglas de estrategia fijas"],
+  ["Core rules shown for clarity; these are not editable.", "Règles principales affichées pour plus de clarté ; elles ne sont pas modifiables.", "Reglas principales mostradas para mayor claridad; no son editables."],
+  ["Fixed", "Fixe", "Fijo"],
+  ["FIXED", "FIXE", "FIJO"],
+  ["EMA Trend Filter", "Filtre de tendance EMA", "Filtro de tendencia EMA"],
+  ["M15 Closed Break", "Cassure clôturée M15", "Ruptura cerrada M15"],
+  ["Later M5 Confirmation", "Confirmation M5 ultérieure", "Confirmación M5 posterior"],
+  ["Fresh BOS After Consolidation", "Nouveau BOS après consolidation", "BOS nuevo después de consolidación"],
+  ["ATR BOS Buffer Component", "Composante ATR du tampon BOS", "Componente ATR del margen BOS"],
+  ["REQUIRED", "REQUIS", "REQUERIDO"],
+  ["Reset", "Réinitialiser", "Restablecer"],
+  ["Current", "Actuel", "Actual"],
+  ["Default", "Par défaut", "Predeterminado"],
+  ["Change History", "Historique des modifications", "Historial de cambios"],
+  ["Recent saved Strategy Settings changes, newest first.", "Modifications récentes enregistrées des paramètres de stratégie, les plus récentes en premier.", "Cambios recientes guardados de los ajustes de estrategia, del más reciente al más antiguo."],
+  ["Open this tab to load recent changes.", "Ouvrez cet onglet pour charger les modifications récentes.", "Abre esta pestaña para cargar los cambios recientes."],
+  ["Loading change history…", "Chargement de l’historique…", "Cargando historial de cambios…"],
+  ["No strategy changes have been saved yet.", "Aucune modification de stratégie n’a encore été enregistrée.", "Aún no se han guardado cambios de estrategia."],
+  ["Could not load change history", "Impossible de charger l’historique", "No se pudo cargar el historial de cambios"],
   ["Manage", "Gérer", "Gestionar"],
   ["Execution Timing", "Calendrier d’exécution", "Tiempos de ejecución"],
   ["Post-trade timing controls.", "Contrôles du délai après trade.", "Controles de tiempo posteriores a la operación."],
@@ -659,10 +679,11 @@ const FULL_UI_TRANSLATIONS = Object.fromEntries([
   ["TP1 placement", "Placement de TP1", "Ubicación de TP1"],
   ["Open Risk Management →", "Ouvrir la gestion du risque →", "Abrir gestión de riesgo →"],
   ["Current Config Summary", "Résumé de la configuration actuelle", "Resumen de configuración actual"],
-  ["Backend-authoritative Phase 3 values.", "Valeurs de Phase 3 contrôlées par le backend.", "Valores de Fase 3 controlados por el backend."],
+  ["Backend-authoritative V1 values.", "Valeurs V1 contrôlées par le backend.", "Valores V1 controlados por el backend."],
   ["No settings loaded.", "Aucun paramètre chargé.", "No hay ajustes cargados."],
   ["Wired: Minimum RR, Maximum RR, Minimum BOS Buffer, Minimum SL Distance, and Post Trade Cooldown.", "Connectés : RR minimal, RR maximal, marge BOS minimale, distance SL minimale et pause après trade.", "Conectados: RR mínimo, RR máximo, margen BOS mínimo, distancia SL mínima y pausa posterior a la operación."],
-  ["Strategy changes apply only to future evaluations. Existing open positions and broker orders are not modified.", "Les changements de stratégie s’appliquent uniquement aux évaluations futures. Les positions ouvertes et ordres existants ne sont pas modifiés.", "Los cambios de estrategia solo se aplican a evaluaciones futuras. Las posiciones abiertas y órdenes existentes no se modifican."],
+  ["Strategy changes apply to future evaluations only. Existing open positions and broker orders are not modified.", "Les changements de stratégie s’appliquent uniquement aux évaluations futures. Les positions ouvertes et les ordres existants ne sont pas modifiés.", "Los cambios de estrategia solo se aplican a evaluaciones futuras. Las posiciones abiertas y las órdenes existentes no se modifican."],
+  ["Six wired settings: RR window, BOS floor, minimum SL, cooldown, and consolidation permission.", "Six paramètres connectés : fenêtre RR, plancher BOS, SL minimal, pause et permission de consolidation.", "Seis ajustes conectados: ventana RR, mínimo BOS, SL mínimo, pausa y permiso de consolidación."],
   ["Restore Defaults", "Rétablir les valeurs", "Restaurar valores"],
   ["Discard Changes", "Annuler les modifications", "Descartar cambios"],
   ["Save Strategy", "Enregistrer la stratégie", "Guardar estrategia"],
@@ -685,7 +706,7 @@ const FULL_UI_TRANSLATIONS = Object.fromEntries([
   ["About", "À propos", "Acerca de"],
   ["Advanced controls will be added only after their trading behavior is reviewed and approved.", "Les contrôles avancés seront ajoutés uniquement après examen et approbation de leur comportement de trading.", "Los controles avanzados se añadirán solo tras revisar y aprobar su comportamiento de trading."],
   ["About Strategy Settings", "À propos des paramètres de stratégie", "Acerca de los ajustes de estrategia"],
-  ["Settings are stored by the backend and shared across signed-in browsers. Phase 3 connects only Minimum RR, Maximum RR, Minimum BOS Buffer, Minimum SL Distance, and Post Trade Cooldown.", "Les paramètres sont stockés par le backend et partagés entre les navigateurs connectés. La Phase 3 connecte uniquement le RR minimal, le RR maximal, la marge BOS minimale, la distance SL minimale et la pause après trade.", "Los ajustes se guardan en el backend y se comparten entre navegadores conectados. La Fase 3 conecta únicamente RR mínimo, RR máximo, margen BOS mínimo, distancia SL mínima y la pausa posterior a la operación."],
+  ["Settings are stored by the backend and shared across signed-in browsers. V1 connects exactly six controls: Minimum RR, Maximum RR, Minimum BOS Buffer, Minimum SL Distance, Post Trade Cooldown, and Consolidation Filter.", "Les paramètres sont stockés par le backend et partagés entre les navigateurs connectés. La V1 connecte exactement six contrôles : RR minimal, RR maximal, marge BOS minimale, distance SL minimale, pause après trade et filtre de consolidation.", "Los ajustes se guardan en el backend y se comparten entre navegadores conectados. V1 conecta exactamente seis controles: RR mínimo, RR máximo, margen BOS mínimo, distancia SL mínima, pausa posterior y filtro de consolidación."],
   ["Choose how high-impact economic news affects new entries.", "Choisissez comment les nouvelles économiques à fort impact affectent les nouvelles entrées.", "Elige cómo las noticias económicas de alto impacto afectan nuevas entradas."],
   ["OFF", "DÉSACTIVÉ", "DESACTIVADO"],
   ["BLOCK ONLY", "BLOCAGE SEULEMENT", "SOLO BLOQUEO"],
@@ -803,6 +824,7 @@ function translateDynamicUiText(source, lang) {
     [/^Disabled( · .+)$/, "Désactivé$1"],
     [/^Allowed: (.+)$/, "Autorisé : $1"],
     [/^Loaded backend settings · (.+)$/, "Paramètres du backend chargés · $1"],
+    [/^(\d+) unsaved changes?$/, "$1 modifications non enregistrées"],
   ] : [
     [/^(\d+(?:\.\d+)?)% Confidence$/, "$1 % de confianza"],
     [/^Last update: (.+)$/, "Última actualización: $1"],
@@ -828,6 +850,7 @@ function translateDynamicUiText(source, lang) {
     [/^Disabled( · .+)$/, "Desactivado$1"],
     [/^Allowed: (.+)$/, "Permitido: $1"],
     [/^Loaded backend settings · (.+)$/, "Ajustes del backend cargados · $1"],
+    [/^(\d+) unsaved changes?$/, "$1 cambios sin guardar"],
   ];
   for (const [pattern, replacement] of replacements) {
     if (pattern.test(source)) return source.replace(pattern, replacement);
@@ -847,7 +870,7 @@ function isTranslatableUiText(text) {
     /^Fundamental insight unavailable/, /^Showing last successful result/,
     /^Currency affected:/, /^Countdown:/, /provisional evidence item/,
     /recent provider warning/, /^(Enabled|Disabled) · /,
-    /^Allowed:/, /^Loaded backend settings ·/,
+    /^Allowed:/, /^Loaded backend settings ·/, /unsaved changes?$/,
   ].some((pattern) => pattern.test(text));
 }
 
@@ -1220,6 +1243,9 @@ const strategySaveBtn = document.getElementById("strategySaveBtn");
 const strategyDiscardBtn = document.getElementById("strategyDiscardBtn");
 const strategyRestoreBtn = document.getElementById("strategyRestoreBtn");
 const strategyConfigSummary = document.getElementById("strategyConfigSummary");
+const strategyUnsavedSummary = document.getElementById("strategyUnsavedSummary");
+const strategyHistoryState = document.getElementById("strategyHistoryState");
+const strategyHistoryList = document.getElementById("strategyHistoryList");
 const strategyNewsModeSummary = document.getElementById("strategyNewsModeSummary");
 const newsModeSaveBtn = document.getElementById("newsModeSaveBtn");
 const newsModeSaveStatus = document.getElementById("newsModeSaveStatus");
@@ -1243,6 +1269,9 @@ let newsModeSaveInProgress = false;
 let confirmedStrategySettings = null;
 let draftStrategySettings = null;
 let strategySettingsLimits = {};
+let strategySettingsDefaults = {};
+let strategyFixedRules = {};
+let strategyHistoryItems = [];
 let strategySettingsSaveInProgress = false;
 // This state is read by early role/layout guards before the chart initializes.
 let tradeVisualPriceLines = {
@@ -1381,15 +1410,25 @@ function setStrategySettingsStatus(message, state = "") {
 
 function setStrategySettingsControlsDisabled(disabled) {
   strategySettingInputs().forEach((input) => { input.disabled = Boolean(disabled); });
+  document.querySelectorAll("[data-strategy-reset]").forEach((button) => {
+    button.disabled = Boolean(disabled);
+  });
   if (strategyRestoreBtn) strategyRestoreBtn.disabled = Boolean(disabled);
   syncStrategySettingsActions();
 }
 
 function strategySettingsDirty() {
-  return Boolean(
-    confirmedStrategySettings
-    && draftStrategySettings
-    && JSON.stringify(confirmedStrategySettings) !== JSON.stringify(draftStrategySettings)
+  return strategySettingChanges().length > 0;
+}
+
+function editableStrategyKeys() {
+  return strategySettingInputs().map((input) => input.dataset.strategySetting);
+}
+
+function strategySettingChanges() {
+  if (!confirmedStrategySettings || !draftStrategySettings) return [];
+  return editableStrategyKeys().filter(
+    (key) => JSON.stringify(confirmedStrategySettings[key]) !== JSON.stringify(draftStrategySettings[key])
   );
 }
 
@@ -1413,6 +1452,89 @@ function readStrategySettingInput(input) {
   return definition.type === "integer" ? Math.trunc(value) : value;
 }
 
+const STRATEGY_SETTING_LABELS = {
+  minimum_rr: "Minimum RR",
+  maximum_rr: "Maximum RR",
+  bos_buffer_points: "Minimum BOS Buffer",
+  minimum_sl_distance_points: "Minimum SL Distance",
+  post_trade_cooldown_minutes: "Post Trade Cooldown",
+  consolidation_filter_enabled: "Consolidation Filter",
+};
+
+function strategySettingLabel(key) {
+  return translateDynamicUiText(STRATEGY_SETTING_LABELS[key] || key, currentLang);
+}
+
+function formatStrategySettingValue(key, value) {
+  if (typeof value === "boolean") {
+    return translateDynamicUiText(value ? "Enabled" : "Disabled", currentLang);
+  }
+  const definition = strategySettingsLimits[key] || {};
+  const numeric = Number(value);
+  const displayed = Number.isFinite(numeric)
+    ? (definition.type === "number" ? numeric.toFixed(2) : String(numeric))
+    : String(value ?? "--");
+  const unit = definition.unit && !["R"].includes(definition.unit)
+    ? ` ${translateDynamicUiText(definition.unit, currentLang)}`
+    : "";
+  return `${displayed}${unit}`;
+}
+
+function renderStrategyValueMetadata() {
+  document.querySelectorAll("[data-strategy-value-meta]").forEach((element) => {
+    const key = element.dataset.strategyValueMeta;
+    const current = confirmedStrategySettings?.[key];
+    const valueDefault = strategySettingsDefaults?.[key];
+    const draft = draftStrategySettings?.[key];
+    const changed = JSON.stringify(current) !== JSON.stringify(draft);
+    const currentText = `${translateDynamicUiText("Current", currentLang)}: ${formatStrategySettingValue(key, current)}`;
+    const defaultText = `${translateDynamicUiText("Default", currentLang)}: ${formatStrategySettingValue(key, valueDefault)}`;
+    const draftText = changed
+      ? ` · ${formatStrategySettingValue(key, current)} → ${formatStrategySettingValue(key, draft)}`
+      : "";
+    element.textContent = `${currentText} · ${defaultText}${draftText}`;
+    element.classList.toggle("is-draft", changed);
+  });
+}
+
+function renderStrategyUnsavedSummary() {
+  if (!strategyUnsavedSummary) return;
+  const changes = strategySettingChanges();
+  strategyUnsavedSummary.classList.toggle("hidden", changes.length === 0);
+  if (!changes.length) {
+    strategyUnsavedSummary.innerHTML = "";
+    return;
+  }
+  const countLabel = translateDynamicUiText(
+    changes.length === 1 ? "1 unsaved change" : `${changes.length} unsaved changes`,
+    currentLang,
+  );
+  strategyUnsavedSummary.innerHTML = `<strong>${countLabel}</strong>${changes.map((key) => (
+    `<span><b>${strategySettingLabel(key)}</b><em>${formatStrategySettingValue(key, confirmedStrategySettings[key])} → ${formatStrategySettingValue(key, draftStrategySettings[key])}</em></span>`
+  )).join("")}`;
+}
+
+function syncStrategySettingsPresentation() {
+  renderStrategyConfigSummary(draftStrategySettings || {});
+  renderStrategyValueMetadata();
+  renderStrategyUnsavedSummary();
+  syncStrategySettingsActions();
+}
+
+function resetStrategySettingDraft(key) {
+  if (!draftStrategySettings || !(key in strategySettingsDefaults)) return false;
+  draftStrategySettings[key] = strategySettingsDefaults[key];
+  const input = strategySettingInputs().find(
+    (candidate) => candidate.dataset.strategySetting === key
+  );
+  if (input) {
+    if (input.type === "checkbox") input.checked = Boolean(draftStrategySettings[key]);
+    else input.value = draftStrategySettings[key];
+  }
+  syncStrategySettingsPresentation();
+  return true;
+}
+
 function renderStrategyConfigSummary(settings = {}) {
   if (!strategyConfigSummary) return;
   const yesNo = (value) => value ? "Enabled" : "Disabled";
@@ -1420,13 +1542,23 @@ function renderStrategyConfigSummary(settings = {}) {
     ["RR", `${Number(settings.minimum_rr).toFixed(2)} – ${Number(settings.maximum_rr).toFixed(2)}`],
     ["Minimum BOS Buffer", `${settings.bos_buffer_points} points`],
     ["Minimum SL Distance", `${settings.minimum_sl_distance_points} points`],
-    ["EMA", `${yesNo(settings.ema_filter_enabled)} · ${settings.ema_fast_period}/${settings.ema_slow_period}`],
     ["Consolidation Filter", yesNo(settings.consolidation_filter_enabled)],
-    ["Require M15 Candle Close", yesNo(settings.m15_close_required)],
-    ["Require Later M5 Confirmation", yesNo(settings.m5_confirmation_required)],
-    ["Require Fresh BOS After Consolidation Clears", yesNo(settings.fresh_bos_after_consolidation)],
     ["Post Trade Cooldown", `${settings.post_trade_cooldown_minutes} min`],
-  ].map(([label, value]) => `<span>${label}<strong>${value}</strong></span>`).join("");
+  ].map(([label, value]) => `<span>${translateDynamicUiText(label, currentLang)}<strong>${value}</strong></span>`).join("");
+}
+
+function renderFixedStrategyRules(rules = {}) {
+  const ema = rules.ema_trend_filter || {};
+  const values = {
+    ema: `${ema.enabled === false ? "OFF" : "ON"} · EMA ${ema.fast_period ?? 9} / EMA ${ema.slow_period ?? 21}`,
+    m15: rules.m15_closed_break_required === false ? "OPTIONAL" : "REQUIRED",
+    m5: rules.later_m5_confirmation_required === false ? "OPTIONAL" : "REQUIRED",
+    fresh_bos: rules.fresh_bos_after_consolidation_required === false ? "OPTIONAL" : "REQUIRED",
+    atr: `${Math.round(Number(rules.atr_bos_buffer_fraction ?? 0.1) * 100)}% ATR${rules.atr_period ?? 14}`,
+  };
+  document.querySelectorAll("[data-fixed-rule]").forEach((element) => {
+    element.textContent = translateDynamicUiText(values[element.dataset.fixedRule] || "--", currentLang);
+  });
 }
 
 function renderStrategySettings(settings, limits = strategySettingsLimits) {
@@ -1448,14 +1580,16 @@ function renderStrategySettings(settings, limits = strategySettingsLimits) {
       range.textContent = `Allowed: ${definition.min}–${definition.max}${unit}`;
     }
   });
-  renderStrategyConfigSummary(draftStrategySettings);
-  syncStrategySettingsActions();
+  syncStrategySettingsPresentation();
 }
 
 function applyConfirmedStrategySettings(data, message = "") {
   confirmedStrategySettings = { ...(data?.current || {}) };
   strategySettingsLimits = { ...(data?.limits || {}) };
+  strategySettingsDefaults = { ...(data?.defaults || {}) };
+  strategyFixedRules = { ...(data?.fixed_rules || {}) };
   renderStrategySettings(confirmedStrategySettings, strategySettingsLimits);
+  renderFixedStrategyRules(strategyFixedRules);
   setStrategySettingsControlsDisabled(false);
   const updated = data?.last_updated
     ? new Date(data.last_updated).toLocaleString()
@@ -1493,7 +1627,9 @@ async function persistStrategySettings() {
     const response = await authenticatedSettingsFetch(`${BASE_URL}/strategy/settings`, {
       method: "PUT",
       headers: { "Content-Type": "application/json", "X-Request-Source": "flowsignal_web_app" },
-      body: JSON.stringify({ settings: draftStrategySettings }),
+      body: JSON.stringify({ settings: Object.fromEntries(
+        editableStrategyKeys().map((key) => [key, draftStrategySettings[key]])
+      ) }),
     });
     if (!response) throw new Error("🔒 Sign in to modify Strategy Settings.");
     const data = await response.json();
@@ -1539,6 +1675,39 @@ function selectStrategySettingsTab(tabName) {
     pane.classList.toggle("hidden", pane.dataset.strategyPane !== tabName);
   });
   if (tabName === "news") loadNewsTradingMode();
+  if (tabName === "history") loadStrategySettingsHistory();
+}
+
+async function loadStrategySettingsHistory() {
+  if (!strategyHistoryState || !strategyHistoryList) return false;
+  strategyHistoryState.textContent = translateDynamicUiText("Loading change history…", currentLang);
+  strategyHistoryList.innerHTML = "";
+  try {
+    const response = await authenticatedSettingsFetch(`${BASE_URL}/strategy/settings/history?limit=50`);
+    if (!response) throw new Error("🔒 Sign in to view or change Strategy Settings.");
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.detail || "Could not load change history");
+    strategyHistoryItems = Array.isArray(data.items) ? data.items : [];
+    if (!strategyHistoryItems.length) {
+      strategyHistoryState.textContent = translateDynamicUiText("No strategy changes have been saved yet.", currentLang);
+      return true;
+    }
+    renderStrategySettingsHistory();
+    return true;
+  } catch (error) {
+    strategyHistoryState.textContent = error.message || translateDynamicUiText("Could not load change history", currentLang);
+    return false;
+  }
+}
+
+function renderStrategySettingsHistory() {
+  if (!strategyHistoryState || !strategyHistoryList || !strategyHistoryItems.length) return;
+  strategyHistoryState.textContent = "";
+  strategyHistoryList.innerHTML = strategyHistoryItems.map((item) => {
+      const key = item.setting_name;
+      const changedAt = item.changed_at ? new Date(item.changed_at).toLocaleString() : "--";
+      return `<article><strong>${strategySettingLabel(key)}</strong><span>${formatStrategySettingValue(key, item.previous_value)} → ${formatStrategySettingValue(key, item.new_value)}</span><small>${changedAt}</small></article>`;
+  }).join("");
 }
 
 async function loadNewsTradingMode() {
@@ -4729,6 +4898,9 @@ if (mainLastSignal) {
     );
   }
   translateFullInterface(lang);
+  if (confirmedStrategySettings) syncStrategySettingsPresentation();
+  if (strategyFixedRules) renderFixedStrategyRules(strategyFixedRules);
+  if (strategyHistoryItems.length) renderStrategySettingsHistory();
 }
 
 
@@ -13321,13 +13493,22 @@ strategySettingInputs().forEach((input) => {
   input.addEventListener("input", () => {
     if (!draftStrategySettings) return;
     draftStrategySettings[input.dataset.strategySetting] = readStrategySettingInput(input);
-    renderStrategyConfigSummary(draftStrategySettings);
-    syncStrategySettingsActions();
+    syncStrategySettingsPresentation();
     if (strategySettingsDirty()) {
       setStrategySettingsStatus("Unsaved strategy changes.", "dirty");
     }
   });
   input.addEventListener("change", () => input.dispatchEvent(new Event("input")));
+});
+
+document.querySelectorAll("[data-strategy-reset]").forEach((button) => {
+  button.addEventListener("click", () => {
+    const key = button.dataset.strategyReset;
+    if (!resetStrategySettingDraft(key)) return;
+    if (strategySettingsDirty()) {
+      setStrategySettingsStatus("Unsaved strategy changes.", "dirty");
+    }
+  });
 });
 
 strategyDiscardBtn?.addEventListener("click", () => {
@@ -13337,7 +13518,6 @@ strategyDiscardBtn?.addEventListener("click", () => {
 });
 
 strategySaveBtn?.addEventListener("click", persistStrategySettings);
-strategyRestoreBtn?.addEventListener("click", restoreStrategySettingsDefaults);
 
 document.querySelectorAll('input[name="newsTradingMode"]').forEach((input) => {
   input.addEventListener("change", () => {
