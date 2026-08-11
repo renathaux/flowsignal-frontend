@@ -136,6 +136,12 @@ function xauusdData() {
   assert.equal(elements["fundamental-secondary-label"].textContent, "EUR STRENGTH");
   assert.equal(elements["fundamental-bias"].textContent, "BUY");
 
+  const manualRefresh = context.refreshFundamentalInsight();
+  assert.match(pending[3].url, /symbol=EURUSD&refresh=true$/);
+  pending[3].resolve(response(eurusdData("SELL")));
+  await manualRefresh;
+  assert.equal(elements["fundamental-bias"].textContent, "SELL");
+
   console.log("fundamental symbol sync race tests passed");
 })().catch((error) => {
   console.error(error);

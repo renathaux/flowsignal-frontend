@@ -5688,7 +5688,8 @@ async function fetchFundamentalInsight(options = {}) {
   }
 
   if (!state.inflight) {
-    const request = fetch(`${BASE_URL}/fundamentals/insight?symbol=${encodeURIComponent(symbol)}`, {
+    const refreshQuery = options.bypassBackendCache === true ? "&refresh=true" : "";
+    const request = fetch(`${BASE_URL}/fundamentals/insight?symbol=${encodeURIComponent(symbol)}${refreshQuery}`, {
       method: "GET",
       cache: "no-store",
       timeoutMs: 30000,
@@ -5734,17 +5735,42 @@ function refreshNewsImpact(symbol = currentChartSymbol, options = {}) {
   return fetchFundamentalInsight({ symbol, force: options.force === true, symbolSwitch: options.symbolSwitch === true });
 }
 
+function fundamentalInsightPollingActive() {
+  if (document.hidden === true || !mainApp) return false;
+  if (document.body?.dataset?.activeSettingsPage) return false;
+  return !mainApp.classList.contains("hidden")
+    && !mainApp.classList.contains("locked")
+    && mainApp.style.display !== "none";
+}
+
+function pollFundamentalInsightIfActive() {
+  if (!fundamentalInsightPollingActive()) return Promise.resolve(null);
+  return fetchFundamentalInsight({ symbol: currentChartSymbol, force: true });
+}
+
+function handleFundamentalVisibilityChange() {
+  if (!fundamentalInsightPollingActive()) return Promise.resolve(null);
+  return fetchFundamentalInsight({ symbol: currentChartSymbol, force: true });
+}
+
 function refreshAllNewsImpact() {
+  if (!fundamentalInsightPollingActive()) return Promise.resolve(null);
   return fetchFundamentalInsight({ symbol: currentChartSymbol, force: false });
 }
 
 function refreshFundamentalInsight() {
-  return fetchFundamentalInsight({ symbol: currentChartSymbol, force: true });
+  return fetchFundamentalInsight({
+    symbol: currentChartSymbol,
+    force: true,
+    bypassBackendCache: true,
+  });
 }
 
 document.getElementById("fundamental-refresh-btn")?.addEventListener("click", () => {
   refreshFundamentalInsight();
 });
+
+document.addEventListener("visibilitychange", handleFundamentalVisibilityChange);
 
 function firstUsableValue(...values) {
   return values.find((value) => {
@@ -12376,7 +12402,7 @@ setInterval(() => {
 }, 15000);
 
 setInterval(() => {
-  fetchFundamentalInsight({ force: true });
+  pollFundamentalInsightIfActive();
 }, FUNDAMENTAL_INSIGHT_CACHE_MS);
 
 setInterval(() => {
