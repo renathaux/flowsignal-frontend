@@ -426,6 +426,425 @@ const LANG = {
   }
 };
 
+// Text rendered outside the original landing/dashboard dictionary.  Keeping
+// these phrases in one place lets settings, broker, performance and dynamically
+// refreshed panels follow the same EN/FR/ES preference as the main dashboard.
+const FULL_UI_TRANSLATIONS = Object.fromEntries([
+  ["Dashboard", "Tableau de bord", "Panel"],
+  ["Get Access →", "Obtenir l’accès →", "Obtener acceso →"],
+  ["FlowSignal Access", "Accès FlowSignal", "Acceso FlowSignal"],
+  ["Enter access code", "Entrez le code d’accès", "Ingresa el código de acceso"],
+  ["Admin Login", "Connexion administrateur", "Inicio de administrador"],
+  ["Admin email", "Courriel administrateur", "Correo de administrador"],
+  ["Email", "Courriel", "Correo"],
+  ["Password", "Mot de passe", "Contraseña"],
+  ["Enter admin code", "Entrez le code administrateur", "Ingresa el código de administrador"],
+  ["Type your feedback here...", "Écrivez votre avis ici...", "Escribe tu comentario aquí..."],
+  ["Flow Assistant", "Assistant Flow", "Asistente Flow"],
+  ["Market Assistant", "Assistant de marché", "Asistente de mercado"],
+  ["Live Trading", "Trading réel", "Trading real"],
+  ["History", "Historique", "Historial"],
+  ["Performance", "Performance", "Rendimiento"],
+  ["Settings", "Paramètres", "Configuración"],
+  ["General", "Général", "General"],
+  ["Risk Management", "Gestion du risque", "Gestión de riesgo"],
+  ["Broker Accounts", "Comptes de courtier", "Cuentas del bróker"],
+  ["Notifications", "Notifications", "Notificaciones"],
+  ["Strategy", "Stratégie", "Estrategia"],
+  ["Logout", "Déconnexion", "Cerrar sesión"],
+  ["DAILY P/L", "P/L QUOTIDIEN", "P/G DIARIO"],
+  ["WEEKLY P/L", "P/L HEBDOMADAIRE", "P/G SEMANAL"],
+  ["MONTHLY P/L", "P/L MENSUEL", "P/G MENSUAL"],
+  ["LIVE P/L (FLOATING)", "P/L RÉEL (FLOTTANT)", "P/G REAL (FLOTANTE)"],
+  ["OPEN TRADES", "TRADES OUVERTS", "OPERACIONES ABIERTAS"],
+  ["Broker status loading", "Chargement du statut du courtier", "Cargando estado del bróker"],
+  ["Trend active · no fresh entry", "Tendance active · aucune nouvelle entrée", "Tendencia activa · sin entrada nueva"],
+  ["Bullish Bias", "Biais haussier", "Sesgo alcista"],
+  ["Bearish Bias", "Biais baissier", "Sesgo bajista"],
+  ["Bias Strength", "Force du biais", "Fuerza del sesgo"],
+  ["Market bias only - entry requires strategy checks.", "Biais de marché seulement — l’entrée exige les contrôles de stratégie.", "Solo sesgo de mercado: la entrada requiere controles de estrategia."],
+  ["Block Reason", "Raison du blocage", "Motivo del bloqueo"],
+  ["Market Structure", "Structure du marché", "Estructura del mercado"],
+  ["Next Trigger", "Prochain déclencheur", "Próximo activador"],
+  ["Waiting For", "En attente de", "Esperando"],
+  ["Next Entry Zone", "Prochaine zone d’entrée", "Próxima zona de entrada"],
+  ["Estimated SL", "SL estimé", "SL estimado"],
+  ["Estimated TP", "TP estimé", "TP estimado"],
+  ["Progress", "Progression", "Progreso"],
+  ["ENTRY STRATEGY CHECKS", "CONTRÔLES DE LA STRATÉGIE D’ENTRÉE", "CONTROLES DE ESTRATEGIA DE ENTRADA"],
+  ["Swing break", "Cassure du swing", "Ruptura del swing"],
+  ["15m close", "Clôture 15 min", "Cierre de 15 min"],
+  ["5m confirm", "Confirmation 5 min", "Confirmación de 5 min"],
+  ["Swing SL", "SL du swing", "SL del swing"],
+  ["Reason", "Raison", "Motivo"],
+  ["Buy", "Acheter", "Comprar"],
+  ["Sell", "Vendre", "Vender"],
+  ["OPEN TRADE", "TRADE OUVERT", "OPERACIÓN ABIERTA"],
+  ["No active live trade", "Aucun trade réel actif", "No hay operación real activa"],
+  ["Lot", "Lot", "Lote"],
+  ["Protected SL active", "SL protégé actif", "SL protegido activo"],
+  ["Protected SL", "SL protégé", "SL protegido"],
+  ["ORDER MANAGEMENT", "GESTION DE L’ORDRE", "GESTIÓN DE LA ORDEN"],
+  ["Apply changes?", "Appliquer les modifications ?", "¿Aplicar cambios?"],
+  ["Review the updated trade level.", "Vérifiez le niveau de trade modifié.", "Revisa el nivel de operación actualizado."],
+  ["CANCEL", "ANNULER", "CANCELAR"],
+  ["YES", "OUI", "SÍ"],
+  ["FUNDAMENTAL INSIGHT", "ANALYSE FONDAMENTALE", "ANÁLISIS FUNDAMENTAL"],
+  ["Loading fundamental insight…", "Chargement de l’analyse fondamentale…", "Cargando análisis fundamental…"],
+  ["OVERALL BIAS", "BIAIS GLOBAL", "SESGO GENERAL"],
+  ["USD STRENGTH", "FORCE USD", "FORTALEZA USD"],
+  ["EUR STRENGTH", "FORCE EUR", "FORTALEZA EUR"],
+  ["USD MACRO", "MACRO USD", "MACRO USD"],
+  ["GOLD SUPPORT", "SOUTIEN DE L’OR", "SOPORTE DEL ORO"],
+  ["VS", "CONTRE", "VS"],
+  ["WHY THIS BIAS?", "POURQUOI CE BIAIS ?", "¿POR QUÉ ESTE SESGO?"],
+  ["Waiting for evidence-backed reasons.", "En attente de raisons fondées sur des données.", "Esperando motivos respaldados por datos."],
+  ["No evidence-backed directional reasons are available.", "Aucune raison directionnelle fondée sur des données n’est disponible.", "No hay motivos direccionales respaldados por datos."],
+  ["Evidence-backed fundamental factor.", "Facteur fondamental fondé sur des données.", "Factor fundamental respaldado por datos."],
+  ["NEXT HIGH-IMPACT EVENT", "PROCHAIN ÉVÉNEMENT À FORT IMPACT", "PRÓXIMO EVENTO DE ALTO IMPACTO"],
+  ["No trusted high-impact event currently available.", "Aucun événement fiable à fort impact n’est disponible actuellement.", "No hay un evento fiable de alto impacto disponible actualmente."],
+  ["High-impact event", "Événement à fort impact", "Evento de alto impacto"],
+  ["Previous", "Précédent", "Anterior"],
+  ["Forecast", "Prévision", "Pronóstico"],
+  ["Actual", "Réel", "Real"],
+  ["Impact", "Impact", "Impacto"],
+  ["TRADING GUIDANCE", "ORIENTATION DE TRADING", "ORIENTACIÓN DE TRADING"],
+  ["Informational only", "À titre informatif seulement", "Solo informativo"],
+  ["Neutral", "Neutre", "Neutral"],
+  ["Prefer BUY setups", "Privilégier les configurations d’ACHAT", "Preferir configuraciones de COMPRA"],
+  ["Prefer SELL setups", "Privilégier les configurations de VENTE", "Preferir configuraciones de VENTA"],
+  ["Neutral — insufficient data", "Neutre — données insuffisantes", "Neutral: datos insuficientes"],
+  ["Neutral fundamental guidance", "Orientation fondamentale neutre", "Orientación fundamental neutral"],
+  ["Fundamental data is loading.", "Chargement des données fondamentales.", "Cargando datos fundamentales."],
+  ["Fundamental evidence is currently insufficient.", "Les données fondamentales sont actuellement insuffisantes.", "La evidencia fundamental es insuficiente actualmente."],
+  ["No strong fundamental directional advantage.", "Aucun avantage directionnel fondamental marqué.", "No hay una ventaja direccional fundamental clara."],
+  ["Fundamental evidence is incomplete.", "Les données fondamentales sont incomplètes.", "La evidencia fundamental está incompleta."],
+  ["Insufficient fundamental data", "Données fondamentales insuffisantes", "Datos fundamentales insuficientes"],
+  ["Insufficient fundamental coverage", "Couverture fondamentale insuffisante", "Cobertura fundamental insuficiente"],
+  ["Loading", "Chargement", "Cargando"],
+  ["STRONG", "FORT", "FUERTE"],
+  ["POSITIVE", "POSITIF", "POSITIVO"],
+  ["VERY WEAK", "TRÈS FAIBLE", "MUY DÉBIL"],
+  ["WEAK", "FAIBLE", "DÉBIL"],
+  ["NEUTRAL", "NEUTRE", "NEUTRAL"],
+  ["Recent Signal History", "Historique récent des signaux", "Historial reciente de señales"],
+  ["Time", "Heure", "Hora"],
+  ["Symbol", "Symbole", "Símbolo"],
+  ["Signal", "Signal", "Señal"],
+  ["Result", "Résultat", "Resultado"],
+  ["No history yet", "Aucun historique", "Sin historial"],
+  ["Markets", "Marchés", "Mercados"],
+  ["Trades", "Trades", "Operaciones"],
+  ["Menu", "Menu", "Menú"],
+  ["Voice announcer controls", "Commandes de l’annonceur vocal", "Controles del anunciador de voz"],
+  ["Live trading performance", "Performance du trading réel", "Rendimiento del trading real"],
+  ["Draggable trade levels", "Niveaux de trade déplaçables", "Niveles de operación arrastrables"],
+  ["Mobile timeframe selector", "Sélecteur mobile d’unité de temps", "Selector móvil de temporalidad"],
+  ["Refresh Fundamental Insight", "Actualiser l’analyse fondamentale", "Actualizar análisis fundamental"],
+  ["Fundamental summary", "Résumé fondamental", "Resumen fundamental"],
+  ["Mobile app navigation", "Navigation de l’application mobile", "Navegación de la aplicación móvil"],
+  ["Close explanation", "Fermer l’explication", "Cerrar explicación"],
+  ["Close Broker Accounts", "Fermer les comptes de courtier", "Cerrar cuentas del bróker"],
+  ["Close Auto Trade", "Fermer le trading automatique", "Cerrar trading automático"],
+  ["Close Flow Assistant", "Fermer l’assistant Flow", "Cerrar Asistente Flow"],
+  ["Assistant voice", "Voix de l’assistant", "Voz del asistente"],
+  ["Streamer voice hotkeys", "Raccourcis de la voix du streamer", "Atajos de voz del streamer"],
+  ["FlowSignal is ready.", "FlowSignal est prêt.", "FlowSignal está listo."],
+  ["Confirm Trade", "Confirmer le trade", "Confirmar operación"],
+  ["Admin Access", "Accès administrateur", "Acceso de administrador"],
+  ["Enter admin code to unlock BUY / SELL.", "Entrez le code administrateur pour déverrouiller ACHAT / VENTE.", "Ingresa el código de administrador para desbloquear COMPRA / VENTA."],
+  ["Send Feedback", "Envoyer un avis", "Enviar comentario"],
+  ["Tell us what you want improved.", "Dites-nous ce que vous souhaitez améliorer.", "Dinos qué quieres mejorar."],
+  ["Bug report", "Signaler un bogue", "Reporte de error"],
+  ["Feature request", "Demande de fonctionnalité", "Solicitud de función"],
+  ["Thank you! for your feedback ✨", "Merci pour votre avis ✨", "¡Gracias por tu comentario! ✨"],
+  ["Track your trading performance and platform analytics.", "Suivez vos performances de trading et les statistiques de la plateforme.", "Consulta tu rendimiento de trading y las estadísticas de la plataforma."],
+  ["Win Rate", "Taux de réussite", "Tasa de aciertos"],
+  ["Total Trades", "Total des trades", "Total de operaciones"],
+  ["Wins / Losses", "Gains / Pertes", "Ganancias / Pérdidas"],
+  ["Best Trade", "Meilleur trade", "Mejor operación"],
+  ["Worst Trade", "Pire trade", "Peor operación"],
+  ["Average RR", "RR moyen", "RR promedio"],
+  ["Profit Factor", "Facteur de profit", "Factor de beneficio"],
+  ["EURUSD Performance", "Performance EURUSD", "Rendimiento EURUSD"],
+  ["XAUUSD Performance", "Performance XAUUSD", "Rendimiento XAUUSD"],
+  ["App Analytics", "Statistiques de l’application", "Analítica de la aplicación"],
+  ["Total Visits", "Visites totales", "Visitas totales"],
+  ["Unique Visitors", "Visiteurs uniques", "Visitantes únicos"],
+  ["Today Visits", "Visites aujourd’hui", "Visitas de hoy"],
+  ["Last Visit", "Dernière visite", "Última visita"],
+  ["Countries", "Pays", "Países"],
+  ["Platform Statistics", "Statistiques de la plateforme", "Estadísticas de la plataforma"],
+  ["Equity Curve", "Courbe des capitaux", "Curva de capital"],
+  ["Performance Summary", "Résumé des performances", "Resumen de rendimiento"],
+  ["30 Days", "30 jours", "30 días"],
+  ["30 days ago", "Il y a 30 jours", "Hace 30 días"],
+  ["Today", "Aujourd’hui", "Hoy"],
+  ["General Settings", "Paramètres généraux", "Configuración general"],
+  ["Control what appears on your dashboard.", "Contrôlez les éléments affichés sur votre tableau de bord.", "Controla lo que aparece en tu panel."],
+  ["Show Weekly P/L", "Afficher le P/L hebdomadaire", "Mostrar P/G semanal"],
+  ["Show Monthly P/L", "Afficher le P/L mensuel", "Mostrar P/G mensual"],
+  ["Show Floating P/L", "Afficher le P/L flottant", "Mostrar P/G flotante"],
+  ["Show Bias Strength", "Afficher la force du biais", "Mostrar fuerza del sesgo"],
+  ["Show Bullish/Bearish Bias", "Afficher le biais haussier/baissier", "Mostrar sesgo alcista/bajista"],
+  ["Show Buy/Sell Buttons", "Afficher les boutons Acheter/Vendre", "Mostrar botones Comprar/Vender"],
+  ["Show Open Trades Counter", "Afficher le compteur de trades ouverts", "Mostrar contador de operaciones abiertas"],
+  ["Show News Impact Panel", "Afficher le panneau d’impact des nouvelles", "Mostrar panel de impacto de noticias"],
+  ["Show Recent Signal History", "Afficher l’historique récent des signaux", "Mostrar historial reciente de señales"],
+  ["Show Account Balance", "Afficher le solde du compte", "Mostrar saldo de la cuenta"],
+  ["Show Account Number", "Afficher le numéro de compte", "Mostrar número de cuenta"],
+  ["Show Broker Info", "Afficher les informations du courtier", "Mostrar información del bróker"],
+  ["All risk settings apply to both EURUSD and Gold automatically.", "Tous les paramètres de risque s’appliquent automatiquement à EURUSD et à l’or.", "Todos los ajustes de riesgo se aplican automáticamente a EURUSD y al oro."],
+  ["Risk per trade", "Risque par trade", "Riesgo por operación"],
+  ["% of account equity", "% des capitaux du compte", "% del capital de la cuenta"],
+  ["Max daily loss", "Perte quotidienne maximale", "Pérdida diaria máxima"],
+  ["Maximum loss per day", "Perte maximale par jour", "Pérdida máxima por día"],
+  ["Max weekly loss", "Perte hebdomadaire maximale", "Pérdida semanal máxima"],
+  ["Maximum loss per week", "Perte maximale par semaine", "Pérdida máxima por semana"],
+  ["Max open trades", "Nombre maximal de trades ouverts", "Máximo de operaciones abiertas"],
+  ["Maximum trades at the same time", "Nombre maximal de trades simultanés", "Máximo de operaciones simultáneas"],
+  ["TP1 % of TP2", "TP1 en % de TP2", "TP1 como % de TP2"],
+  ["Take Profit 1 as % of TP2", "Take Profit 1 en % de TP2", "Take Profit 1 como % de TP2"],
+  ["Protected SL % of TP2", "SL protégé en % de TP2", "SL protegido como % de TP2"],
+  ["Move SL to break-even after TP1", "Déplacer le SL au seuil de rentabilité après TP1", "Mover el SL al punto de equilibrio después de TP1"],
+  ["Break-even rule", "Règle du seuil de rentabilité", "Regla de punto de equilibrio"],
+  ["Allowed symbols", "Symboles autorisés", "Símbolos permitidos"],
+  ["Default trading mode", "Mode de trading par défaut", "Modo de trading predeterminado"],
+  ["Reset to Defaults", "Rétablir les valeurs par défaut", "Restablecer valores"],
+  ["Save Changes", "Enregistrer les modifications", "Guardar cambios"],
+  ["These settings are saved locally and apply to all instruments.", "Ces paramètres sont enregistrés localement et s’appliquent à tous les instruments.", "Estos ajustes se guardan localmente y se aplican a todos los instrumentos."],
+  ["Signal alerts", "Alertes de signal", "Alertas de señal"],
+  ["Play sound and show a desktop notification when EURUSD or XAUUSD changes to BUY or SELL.", "Émettre un son et afficher une notification quand EURUSD ou XAUUSD passe à ACHAT ou VENTE.", "Reproducir sonido y mostrar una notificación cuando EURUSD o XAUUSD cambie a COMPRA o VENTA."],
+  ["Test Alert", "Tester l’alerte", "Probar alerta"],
+  ["News Trading Mode", "Mode de trading des nouvelles", "Modo de trading de noticias"],
+  ["Choose how high-impact economic news affects new entries.", "Choisissez comment les nouvelles économiques à fort impact affectent les nouvelles entrées.", "Elige cómo las noticias económicas de alto impacto afectan nuevas entradas."],
+  ["OFF", "DÉSACTIVÉ", "DESACTIVADO"],
+  ["BLOCK ONLY", "BLOCAGE SEULEMENT", "SOLO BLOQUEO"],
+  ["TRADE CONFIRMED", "TRADE CONFIRMÉ", "OPERACIÓN CONFIRMADA"],
+  ["News does not block or create trades.", "Les nouvelles ne bloquent ni ne créent de trades.", "Las noticias no bloquean ni crean operaciones."],
+  ["Blocks new entries from 30 minutes before until 15 minutes after relevant high-impact news.", "Bloque les nouvelles entrées de 30 minutes avant à 15 minutes après une nouvelle pertinente à fort impact.", "Bloquea nuevas entradas desde 30 minutos antes hasta 15 minutos después de noticias relevantes de alto impacto."],
+  ["Blocks before release, then may trade one verified post-news setup after live data and market confirmation.", "Bloque avant la publication, puis peut trader une configuration post-nouvelle vérifiée après confirmation des données et du marché.", "Bloquea antes de la publicación y puede operar una configuración posterior verificada tras confirmar datos y mercado."],
+  ["Enable confirmed news trading?", "Activer le trading confirmé des nouvelles ?", "¿Activar trading confirmado de noticias?"],
+  ["This mode may open trades after high-impact economic releases.", "Ce mode peut ouvrir des trades après des publications économiques à fort impact.", "Este modo puede abrir operaciones después de publicaciones económicas de alto impacto."],
+  ["It should be tested on demo before being used on a funded or live account.", "Il doit être testé en démo avant d’être utilisé sur un compte financé ou réel.", "Debe probarse en demo antes de usarse en una cuenta financiada o real."],
+  ["Enable", "Activer", "Activar"],
+  ["Manage your cTrader connection and accounts. Select which account FlowSignal should use for live trading.", "Gérez votre connexion et vos comptes cTrader. Sélectionnez le compte utilisé par FlowSignal pour le trading réel.", "Gestiona tu conexión y cuentas de cTrader. Selecciona la cuenta que FlowSignal usará para trading real."],
+  ["cTrader Connection", "Connexion cTrader", "Conexión cTrader"],
+  ["Checking", "Vérification", "Comprobando"],
+  ["Connect cTrader", "Connecter cTrader", "Conectar cTrader"],
+  ["Disconnect cTrader", "Déconnecter cTrader", "Desconectar cTrader"],
+  ["Refresh Accounts", "Actualiser les comptes", "Actualizar cuentas"],
+  ["cTrader Accounts", "Comptes cTrader", "Cuentas cTrader"],
+  ["Account list", "Liste des comptes", "Lista de cuentas"],
+  ["Number", "Numéro", "Número"],
+  ["Broker", "Courtier", "Bróker"],
+  ["Type", "Type", "Tipo"],
+  ["Balance", "Solde", "Saldo"],
+  ["Currency", "Devise", "Moneda"],
+  ["Status", "Statut", "Estado"],
+  ["Active", "Actif", "Activo"],
+  ["No accounts loaded.", "Aucun compte chargé.", "No hay cuentas cargadas."],
+  ["About Accounts", "À propos des comptes", "Acerca de las cuentas"],
+  ["Only one account can be active at a time. All signals, positions, and orders will use the selected active account.", "Un seul compte peut être actif à la fois. Tous les signaux, positions et ordres utiliseront le compte sélectionné.", "Solo una cuenta puede estar activa a la vez. Todas las señales, posiciones y órdenes usarán la cuenta seleccionada."],
+  ["If an account shows as unavailable, it may be expired or no longer authorized in cTrader.", "Si un compte est indisponible, il peut être expiré ou ne plus être autorisé dans cTrader.", "Si una cuenta aparece no disponible, puede haber expirado o ya no estar autorizada en cTrader."],
+  ["Active Account", "Compte actif", "Cuenta activa"],
+  ["No active account selected", "Aucun compte actif sélectionné", "No hay cuenta activa seleccionada"],
+  ["Change Active Account", "Changer le compte actif", "Cambiar cuenta activa"],
+  ["Account Actions", "Actions du compte", "Acciones de la cuenta"],
+  ["Forget Account", "Oublier le compte", "Olvidar cuenta"],
+  ["Remove selected account from FlowSignal", "Supprimer le compte sélectionné de FlowSignal", "Eliminar la cuenta seleccionada de FlowSignal"],
+  ["Clear All Accounts", "Effacer tous les comptes", "Borrar todas las cuentas"],
+  ["Remove all saved accounts from FlowSignal", "Supprimer tous les comptes enregistrés de FlowSignal", "Eliminar todas las cuentas guardadas de FlowSignal"],
+  ["Auto Trade", "Trading automatique", "Trading automático"],
+  ["Manage paper and live automated trading.", "Gérez le trading automatique papier et réel.", "Gestiona el trading automático de prueba y real."],
+  ["PAPER TRADES", "TRADES PAPIER", "OPERACIONES DE PRUEBA"],
+  ["LIVE TRADES", "TRADES RÉELS", "OPERACIONES REALES"],
+  ["ACTIVE STRATEGIES", "STRATÉGIES ACTIVES", "ESTRATEGIAS ACTIVAS"],
+  ["No active live trades", "Aucun trade réel actif", "No hay operaciones reales activas"],
+  ["No paper history yet", "Aucun historique papier", "Sin historial de prueba"],
+  ["No live trades yet", "Aucun trade réel", "Sin operaciones reales"],
+  ["Live Auto Confirmation", "Confirmation du trading automatique réel", "Confirmación de trading automático real"],
+  ["FlowSignal will place trades on your connected broker account. Continue?", "FlowSignal placera des trades sur votre compte de courtier connecté. Continuer ?", "FlowSignal colocará operaciones en tu cuenta de bróker conectada. ¿Continuar?"],
+  ["Configure your AI assistant and market voice settings.", "Configurez votre assistant IA et les paramètres de voix du marché.", "Configura tu asistente de IA y los ajustes de voz del mercado."],
+  ["Voice Settings", "Réglages de la voix", "Ajustes de voz"],
+  ["Voice", "Voix", "Voz"],
+  ["Test Voice", "Tester la voix", "Probar voz"],
+  ["Show text popup", "Afficher la fenêtre de texte", "Mostrar ventana de texto"],
+  ["Voice speed", "Vitesse de la voix", "Velocidad de voz"],
+  ["Voice pitch", "Tonalité de la voix", "Tono de voz"],
+  ["Voice volume", "Volume de la voix", "Volumen de voz"],
+  ["Assistant style", "Style de l’assistant", "Estilo del asistente"],
+  ["Calm & Professional", "Calme et professionnel", "Calmado y profesional"],
+  ["Confident", "Assuré", "Seguro"],
+  ["Hype", "Énergique", "Enérgico"],
+  ["Professional", "Professionnel", "Profesional"],
+  ["Streamer Voice", "Voix du streamer", "Voz del streamer"],
+  ["Edit Streamer Voice Text", "Modifier le texte de la voix du streamer", "Editar texto de la voz del streamer"],
+  ["Edit Text", "Modifier le texte", "Editar texto"],
+  ["Market Voice Triggers", "Déclencheurs de la voix du marché", "Activadores de voz del mercado"],
+  ["Voice Behavior", "Comportement de la voix", "Comportamiento de voz"],
+  ["Advanced Settings", "Paramètres avancés", "Configuración avanzada"],
+  ["Language", "Langue", "Idioma"],
+  ["Response Length", "Longueur de réponse", "Longitud de respuesta"],
+  ["Normal", "Normal", "Normal"],
+  ["Short", "Court", "Corto"],
+  ["Detailed", "Détaillé", "Detallado"],
+  ["AI Creativity", "Créativité de l’IA", "Creatividad de IA"],
+  ["Balanced", "Équilibré", "Equilibrado"],
+  ["More Accurate", "Plus précis", "Más preciso"],
+  ["More Creative", "Plus créatif", "Más creativo"],
+].map(([en, fr, es]) => [en, { en, fr, es }]));
+
+const fullUiTextSources = new WeakMap();
+const fullUiAttributeSources = new WeakMap();
+let fullUiTranslationObserver = null;
+
+function translateDynamicUiText(source, lang) {
+  const direct = FULL_UI_TRANSLATIONS[source];
+  if (direct) return direct[lang] || direct.en;
+  const decorated = source.match(/^([^\p{L}\p{N}]*)([\s\S]+)$/u);
+  if (decorated && decorated[1] && FULL_UI_TRANSLATIONS[decorated[2]]) {
+    const translated = FULL_UI_TRANSLATIONS[decorated[2]];
+    return `${decorated[1]}${translated[lang] || translated.en}`;
+  }
+  if (lang === "en") return source;
+
+  const replacements = lang === "fr" ? [
+    [/^(\d+(?:\.\d+)?)% Confidence$/, "$1 % de confiance"],
+    [/^Last update: (.+)$/, "Dernière mise à jour : $1"],
+    [/^Current mode: (.+)$/, "Mode actuel : $1"],
+    [/^Active account:\s*(.*)$/, "Compte actif : $1"],
+    [/^Environment:\s*(.*)$/, "Environnement : $1"],
+    [/^Browser permission:\s*(.*)$/, "Autorisation du navigateur : $1"],
+    [/^Connection Status:\s*(.*)$/, "État de la connexion : $1"],
+    [/^Authorized:\s*(.*)$/, "Autorisé : $1"],
+    [/^(\d+) Accounts Found$/, "$1 comptes trouvés"],
+    [/^Paper Auto: (ON|OFF)$/, "Auto papier : $1"],
+    [/^Live Auto: (ON|OFF)$/, "Auto réel : $1"],
+    [/^Live Broker: (.+)$/, "Courtier réel : $1"],
+    [/^Loading (EURUSD|XAUUSD) fundamental data\.$/, "Chargement des données fondamentales $1."],
+    [/^Loading (EURUSD|XAUUSD) fundamental insight…$/, "Chargement de l’analyse fondamentale $1…"],
+    [/^Fundamental insight unavailable(.*)$/, "Analyse fondamentale indisponible$1"],
+    [/^Showing last successful result • Refresh failed: (.+)$/, "Dernier résultat valide affiché • Échec de l’actualisation : $1"],
+    [/^Currency affected: (.+)$/, "Devise concernée : $1"],
+    [/^Countdown: (.+)$/, "Compte à rebours : $1"],
+    [/^(\d+) provisional evidence items?$/, "$1 éléments de preuve provisoires"],
+    [/^(\d+) recent provider warnings?$/, "$1 avertissements récents du fournisseur"],
+  ] : [
+    [/^(\d+(?:\.\d+)?)% Confidence$/, "$1 % de confianza"],
+    [/^Last update: (.+)$/, "Última actualización: $1"],
+    [/^Current mode: (.+)$/, "Modo actual: $1"],
+    [/^Active account:\s*(.*)$/, "Cuenta activa: $1"],
+    [/^Environment:\s*(.*)$/, "Entorno: $1"],
+    [/^Browser permission:\s*(.*)$/, "Permiso del navegador: $1"],
+    [/^Connection Status:\s*(.*)$/, "Estado de conexión: $1"],
+    [/^Authorized:\s*(.*)$/, "Autorizado: $1"],
+    [/^(\d+) Accounts Found$/, "$1 cuentas encontradas"],
+    [/^Paper Auto: (ON|OFF)$/, "Auto de prueba: $1"],
+    [/^Live Auto: (ON|OFF)$/, "Auto real: $1"],
+    [/^Live Broker: (.+)$/, "Bróker real: $1"],
+    [/^Loading (EURUSD|XAUUSD) fundamental data\.$/, "Cargando datos fundamentales de $1."],
+    [/^Loading (EURUSD|XAUUSD) fundamental insight…$/, "Cargando análisis fundamental de $1…"],
+    [/^Fundamental insight unavailable(.*)$/, "Análisis fundamental no disponible$1"],
+    [/^Showing last successful result • Refresh failed: (.+)$/, "Mostrando el último resultado válido • Error de actualización: $1"],
+    [/^Currency affected: (.+)$/, "Moneda afectada: $1"],
+    [/^Countdown: (.+)$/, "Cuenta regresiva: $1"],
+    [/^(\d+) provisional evidence items?$/, "$1 elementos de evidencia provisionales"],
+    [/^(\d+) recent provider warnings?$/, "$1 advertencias recientes del proveedor"],
+  ];
+  for (const [pattern, replacement] of replacements) {
+    if (pattern.test(source)) return source.replace(pattern, replacement);
+  }
+  return source;
+}
+
+function isTranslatableUiText(text) {
+  if (FULL_UI_TRANSLATIONS[text]) return true;
+  const decorated = text.match(/^([^\p{L}\p{N}]*)([\s\S]+)$/u);
+  if (decorated && decorated[1] && FULL_UI_TRANSLATIONS[decorated[2]]) return true;
+  return [
+    /% Confidence$/, /^Last update:/, /^Current mode:/, /^Active account:/,
+    /^Environment:/, /^Browser permission:/, /^Connection Status:/,
+    /^Authorized:/, /Accounts Found$/, /^Paper Auto:/, /^Live Auto:/,
+    /^Live Broker:/, /^Loading (EURUSD|XAUUSD) fundamental/,
+    /^Fundamental insight unavailable/, /^Showing last successful result/,
+    /^Currency affected:/, /^Countdown:/, /provisional evidence item/,
+    /recent provider warning/,
+  ].some((pattern) => pattern.test(text));
+}
+
+function translateUiTextNode(node, lang) {
+  if (!node || !node.parentElement || ["SCRIPT", "STYLE"].includes(node.parentElement.tagName)) return;
+  const raw = node.nodeValue || "";
+  const trimmed = raw.trim();
+  let source = fullUiTextSources.get(node);
+  if (!source) {
+    if (!trimmed || !isTranslatableUiText(trimmed)) return;
+    source = trimmed;
+    fullUiTextSources.set(node, source);
+  }
+  const translated = translateDynamicUiText(source, lang);
+  const leading = raw.match(/^\s*/)?.[0] || "";
+  const trailing = raw.match(/\s*$/)?.[0] || "";
+  const nextValue = `${leading}${translated}${trailing}`;
+  if (node.nodeValue !== nextValue) node.nodeValue = nextValue;
+}
+
+function translateUiSubtree(root, lang) {
+  if (!root) return;
+  if (root.nodeType === Node.TEXT_NODE) {
+    translateUiTextNode(root, lang);
+    return;
+  }
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+  let node = walker.nextNode();
+  while (node) {
+    translateUiTextNode(node, lang);
+    node = walker.nextNode();
+  }
+}
+
+function translateUiAttributes(lang) {
+  document.querySelectorAll("input[placeholder], textarea[placeholder], [title], [aria-label]").forEach((element) => {
+    let sources = fullUiAttributeSources.get(element);
+    if (!sources) {
+      sources = {};
+      ["placeholder", "title", "aria-label"].forEach((attribute) => {
+        const value = element.getAttribute(attribute)?.trim();
+        if (value && isTranslatableUiText(value)) sources[attribute] = value;
+      });
+      fullUiAttributeSources.set(element, sources);
+    }
+    Object.entries(sources).forEach(([attribute, source]) => {
+      element.setAttribute(attribute, translateDynamicUiText(source, lang));
+    });
+  });
+}
+
+function translateFullInterface(lang) {
+  const safeLang = ["en", "fr", "es"].includes(lang) ? lang : "en";
+  document.documentElement.lang = safeLang;
+  translateUiSubtree(document.body, safeLang);
+  translateUiAttributes(safeLang);
+  if (!fullUiTranslationObserver && document.body) {
+    fullUiTranslationObserver = new MutationObserver((mutations) => {
+      mutations.forEach((mutation) => {
+        if (mutation.type === "characterData") {
+          translateUiTextNode(mutation.target, currentLang);
+        } else {
+          mutation.addedNodes.forEach((node) => translateUiSubtree(node, currentLang));
+        }
+      });
+      translateUiAttributes(currentLang);
+    });
+    fullUiTranslationObserver.observe(document.body, {
+      childList: true,
+      characterData: true,
+      subtree: true,
+    });
+  }
+}
+
 function tTradeAction(signal) {
   const side = String(signal || "").trim().toUpperCase();
   if (side === "BUY" || side === "SELL") return side;
@@ -4039,6 +4458,7 @@ if (mainLastSignal) {
       statusEl.dataset.fullStatus || ""
     );
   }
+  translateFullInterface(lang);
 }
 
 
