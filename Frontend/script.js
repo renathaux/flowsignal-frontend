@@ -11853,6 +11853,32 @@ function initChart() {
 });
 }
 
+const chartLibraryScript = document.querySelector("script[data-flow-chart-library]");
+
+chartLibraryScript?.addEventListener("load", () => {
+  window.FlowSignalStartup?.record("chart_library_loaded");
+  if (chart || typeof LightweightCharts === "undefined") return;
+  if (!mainApp || mainApp.classList.contains("hidden") || mainApp.classList.contains("locked")) return;
+
+  try {
+    initChart();
+    const candles = latestRawPanelData?.candles?.[currentChartSymbol]?.[currentChartTimeframe];
+    if (Array.isArray(candles) && candles.length) {
+      forceChartRenderFromLatest(currentChartSymbol, currentChartTimeframe);
+    }
+  } catch (error) {
+    window.FlowSignalStartup?.record("chart_library_recovery_failed", {
+      message: error.message,
+    });
+  }
+}, { once: true });
+
+chartLibraryScript?.addEventListener("error", () => {
+  window.FlowSignalStartup?.record("chart_library_load_failed", {
+    source: "lightweight-charts",
+  });
+}, { once: true });
+
 // ==============================
 // CHART HELPERS
 // ==============================

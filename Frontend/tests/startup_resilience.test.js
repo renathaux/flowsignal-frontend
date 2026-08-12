@@ -63,6 +63,11 @@ assert.ok(
   html.indexOf("startup.js") < html.indexOf("script.js"),
   "startup shell loads before API and dashboard code",
 );
+assert.match(
+  html,
+  /<script\s+async\s+data-flow-chart-library\s+src="https:\/\/unpkg\.com\/lightweight-charts@4\.2\.0\/dist\/lightweight-charts\.standalone\.production\.js"/,
+  "the third-party chart library cannot block first-party startup modules",
+);
 
 const dashboard = fs.readFileSync(path.join(__dirname, "..", "script.js"), "utf8");
 assert.ok(
@@ -75,6 +80,11 @@ assert.equal(
   "language startup does not reference the removed legacy structure panel",
 );
 assert.ok(dashboard.includes("Promise.allSettled(Object.values(startupRequests))"));
+assert.ok(
+  dashboard.includes('chartLibraryScript?.addEventListener("load"') &&
+  dashboard.includes('chartLibraryScript?.addEventListener("error"'),
+  "chart loading is observable and retries initialization after a delayed CDN response",
+);
 
 window.fetch = (_input, init = {}) => new Promise((_resolve, reject) => {
   init.signal?.addEventListener("abort", () => {
