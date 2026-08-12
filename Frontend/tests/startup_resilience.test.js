@@ -85,6 +85,21 @@ assert.ok(
   dashboard.includes('chartLibraryScript?.addEventListener("error"'),
   "chart loading is observable and retries initialization after a delayed CDN response",
 );
+assert.ok(
+  dashboard.includes("function dashboardRuntimeActive()") &&
+  dashboard.includes("if (!dashboardRuntimeActive()) return;"),
+  "dashboard polling and animation work is gated while the app is hidden or inactive",
+);
+assert.equal(
+  dashboard.includes('console.log("🔥 Raw panel data:", rawData)'),
+  false,
+  "large panel responses are not retained by repeated console logging",
+);
+assert.ok(
+  dashboard.includes("translateUiAttributes(currentLang, node);") &&
+  !dashboard.includes("\n      translateUiAttributes(currentLang);\n    });"),
+  "live translation mutations are scoped to added subtrees instead of rescanning the full page",
+);
 
 window.fetch = (_input, init = {}) => new Promise((_resolve, reject) => {
   init.signal?.addEventListener("abort", () => {

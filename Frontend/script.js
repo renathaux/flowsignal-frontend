@@ -905,8 +905,14 @@ function translateUiSubtree(root, lang) {
   }
 }
 
-function translateUiAttributes(lang) {
-  document.querySelectorAll("input[placeholder], textarea[placeholder], [title], [aria-label]").forEach((element) => {
+function translateUiAttributes(lang, root = document) {
+  const selector = "input[placeholder], textarea[placeholder], [title], [aria-label]";
+  const elements = [];
+  if (root?.nodeType === Node.ELEMENT_NODE && root.matches?.(selector)) {
+    elements.push(root);
+  }
+  root?.querySelectorAll?.(selector).forEach((element) => elements.push(element));
+  elements.forEach((element) => {
     let sources = fullUiAttributeSources.get(element);
     if (!sources) {
       sources = {};
@@ -933,10 +939,12 @@ function translateFullInterface(lang) {
         if (mutation.type === "characterData") {
           translateUiTextNode(mutation.target, currentLang);
         } else {
-          mutation.addedNodes.forEach((node) => translateUiSubtree(node, currentLang));
+          mutation.addedNodes.forEach((node) => {
+            translateUiSubtree(node, currentLang);
+            translateUiAttributes(currentLang, node);
+          });
         }
       });
-      translateUiAttributes(currentLang);
     });
     fullUiTranslationObserver.observe(document.body, {
       childList: true,
@@ -4802,9 +4810,11 @@ if (smcRows[6]) smcRows[6].textContent = LANG[lang].riskReward;
 if (smcRows[7]) smcRows[7].textContent = LANG[lang].invalidation;
 if (smcRows[8]) smcRows[8].textContent = LANG[lang].reason;
 
-refreshNewsImpact(
-  typeof currentChartSymbol !== "undefined" ? currentChartSymbol : "EURUSD"
-);
+if (fundamentalInsightPollingActive()) {
+  refreshNewsImpact(
+    typeof currentChartSymbol !== "undefined" ? currentChartSymbol : "EURUSD"
+  );
+}
 
 // History empty row
 const noHistoryCell = document.querySelector("#historyBody td");
@@ -6597,12 +6607,16 @@ function refreshNewsImpact(symbol = currentChartSymbol, options = {}) {
   return fetchFundamentalInsight({ symbol, force: options.force === true, symbolSwitch: options.symbolSwitch === true });
 }
 
-function fundamentalInsightPollingActive() {
+function dashboardRuntimeActive() {
   if (document.hidden === true || !mainApp) return false;
   if (document.body?.dataset?.activeSettingsPage) return false;
   return !mainApp.classList.contains("hidden")
     && !mainApp.classList.contains("locked")
     && mainApp.style.display !== "none";
+}
+
+function fundamentalInsightPollingActive() {
+  return dashboardRuntimeActive();
 }
 
 function pollFundamentalInsightIfActive() {
@@ -10079,7 +10093,20 @@ latestRawPanelData = rawData;
 latestPanelFetchedAt = Date.now();
 lastGoodPanelData = rawData;
 
-console.log("🔥 Raw panel data:", rawData);
+console.log("PANEL_DATA_RECEIVED", {
+  symbols: ["EURUSD", "XAUUSD"].filter((symbol) => Boolean(rawData?.[symbol])),
+  candleCounts: Object.fromEntries(
+    ["EURUSD", "XAUUSD"].map((symbol) => [
+      symbol,
+      Object.fromEntries(
+        ["5m", "15m", "1h"].map((timeframe) => [
+          timeframe,
+          rawData?.candles?.[symbol]?.[timeframe]?.length || 0,
+        ]),
+      ),
+    ]),
+  ),
+});
 
 const data = normalizePanelData(rawData);
 latestPanelMeta = meta;
@@ -13285,6 +13312,7 @@ window.FlowSignalStartup?.record("polling_started", {
   transport: "rest_polling",
 });
 setInterval(() => {
+  if (!dashboardRuntimeActive()) return;
   console.log("🔄 Auto refresh running...");
   refreshPanel();
 }, 15000);
@@ -13294,14 +13322,19 @@ setInterval(() => {
 }, FUNDAMENTAL_INSIGHT_CACHE_MS);
 
 setInterval(() => {
+  if (!dashboardRuntimeActive()) return;
   updateNewsTradingWindow();
   updateUpcomingHighImpactCountdowns();
   updateFundamentalEventCountdown();
 }, 1000);
 
-setInterval(refreshConnectionBadgeFreshness, 5000);
+setInterval(() => {
+  if (!dashboardRuntimeActive()) return;
+  refreshConnectionBadgeFreshness();
+}, 5000);
 
 _BAR_IDLE_TIMER = setInterval(() => {
+  if (!dashboardRuntimeActive()) return;
   _BAR_IDLE_PHASE += 1;
 
   if (!_BAR_ANIMATING) {

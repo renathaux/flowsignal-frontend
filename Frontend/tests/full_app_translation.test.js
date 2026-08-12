@@ -50,6 +50,6 @@ assert.equal(context.canTranslate("Current mode: BLOCK ONLY"), true);
 assert.ok(source.includes("translateFullInterface(lang);"), "language changes translate the full app");
 assert.ok(source.includes("new MutationObserver"), "dynamic UI refreshes remain translated");
 assert.ok(source.includes("document.documentElement.lang = safeLang"), "document language follows selection");
-assert.ok(html.includes('script.js?v=108'), "browser cache is busted for the translation release");
+assert.ok(html.includes('script.js?v=110'), "browser cache is busted for the stability release");
 
 console.log("full app translation tests passed");

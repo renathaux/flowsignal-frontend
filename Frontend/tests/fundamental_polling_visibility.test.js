@@ -4,7 +4,7 @@ const path = require("node:path");
 const vm = require("node:vm");
 
 const script = fs.readFileSync(path.join(__dirname, "..", "script.js"), "utf8");
-const start = script.indexOf("function fundamentalInsightPollingActive");
+const start = script.indexOf("function dashboardRuntimeActive");
 const end = script.indexOf("function refreshAllNewsImpact", start);
 assert.ok(start >= 0 && end > start, "polling visibility helpers are extractable");
 
