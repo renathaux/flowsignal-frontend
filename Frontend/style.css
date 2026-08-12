@@ -8841,6 +8841,55 @@ body.fit-mode .app:not(.locked) > .dashboard-grid {
   padding: 16px;
 }
 
+.general-notification-setting {
+  margin-bottom: 14px;
+}
+
+.notification-permission-status {
+  color: #94a3b8;
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.signal-alert-toast {
+  position: fixed;
+  top: 84px;
+  right: 20px;
+  z-index: 100000;
+  min-width: min(340px, calc(100vw - 32px));
+  max-width: calc(100vw - 32px);
+  padding: 15px 18px;
+  border: 1px solid rgba(34, 197, 94, 0.7);
+  border-radius: 12px;
+  background: rgba(5, 15, 25, 0.96);
+  color: #eafff1;
+  font-weight: 850;
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.42);
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-12px);
+  transition: opacity 160ms ease, transform 160ms ease;
+}
+
+.signal-alert-toast[data-side="SELL"] {
+  border-color: rgba(239, 68, 68, 0.75);
+  color: #ffe5e7;
+}
+
+.signal-alert-toast.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+@media (max-width: 700px) {
+  .signal-alert-toast {
+    top: 72px;
+    left: 16px;
+    right: 16px;
+    width: auto;
+  }
+}
+
 .notification-toggle-row {
   display: flex;
   align-items: center;

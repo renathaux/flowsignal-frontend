@@ -614,6 +614,13 @@ const FULL_UI_TRANSLATIONS = Object.fromEntries([
   ["Save Changes", "Enregistrer les modifications", "Guardar cambios"],
   ["These settings are saved locally and apply to all instruments.", "Ces paramètres sont enregistrés localement et s’appliquent à tous les instruments.", "Estos ajustes se guardan localmente y se aplican a todos los instrumentos."],
   ["Signal alerts", "Alertes de signal", "Alertas de señal"],
+  ["Signal notifications", "Notifications de signal", "Notificaciones de señal"],
+  ["Receive a sound, an in-app message, and a Chrome notification when a BUY or SELL signal arrives.", "Recevez un son, un message dans l’application et une notification Chrome lorsqu’un signal ACHAT ou VENTE arrive.", "Recibe un sonido, un mensaje en la aplicación y una notificación de Chrome cuando llegue una señal de COMPRA o VENTA."],
+  ["Notification status: On · desktop and in-app alerts active", "État des notifications : activé · alertes bureau et application actives", "Estado de notificaciones: activado · alertas de escritorio y de la aplicación activas"],
+  ["Notification status: On · Chrome blocked; in-app alerts active", "État des notifications : activé · Chrome bloqué, alertes dans l’application actives", "Estado de notificaciones: activado · Chrome bloqueado, alertas en la aplicación activas"],
+  ["Notification status: On · allow Chrome permission; in-app alerts active", "État des notifications : activé · autorisez Chrome, alertes dans l’application actives", "Estado de notificaciones: activado · permite Chrome, alertas en la aplicación activas"],
+  ["Notification status: On · in-app alerts active", "État des notifications : activé · alertes dans l’application actives", "Estado de notificaciones: activado · alertas en la aplicación activas"],
+  ["Notification status: Off", "État des notifications : désactivé", "Estado de notificaciones: desactivado"],
   ["Play sound and show a desktop notification when EURUSD or XAUUSD changes to BUY or SELL.", "Émettre un son et afficher une notification quand EURUSD ou XAUUSD passe à ACHAT ou VENTE.", "Reproducir sonido y mostrar una notificación cuando EURUSD o XAUUSD cambie a COMPRA o VENTA."],
   ["Test Alert", "Tester l’alerte", "Probar alerta"],
   ["News Trading Mode", "Mode de trading des nouvelles", "Modo de trading de noticias"],
@@ -1264,8 +1271,10 @@ const newsModeConfirmModal = document.getElementById("newsModeConfirmModal");
 const newsModeConfirmCancelBtn = document.getElementById("newsModeConfirmCancelBtn");
 const newsModeConfirmEnableBtn = document.getElementById("newsModeConfirmEnableBtn");
 const signalAlertsToggle = document.getElementById("signalAlertsToggle");
+const generalSignalAlertsToggle = document.getElementById("generalSignalAlertsToggle");
 const testSignalAlertBtn = document.getElementById("testSignalAlertBtn");
 const notificationPermissionStatus = document.getElementById("notificationPermissionStatus");
+const generalNotificationStatus = document.getElementById("generalNotificationStatus");
 
 const DASHBOARD_PREFS_KEY = "flowsignal_dashboard_preferences";
 const RISK_PREFS_KEY = "flowsignal_risk_preferences";
@@ -1819,22 +1828,36 @@ function signalAlertsEnabled() {
 }
 
 function setSignalAlertsEnabled(enabled) {
+  const wasEnabled = signalAlertsEnabled();
   localStorage.setItem(SIGNAL_ALERTS_KEY, enabled ? "true" : "false");
   if (alertsToggle) alertsToggle.checked = enabled;
   if (signalAlertsToggle) signalAlertsToggle.checked = enabled;
+  if (generalSignalAlertsToggle) generalSignalAlertsToggle.checked = enabled;
+  if (enabled && !wasEnabled) {
+    Object.keys(lastSignals).forEach((symbol) => {
+      lastSignals[symbol] = null;
+    });
+  }
   updateNotificationPermissionStatus();
 }
 
 function updateNotificationPermissionStatus() {
-  if (!notificationPermissionStatus) return;
-
-  if (!("Notification" in window)) {
-    notificationPermissionStatus.textContent = "Browser permission: not supported";
-    return;
+  const enabled = signalAlertsEnabled();
+  const permission = "Notification" in window ? Notification.permission : "unsupported";
+  if (notificationPermissionStatus) {
+    notificationPermissionStatus.textContent = `Browser permission: ${permission}`;
   }
-
-  notificationPermissionStatus.textContent =
-    `Browser permission: ${Notification.permission}`;
+  if (generalNotificationStatus) {
+    generalNotificationStatus.textContent = !enabled
+      ? "Notification status: Off"
+      : permission === "granted"
+        ? "Notification status: On · desktop and in-app alerts active"
+        : permission === "denied"
+          ? "Notification status: On · Chrome blocked; in-app alerts active"
+          : permission === "default"
+            ? "Notification status: On · allow Chrome permission; in-app alerts active"
+            : "Notification status: On · in-app alerts active";
+  }
 }
 
 function requestSignalNotificationPermission() {
@@ -1854,6 +1877,7 @@ function initializeSignalAlertSettings() {
   const enabled = signalAlertsEnabled();
   if (alertsToggle) alertsToggle.checked = enabled;
   if (signalAlertsToggle) signalAlertsToggle.checked = enabled;
+  if (generalSignalAlertsToggle) generalSignalAlertsToggle.checked = enabled;
   updateNotificationPermissionStatus();
 }
 
@@ -5508,24 +5532,25 @@ if (reasonEl) {
   if (resistanceEl) resistanceEl.textContent = data.structure_resistance || "--";
   if (supportEl) supportEl.textContent = data.structure_support || "--";
 
-  if (lastSignals[symbol] !== signal) {
-    const alertsOn = alertsToggle ? alertsToggle.checked : false;
+  const alertSignal = normalizeSignalAlert(signal, data);
+  if (lastSignals[symbol] !== alertSignal) {
+    const alertsOn = signalAlertsEnabled();
     const strongOnly = strongToggle ? strongToggle.checked : false;
 
     let shouldAlert =
-    signal === "BUY" ||
-    signal === "SELL" ||
-    signal === "EXIT BUY" ||
-    signal === "EXIT SELL";
+    alertSignal === "BUY" ||
+    alertSignal === "SELL" ||
+    alertSignal === "EXIT BUY" ||
+    alertSignal === "EXIT SELL";
     if (strongOnly) {
       shouldAlert = shouldAlert && qualityText === "STRONG";
     }
 
     if (shouldAlert && alertsOn) {
-      playAlert(symbol, signal);
+      playAlert(symbol, alertSignal);
     }
 
-    lastSignals[symbol] = signal;
+    lastSignals[symbol] = alertSignal;
   }
 }
 function updateSmcVisual(data) {
@@ -7550,11 +7575,50 @@ if (priceEl) {
   }
   }
 
+function normalizeSignalAlert(signal, data = {}) {
+  const candidates = [
+    signal,
+    data?.signal,
+    data?.final_signal,
+    data?.display_signal,
+    data?.signal_display_state,
+  ];
+  for (const candidate of candidates) {
+    const value = String(candidate || "").trim().toUpperCase();
+    if (value.startsWith("EXIT BUY")) return "EXIT BUY";
+    if (value.startsWith("EXIT SELL")) return "EXIT SELL";
+    if (value === "BUY" || value.startsWith("BUY ")) return "BUY";
+    if (value === "SELL" || value.startsWith("SELL ")) return "SELL";
+  }
+  return "WAIT";
+}
+
+function showSignalAlertMessage(symbol, signal) {
+  let toast = document.getElementById("signalAlertToast");
+  if (!toast) {
+    toast = document.createElement("div");
+    toast.id = "signalAlertToast";
+    toast.className = "signal-alert-toast";
+    toast.setAttribute("role", "status");
+    toast.setAttribute("aria-live", "assertive");
+    document.body.appendChild(toast);
+  }
+  toast.textContent = `FlowSignal Alert · ${symbol} ${signal}`;
+  toast.dataset.side = signal.includes("SELL") ? "SELL" : "BUY";
+  toast.classList.add("is-visible");
+  window.clearTimeout(showSignalAlertMessage.hideTimer);
+  showSignalAlertMessage.hideTimer = window.setTimeout(() => {
+    toast.classList.remove("is-visible");
+  }, 9000);
+}
+
 function playAlert(symbol, signal) {
   try {
     if (!signalAlertsEnabled()) {
       return;
     }
+
+    showSignalAlertMessage(symbol, signal);
 
     const audio = document.getElementById("alertSound");
 
@@ -13625,6 +13689,13 @@ alertsToggle?.addEventListener("change", () => {
 signalAlertsToggle?.addEventListener("change", () => {
   setSignalAlertsEnabled(signalAlertsToggle.checked);
   if (signalAlertsToggle.checked) {
+    requestSignalNotificationPermission();
+  }
+});
+
+generalSignalAlertsToggle?.addEventListener("change", () => {
+  setSignalAlertsEnabled(generalSignalAlertsToggle.checked);
+  if (generalSignalAlertsToggle.checked) {
     requestSignalNotificationPermission();
   }
 });

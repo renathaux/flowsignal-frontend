@@ -45,11 +45,13 @@ assert.equal(context.translate("Wired — sets the minimum allowed SL distance; 
 assert.equal(context.translate("Open Risk Management →", "es"), "Abrir gestión de riesgo →");
 assert.equal(context.translate("Allowed: 1–5 R", "fr"), "Autorisé : 1–5 R");
 assert.equal(context.translate("Dashboard", "en"), "Dashboard");
+assert.equal(context.translate("Signal notifications", "fr"), "Notifications de signal");
+assert.equal(context.translate("Signal notifications", "es"), "Notificaciones de señal");
 assert.equal(context.canTranslate("Current mode: BLOCK ONLY"), true);
 
 assert.ok(source.includes("translateFullInterface(lang);"), "language changes translate the full app");
 assert.ok(source.includes("new MutationObserver"), "dynamic UI refreshes remain translated");
 assert.ok(source.includes("document.documentElement.lang = safeLang"), "document language follows selection");
-assert.ok(html.includes('script.js?v=111'), "browser cache is busted for the broker-request stability release");
+assert.ok(html.includes('script.js?v=112'), "browser cache is busted for the notification reliability release");
 
 console.log("full app translation tests passed");
