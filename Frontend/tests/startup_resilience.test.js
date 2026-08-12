@@ -100,6 +100,16 @@ assert.ok(
   !dashboard.includes("\n      translateUiAttributes(currentLang);\n    });"),
   "live translation mutations are scoped to added subtrees instead of rescanning the full page",
 );
+assert.ok(
+  dashboard.includes('fetch(`${BASE_URL}/modify-live-position-levels`') &&
+  dashboard.includes("timeoutMs: 45000") &&
+  dashboard.includes("suppressErrorPanel: true"),
+  "broker level amendments use a dedicated timeout and report errors in their confirmation UI",
+);
+assert.ok(
+  html.includes('apiClient.js?v=5'),
+  "the API client cache is busted for the broker-request stability release",
+);
 
 window.fetch = (_input, init = {}) => new Promise((_resolve, reject) => {
   init.signal?.addEventListener("abort", () => {
@@ -140,6 +150,18 @@ require(path.join(__dirname, "..", "apiClient.js"));
     window.FlowSignalApi.getState().errorMessage,
     null,
     "broker status timeout does not create a global API error",
+  );
+  await assert.rejects(
+    window.FlowSignalApi.fetch("https://backend.invalid/modify-live-position-levels", {
+      timeoutMs: 20,
+    }),
+    (error) => error.name === "TimeoutError",
+    "broker amendment timeout still settles",
+  );
+  assert.equal(
+    window.FlowSignalApi.getState().errorMessage,
+    null,
+    "broker amendment failures stay out of the global API error panel",
   );
   console.log("startup resilience tests passed");
 })().catch((error) => {

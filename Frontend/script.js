@@ -12349,6 +12349,8 @@ async function applyDraggedTradeLevelChange() {
     const response = await fetch(`${BASE_URL}/modify-live-position-levels`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
+      timeoutMs: 45000,
+      suppressErrorPanel: true,
       body: JSON.stringify({
         symbol: dragSymbol,
         position_id: trade.position_id || trade.broker_position_id,

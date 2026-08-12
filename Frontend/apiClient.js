@@ -58,7 +58,7 @@
     `;
     document.body.appendChild(panel);
     panel.querySelector("#frontendErrorDismiss")?.addEventListener("click", () => {
-      panel.classList.add("hidden");
+      window.FlowSignalApi.clearError();
     });
     return panel;
   }
@@ -82,6 +82,7 @@
       || String(url || "").includes("/news-impact")
       || String(url || "").includes("/ctrader-status")
       || String(url || "").includes("/ctrader/status")
+      || String(url || "").includes("/modify-live-position-levels")
     );
 
     if (!suppressErrorPanel) {
@@ -96,6 +97,9 @@
 
       if (!response.ok) {
         state.errorMessage = `HTTP ${response.status}`;
+        renderErrorPanel();
+      } else if (state.errorMessage) {
+        state.errorMessage = null;
         renderErrorPanel();
       }
 
