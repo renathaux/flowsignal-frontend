@@ -6671,6 +6671,88 @@ document.getElementById("fundamental-refresh-btn")?.addEventListener("click", ()
   refreshFundamentalInsight();
 });
 
+const v2ShadowState = { request: 0, cache: new Map() };
+
+function v2ShadowText(key) {
+  const language = String(currentLang || "en").toLowerCase();
+  const copy = {
+    en: { loading: "Loading forward shadow data…", unavailable: "Shadow data unavailable", noTrades: "No forward shadow trades yet.", retest: "Retest", noOpen: "No shadow trade open", open: "Hypothetical trade open" },
+    fr: { loading: "Chargement des données shadow…", unavailable: "Données shadow indisponibles", noTrades: "Aucun trade shadow pour le moment.", retest: "Retest", noOpen: "Aucun trade shadow ouvert", open: "Trade hypothétique ouvert" },
+    es: { loading: "Cargando datos shadow…", unavailable: "Datos shadow no disponibles", noTrades: "Aún no hay operaciones shadow.", retest: "Retesteo", noOpen: "No hay operación shadow abierta", open: "Operación hipotética abierta" },
+  };
+  return (copy[language] || copy.en)[key] || key;
+}
+
+function setV2ShadowDecision(id, value) {
+  const element = document.getElementById(id);
+  if (!element) return;
+  const decision = String(value || "WAIT").toUpperCase();
+  element.textContent = decision;
+  element.dataset.tone = decision.includes("BUY") ? "buy" : decision.includes("SELL") ? "sell" : "wait";
+}
+
+function renderV2Shadow(data, symbol) {
+  const current = data?.current || {};
+  const v1 = data?.v1 || {};
+  const v2 = data?.v2 || {};
+  document.getElementById("v2-shadow-card")?.setAttribute("data-state", "ready");
+  document.getElementById("v2-shadow-symbol").textContent = symbol;
+  document.getElementById("v2-shadow-status").textContent = data?.strategy_version || "V2 SHADOW";
+  setV2ShadowDecision("v2-shadow-v1-decision", current.v1_decision);
+  setV2ShadowDecision("v2-shadow-v2-decision", current.v2_decision);
+  document.getElementById("v2-shadow-reason").textContent = current.v2_reason || "--";
+  document.getElementById("v2-shadow-extension").textContent = Number.isFinite(Number(current.extension_atr)) ? `${Number(current.extension_atr).toFixed(2)} ATR` : "-- ATR";
+  document.getElementById("v2-shadow-retest").textContent = `${v2ShadowText("retest")}: ${current.retest_timestamp ? new Date(current.retest_timestamp).toLocaleTimeString() : "--"}`;
+  document.getElementById("v2-shadow-reset").textContent = current.post_sl_reset_state || "CLEAR";
+  document.getElementById("v2-shadow-open").textContent = current.hypothetical_open_position ? v2ShadowText("open") : v2ShadowText("noOpen");
+  document.getElementById("v2-shadow-v1-trades").textContent = v1.trade_decisions ?? 0;
+  document.getElementById("v2-shadow-v1-linked").textContent = v1.linked_executions ?? 0;
+  document.getElementById("v2-shadow-v1-extended").textContent = v1.entries_over_075_atr ?? 0;
+  document.getElementById("v2-shadow-v2-trades").textContent = v2.trades ?? 0;
+  document.getElementById("v2-shadow-v2-wl").textContent = `${v2.wins ?? 0} / ${v2.losses ?? 0}`;
+  document.getElementById("v2-shadow-v2-net").textContent = `${Number(v2.net_r || 0).toFixed(2)}R`;
+  document.getElementById("v2-shadow-started").textContent = data?.started_at ? new Date(data.started_at).toLocaleString() : "--";
+  const history = document.getElementById("v2-shadow-history-list");
+  const rows = Array.isArray(data?.recent_trades) ? data.recent_trades : [];
+  if (history) {
+    history.innerHTML = rows.length ? rows.slice(0, 5).map((row) => `
+      <div class="v2-shadow-history-row">
+        <span>${new Date(row.date_time).toLocaleString()}</span>
+        <span>${row.direction || "--"}</span>
+        <span>${row.outcome || "OPEN"}</span>
+        <span>${row.r == null ? "--" : `${Number(row.r).toFixed(2)}R`}</span>
+      </div>`).join("") : `<p>${v2ShadowText("noTrades")}</p>`;
+  }
+}
+
+async function fetchV2Shadow(symbol = currentChartSymbol, options = {}) {
+  const normalized = normalizeFundamentalSymbol(symbol);
+  const request = ++v2ShadowState.request;
+  const status = document.getElementById("v2-shadow-status");
+  if (status && options.loading !== false) status.textContent = v2ShadowText("loading");
+  try {
+    const response = await fetch(`${BASE_URL}/shadow/v2/summary?symbol=${encodeURIComponent(normalized)}`, {
+      method: "GET", cache: "no-store", timeoutMs: 15000, suppressErrorPanel: true,
+    });
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const data = await response.json();
+    if (data?.symbol !== normalized || data?.shadow_only !== true) throw new Error("Invalid shadow response");
+    v2ShadowState.cache.set(normalized, data);
+    if (request === v2ShadowState.request && currentChartSymbol === normalized) renderV2Shadow(data, normalized);
+    return data;
+  } catch (error) {
+    console.warn("V2 shadow unavailable:", error);
+    const cached = v2ShadowState.cache.get(normalized);
+    if (request === v2ShadowState.request && currentChartSymbol === normalized) {
+      if (cached) renderV2Shadow(cached, normalized);
+      if (status) status.textContent = `${v2ShadowText("unavailable")}: ${error.message}`;
+    }
+    return cached || null;
+  }
+}
+
+document.getElementById("v2-shadow-refresh")?.addEventListener("click", () => fetchV2Shadow(currentChartSymbol));
+
 document.addEventListener("visibilitychange", handleFundamentalVisibilityChange);
 
 function firstUsableValue(...values) {
@@ -13106,6 +13188,7 @@ function switchChart(symbol, timeframe = currentChartTimeframe) {
     force: fundamentalSymbolChanged,
     symbolSwitch: fundamentalSymbolChanged,
   });
+  fetchV2Shadow(currentChartSymbol);
 
   initChart(); // 🔥 FORCE NEW PRECISION
 
@@ -13239,6 +13322,7 @@ fetch(`${BASE_URL}/track-visit`, {
 
   const startupRequests = {
     signals: refreshPanel(),
+    v2Shadow: fetchV2Shadow(currentChartSymbol),
     newsMode: loadNewsTradingMode(),
     broker: fetchCtraderStatus(),
     autoTrade: fetchAutoTradeStatus(),
@@ -13386,6 +13470,11 @@ setInterval(() => {
 setInterval(() => {
   pollFundamentalInsightIfActive();
 }, FUNDAMENTAL_INSIGHT_CACHE_MS);
+
+setInterval(() => {
+  if (!dashboardRuntimeActive()) return;
+  fetchV2Shadow(currentChartSymbol, { loading: false });
+}, 60000);
 
 setInterval(() => {
   if (!dashboardRuntimeActive()) return;

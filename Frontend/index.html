@@ -777,6 +777,42 @@
     </div>
   </div>
 </div>
+<section id="v2-shadow-card" class="v2-shadow-card" data-state="loading" aria-labelledby="v2-shadow-title">
+  <header class="v2-shadow-header">
+    <div>
+      <span class="v2-shadow-kicker">STRATEGY COMPARISON</span>
+      <h2 id="v2-shadow-title">V2 SHADOW <i>•</i> <strong id="v2-shadow-symbol">EURUSD</strong></h2>
+    </div>
+    <button id="v2-shadow-refresh" type="button" aria-label="Refresh V2 Shadow">↻</button>
+  </header>
+  <div class="v2-shadow-warning">SHADOW — DOES NOT PLACE ORDERS</div>
+  <div id="v2-shadow-status" class="v2-shadow-status">Loading forward shadow data…</div>
+  <div class="v2-shadow-current">
+    <article><span>V1 CURRENT</span><strong id="v2-shadow-v1-decision">WAIT</strong></article>
+    <article><span>V2 CURRENT</span><strong id="v2-shadow-v2-decision">WAIT</strong><small id="v2-shadow-reason">--</small></article>
+    <article><span>EXTENSION</span><strong id="v2-shadow-extension">-- ATR</strong><small id="v2-shadow-retest">Retest: --</small></article>
+    <article><span>POST-SL RESET</span><strong id="v2-shadow-reset">CLEAR</strong><small id="v2-shadow-open">No shadow trade open</small></article>
+  </div>
+  <div class="v2-shadow-compare">
+    <article>
+      <h3>V1 LIVE OBSERVED</h3>
+      <div><span>Trade decisions</span><strong id="v2-shadow-v1-trades">0</strong></div>
+      <div><span>Linked executions</span><strong id="v2-shadow-v1-linked">0</strong></div>
+      <div><span>&gt; 0.75 ATR</span><strong id="v2-shadow-v1-extended">0</strong></div>
+    </article>
+    <article>
+      <h3>V2 SHADOW</h3>
+      <div><span>Trades</span><strong id="v2-shadow-v2-trades">0</strong></div>
+      <div><span>Wins / Losses</span><strong id="v2-shadow-v2-wl">0 / 0</strong></div>
+      <div><span>Net R</span><strong id="v2-shadow-v2-net">0.00R</strong></div>
+    </article>
+  </div>
+  <div class="v2-shadow-history">
+    <h3>RECENT HYPOTHETICAL TRADES</h3>
+    <div id="v2-shadow-history-list"><p>No forward shadow trades yet.</p></div>
+  </div>
+  <footer>Forward results begin at <span id="v2-shadow-started">--</span>. Backtest results are not included.</footer>
+</section>
 <section class="history-section">
     <div class="history-header">
       <h2>Recent Signal History</h2>
