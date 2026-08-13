@@ -5040,7 +5040,8 @@ function getSignalSide(signal) {
 
 function getVisibleSignal(data) {
   const displaySignal = String(
-    data?.display_signal
+    data?.strategy_decision
+    || data?.display_signal
     || data?.signal_display_state
     || data?.final_signal
     || data?.signal
@@ -11338,8 +11339,15 @@ function renderLiveActiveOrders() {
     const signalBeforeFilters = String(signalData.signal_before_filters || "").toUpperCase();
     const blockedBy = String(signalData.blocked_by || "").toUpperCase();
     const statusSignal = String(autoStatus?.signal || autoStatus?.action || "").toUpperCase();
-    const reasonText = String(autoStatus?.reason || signalData.blocked_reason || "").toLowerCase();
+    const executionBlockReason = String(signalData.execution_block_reason || "").toUpperCase();
+    const reasonText = String(
+      autoStatus?.reason
+      || signalData.execution_block_reason
+      || signalData.blocked_reason
+      || ""
+    ).toLowerCase();
     const isSameSymbolDuplicateBlock =
+      executionBlockReason === "ACTIVE_TRADE_ALREADY_RUNNING" ||
       reasonText.includes("already running") ||
       reasonText.includes("already active") ||
       reasonText.includes("active trade already exists") ||
