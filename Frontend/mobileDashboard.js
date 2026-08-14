@@ -14,6 +14,15 @@
   function normalizeSignal(v){const s=String(v||"WAIT").toUpperCase();if(s.includes("BUY"))return"BUY";if(s.includes("SELL"))return"SELL";return"WAIT";}
   function normalizeSide(v){const s=String(v||"").toUpperCase();if(["1","BUY","LONG"].includes(s))return"BUY";if(["2","SELL","SHORT"].includes(s))return"SELL";return s||"--";}
   function formatPrice(v,symbol=state.symbol){const n=Number(v);if(!Number.isFinite(n))return"--";return n.toFixed(symbol==="XAUUSD"?2:5);}
+  function readable(v){return String(v??"--").replaceAll("_"," ");}
+  function structureText(value){
+    if(!value)return"--";
+    if(typeof value!=="object")return readable(value);
+    const raw=first(value.label,value.name,value.bias,value.market_bias,value.structure,value.direction,value.trend,value.state,value.status);
+    if(!raw)return"--";
+    const text=readable(raw).toUpperCase();
+    return /BULLISH|BEARISH/.test(text)&&!text.includes("BIAS")?`${text} BIAS`:text;
+  }
 
   function asArray(v){if(Array.isArray(v))return v.filter(Boolean);if(v&&typeof v==="object")return Object.values(v).filter(x=>x&&typeof x==="object");return[];}
   function activeOrders(data){return asArray(first(data?.live_active_orders,data?._meta?.live_active_orders,data?.live?.active_orders,{}));}
@@ -45,29 +54,38 @@
 
   function smcIntel(data){const plan=data?.[state.symbol]||{};return first(plan.smc_plan_intel,plan.smc_intel,plan.smc,{})||{};}
   function confirmations(intel,plan){const direct=first(intel.confirmations,intel.confirmation_status,plan.confirmations);if(Array.isArray(direct)){const done=direct.filter(x=>typeof x==="object"?first(x.done,x.confirmed,x.ok,false):Boolean(x)).length;return `${done} / ${direct.length}`;}if(direct&&typeof direct==="object"){const vals=Object.values(direct);const done=vals.filter(x=>typeof x==="object"?first(x.done,x.confirmed,x.ok,false):Boolean(x)).length;return `${done} / ${vals.length}`;}const total=finite(first(intel.total_confirmations,intel.confirmation_total),0),done=finite(first(intel.confirmed_count,intel.confirmations_met),0);if(total)return `${done} / ${total}`;const progress=finite(first(intel.progress,intel.progress_pct),NaN);if(Number.isFinite(progress)&&progress>=100)return "6 / 6";return "--";}
-  function renderSmc(data){const plan=data?.[state.symbol]||{},intel=smcIntel(data),active=allActive(data).some(p=>String(p.symbol||"").toUpperCase()===state.symbol);const structure=first(intel.market_structure,intel.structure,intel.market_bias,plan.market_structure,plan.market_bias,plan.trend_15m,plan.trend,"--");const trigger=active?"RUNNING":first(intel.next_trigger,intel.trigger,plan.next_trigger,plan.execution_status,plan.strategy_decision,plan.signal,"--");$("mSmcStructure").textContent=String(structure).replaceAll("_"," ");$("mSmcTrigger").textContent=String(trigger).replaceAll("_"," ");$("mSmcConfirm").textContent=confirmations(intel,plan);}
+  function renderSmc(data){const plan=data?.[state.symbol]||{},intel=smcIntel(data),active=allActive(data).some(p=>String(p.symbol||"").toUpperCase()===state.symbol);const structure=first(intel.market_structure,intel.structure,intel.market_bias,plan.market_structure,plan.market_bias,plan.trend_15m,plan.trend,"--");const trigger=active?"RUNNING":first(intel.next_trigger,intel.trigger,plan.next_trigger,plan.execution_status,plan.strategy_decision,plan.signal,"--");$("mSmcStructure").textContent=structureText(structure);$("mSmcTrigger").textContent=readable(trigger);$("mSmcConfirm").textContent=confirmations(intel,plan);}
 
   function renderConnection(ok){const el=$("mobileConnection");el.textContent=ok?"● LIVE":"Connection issue";el.classList.toggle("negative",!ok);}
   function renderAll(){renderSignals(state.panel);renderPerformance(state.panel,state.performance);renderTrade(state.panel);renderSmc(state.panel);renderChart();}
 
   async function loadData(){if(state.loading)return;state.loading=true;try{const [panelRes,perfRes]=await Promise.all([fetch(`${BASE_URL}/panel-data`,{credentials:"include",cache:"no-store"}),fetch(`${BASE_URL}/performance/summary`,{credentials:"include",cache:"no-store"}).catch(()=>null)]);if(!panelRes.ok)throw new Error(`panel ${panelRes.status}`);state.panel=await panelRes.json();state.performance=perfRes&&perfRes.ok?await perfRes.json():null;renderAll();renderConnection(true);}catch(e){renderConnection(false);console.error("mobile dashboard refresh failed",e);}finally{state.loading=false;}}
 
-  function detailRow(k,v){if(v===undefined||v===null||v==="")return"";const shown=typeof v==="object"?JSON.stringify(v):String(v);return `<div class="detail-row"><span>${escapeHtml(String(k).replaceAll("_"," "))}</span><strong>${escapeHtml(shown)}</strong></div>`;}
-  function openDetail(title,html){$("mobileDetailTitle").textContent=title;$("mobileDetailBody").innerHTML=html;$("mobileDetail").classList.remove("hidden");}
-  function smcDetail(){const plan=state.panel?.[state.symbol]||{},intel=smcIntel(state.panel);openDetail("SMC Plan",`<div class="detail-card"><h3>SMC Plan · ${state.symbol}</h3>${[["Market structure",first(intel.market_structure,intel.structure,plan.trend_15m)],["Next trigger",first(intel.next_trigger,plan.execution_status,plan.strategy_decision)],["Entry",first(intel.next_entry_zone,intel.entry_zone,plan.entry)],["SL",first(intel.estimated_sl,plan.sl)],["TP",first(intel.estimated_tp,plan.tp2)],["Confirmations",confirmations(intel,plan)]].map(([k,v])=>detailRow(k,v)).join("")}</div>`);}
-  async function v2Detail(){openDetail("V2 Shadow",'<div class="detail-card"><p>Loading V2 Shadow…</p></div>');try{const r=await fetch(`${BASE_URL}/shadow/v2/summary?symbol=${state.symbol}`,{cache:"no-store"}),v=await r.json();openDetail("V2 Shadow",`<div class="detail-card"><h3>V2 Shadow · ${state.symbol}</h3>${Object.entries(v).map(([k,x])=>detailRow(k,x)).join("")}</div>`);}catch(e){openDetail("V2 Shadow",'<div class="detail-card"><p>V2 data unavailable.</p></div>');}}
-  async function fundamentalDetail(){openDetail("Fundamental Insight",'<div class="detail-card"><p>Loading fundamentals…</p></div>');try{const r=await fetch(`${BASE_URL}/fundamentals/insight?symbol=${state.symbol}`,{cache:"no-store"}),v=await r.json();openDetail("Fundamental Insight",`<div class="detail-card"><h3>${state.symbol}</h3>${Object.entries(v).map(([k,x])=>detailRow(k,x)).join("")}</div>`);}catch(e){openDetail("Fundamental Insight",'<div class="detail-card"><p>Fundamental data unavailable.</p></div>');}}
-  function historyDetail(){const rows=first(state.panel?.live_recent_history,state.panel?._meta?.live_recent_history,[]);openDetail("Signal History",`<div class="detail-card"><h3>Recent Signals</h3>${(Array.isArray(rows)?rows:[]).slice(0,30).map(x=>detailRow(`${first(x.symbol,"")} ${first(x.signal,x.side,"")}`,first(x.result,x.status,x.pips,""))).join("")||"<p>No recent signals.</p>"}</div>`);}
+  function detailRow(k,v){if(v===undefined||v===null||v==="")return"";const shown=typeof v==="object"?JSON.stringify(v):String(v);return `<div class="detail-row"><span>${escapeHtml(readable(k))}</span><strong>${escapeHtml(shown)}</strong></div>`;}
+  function showBackdrop(){const b=$("mobileBackdrop");b.classList.remove("hidden");b.setAttribute("aria-hidden","false");document.body.classList.add("sheet-open");}
+  function hideBackdrop(){const b=$("mobileBackdrop");b.classList.add("hidden");b.setAttribute("aria-hidden","true");document.body.classList.remove("sheet-open");}
+  function closeAllSheets(){[$("mobileMenu"),$("mobileDetail")].forEach(el=>{el.classList.add("hidden");el.setAttribute("aria-hidden","true");});hideBackdrop();}
+  function openDetail(title,html,eyebrow="DETAILS"){$("mobileMenu").classList.add("hidden");$("mobileMenu").setAttribute("aria-hidden","true");$("mobileDetailTitle").textContent=title;$("mobileDetailEyebrow").textContent=eyebrow;$("mobileDetailBody").innerHTML=html;$("mobileDetail").classList.remove("hidden");$("mobileDetail").setAttribute("aria-hidden","false");showBackdrop();}
+  function smcDetail(){const plan=state.panel?.[state.symbol]||{},intel=smcIntel(state.panel),structure=first(intel.market_structure,intel.structure,intel.market_bias,plan.market_structure,plan.market_bias,plan.trend_15m,plan.trend);openDetail("SMC Plan",`<div class="detail-card"><h3>SMC Plan · ${state.symbol}</h3>${[["Market structure",structureText(structure)],["Next trigger",first(intel.next_trigger,plan.execution_status,plan.strategy_decision)],["Entry",first(intel.next_entry_zone,intel.entry_zone,plan.entry)],["SL",first(intel.estimated_sl,plan.sl)],["TP",first(intel.estimated_tp,plan.tp2)],["Confirmations",confirmations(intel,plan)]].map(([k,v])=>detailRow(k,v)).join("")}</div>`,"STRATEGY");}
+  async function v2Detail(){openDetail("V2 Shadow",'<div class="detail-card"><p>Loading V2 Shadow…</p></div>',"RESEARCH");try{const r=await fetch(`${BASE_URL}/shadow/v2/summary?symbol=${state.symbol}`,{cache:"no-store"}),v=await r.json();openDetail("V2 Shadow",`<div class="detail-card"><h3>V2 Shadow · ${state.symbol}</h3>${Object.entries(v).map(([k,x])=>detailRow(k,x)).join("")}</div>`,"RESEARCH");}catch(e){openDetail("V2 Shadow",'<div class="detail-card"><p>V2 data unavailable.</p></div>',"RESEARCH");}}
+  async function fundamentalDetail(){openDetail("Fundamental Insight",'<div class="detail-card"><p>Loading fundamentals…</p></div>',"MARKET BIAS");try{const r=await fetch(`${BASE_URL}/fundamentals/insight?symbol=${state.symbol}`,{cache:"no-store"}),v=await r.json();openDetail("Fundamental Insight",`<div class="detail-card"><h3>${state.symbol}</h3>${Object.entries(v).map(([k,x])=>detailRow(k,x)).join("")}</div>`,"MARKET BIAS");}catch(e){openDetail("Fundamental Insight",'<div class="detail-card"><p>Fundamental data unavailable.</p></div>',"MARKET BIAS");}}
+  function historyDetail(){const rows=first(state.panel?.live_recent_history,state.panel?._meta?.live_recent_history,[]);openDetail("Signal History",`<div class="detail-card"><h3>Recent Signals</h3>${(Array.isArray(rows)?rows:[]).slice(0,30).map(x=>detailRow(`${first(x.symbol,"")} ${first(x.signal,x.side,"")}`,first(x.result,x.status,x.pips,""))).join("")||"<p>No recent signals.</p>"}</div>`,"RECENT ACTIVITY");}
 
   function selectSymbol(symbol){state.symbol=symbol;document.querySelectorAll(".symbol-switch-btn").forEach(b=>b.classList.toggle("active",b.dataset.symbol===symbol));renderTrade(state.panel||{});renderSmc(state.panel||{});renderChart();}
   function selectTf(tf){state.timeframe=tf;document.querySelectorAll(".tf").forEach(b=>b.classList.toggle("active",b.dataset.tf===tf));renderChart();}
-  function openMenu(){$("mobileMenu").classList.remove("hidden");$("mobileMenu").setAttribute("aria-hidden","false");}
-  function closeMenu(){$("mobileMenu").classList.add("hidden");$("mobileMenu").setAttribute("aria-hidden","true");}
+  function openMenu(){$("mobileDetail").classList.add("hidden");$("mobileDetail").setAttribute("aria-hidden","true");$("mobileMenu").classList.remove("hidden");$("mobileMenu").setAttribute("aria-hidden","false");showBackdrop();}
+  function closeMenu(){closeAllSheets();}
 
-  $("mobileMenuBtn").onclick=openMenu;$("mobileMenuClose").onclick=closeMenu;$("mobileDetailClose").onclick=()=>$("mobileDetail").classList.add("hidden");$("mSmcBtn").onclick=smcDetail;
-  document.querySelectorAll(".symbol-switch-btn").forEach(b=>b.onclick=()=>selectSymbol(b.dataset.symbol));document.querySelectorAll(".tf").forEach(b=>b.onclick=()=>selectTf(b.dataset.tf));
-  document.querySelectorAll("#mobileMenu [data-panel]").forEach(b=>b.onclick=()=>{closeMenu();({fundamental:fundamentalDetail,v2:v2Detail,smc:smcDetail,history:historyDetail}[b.dataset.panel]||(()=>{}))();});
-  document.querySelectorAll(".bottom-nav button").forEach(b=>b.onclick=()=>{document.querySelectorAll(".bottom-nav button").forEach(x=>x.classList.remove("active"));b.classList.add("active");if(b.dataset.nav==="menu")openMenu();else if(b.dataset.nav==="trades")historyDetail();else if(b.dataset.nav==="signals")historyDetail();else if(b.dataset.nav==="chart")$("mobileChart")?.focus?.();});
+  $("mobileMenuBtn").onclick=openMenu;
+  $("mobileMenuClose").onclick=closeMenu;
+  $("mobileDetailClose").onclick=closeAllSheets;
+  $("mobileBackdrop").onclick=closeAllSheets;
+  $("mSmcBtn").onclick=smcDetail;
+  document.addEventListener("keydown",e=>{if(e.key==="Escape")closeAllSheets();});
+  document.querySelectorAll(".symbol-switch-btn").forEach(b=>b.onclick=()=>selectSymbol(b.dataset.symbol));
+  document.querySelectorAll(".tf").forEach(b=>b.onclick=()=>selectTf(b.dataset.tf));
+  document.querySelectorAll("#mobileMenu [data-panel]").forEach(b=>b.onclick=()=>({fundamental:fundamentalDetail,v2:v2Detail,smc:smcDetail,history:historyDetail}[b.dataset.panel]||(()=>{}))());
+  document.querySelectorAll(".bottom-nav button").forEach(b=>b.onclick=()=>{document.querySelectorAll(".bottom-nav button").forEach(x=>x.classList.remove("active"));b.classList.add("active");if(b.dataset.nav==="menu")openMenu();else if(b.dataset.nav==="trades")historyDetail();else if(b.dataset.nav==="signals")historyDetail();else if(b.dataset.nav==="chart")$("mobileChart")?.focus?.();else closeAllSheets();});
 
   loadData();setInterval(loadData,5000);window.addEventListener("load",()=>setTimeout(renderChart,300));
 })();
