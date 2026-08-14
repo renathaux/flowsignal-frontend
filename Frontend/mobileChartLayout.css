@@ -1,0 +1,32 @@
+/* Mobile chart geometry override: keep the chart canvas fully inside its grid slot. */
+.chart-card {
+  min-height: 0;
+  grid-template-rows: 31px 21px minmax(0, 1fr) 32px !important;
+}
+
+#mobileChart.chart {
+  width: 100% !important;
+  height: 100% !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  max-width: 100% !important;
+  overflow: hidden !important;
+}
+
+#mobileChart > div,
+#mobileChart table {
+  max-width: 100% !important;
+}
+
+.tf-row {
+  position: relative;
+  z-index: 2;
+  margin-top: 0;
+  background: #06101b;
+}
+
+@media (max-height: 820px) {
+  .chart-card {
+    grid-template-rows: 28px 18px minmax(0, 1fr) 30px !important;
+  }
+}
