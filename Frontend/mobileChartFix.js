@@ -91,4 +91,39 @@
 
     return chart;
   };
+
+  const backendBase = location.hostname === "127.0.0.1" || location.hostname === "localhost"
+    ? "http://127.0.0.1:8001"
+    : "https://flowsignal-backend-3.onrender.com";
+
+  let healthCheckRunning = false;
+  async function refreshBackendHealth() {
+    if (healthCheckRunning) return;
+    healthCheckRunning = true;
+    const badge = document.getElementById("mobileConnection");
+    try {
+      const response = await fetch(`${backendBase}/panel-data`, {
+        credentials: "include",
+        cache: "no-store",
+      });
+      if (!response.ok) throw new Error(`panel ${response.status}`);
+      if (badge) {
+        badge.textContent = "● LIVE";
+        badge.classList.remove("negative");
+        badge.title = "Backend connected";
+      }
+    } catch (error) {
+      if (badge) {
+        badge.textContent = "Connection issue";
+        badge.classList.add("negative");
+        badge.title = error?.message || "Backend unavailable";
+      }
+    } finally {
+      healthCheckRunning = false;
+    }
+  }
+
+  window.addEventListener("load", refreshBackendHealth);
+  window.addEventListener("pageshow", refreshBackendHealth);
+  setInterval(refreshBackendHealth, 5000);
 })();
