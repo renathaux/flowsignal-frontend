@@ -12,7 +12,7 @@
     (function(){try{var a=JSON.parse(localStorage.getItem("flowsignal_access")||"null");var r=String(localStorage.getItem("flowsignal_role")||"").toLowerCase();if(!(a&&a.granted===true)&&r!=="admin"&&r!=="user")window.location.replace("index.html");}catch(e){window.location.replace("index.html");}})();
   </script>
   <link rel="stylesheet" href="mobile.css?v=7" />
-  <link rel="stylesheet" href="mobileSheet.css?v=5" />
+  <link rel="stylesheet" href="mobileSheet.css?v=6" />
 </head>
 <body>
   <main class="mobile-app" id="mobileApp">
@@ -90,7 +90,7 @@
   </section>
   <script async src="https://unpkg.com/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
   <script src="mobileDashboard.js?v=5"></script>
-  <script src="mobileNav.js?v=1"></script>
+  <script src="mobileNav.js?v=2"></script>
   <script>
     window.addEventListener('pageshow', function(){
       var menu=document.getElementById('mobileMenu'), detail=document.getElementById('mobileDetail'), back=document.getElementById('mobileBackdrop');
