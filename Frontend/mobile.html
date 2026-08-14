@@ -12,7 +12,7 @@
     (function(){try{var a=JSON.parse(localStorage.getItem("flowsignal_access")||"null");var r=String(localStorage.getItem("flowsignal_role")||"").toLowerCase();if(!(a&&a.granted===true)&&r!=="admin"&&r!=="user")window.location.replace("index.html");}catch(e){window.location.replace("index.html");}})();
   </script>
   <link rel="stylesheet" href="mobile.css?v=8" />
-  <link rel="stylesheet" href="mobileSheet.css?v=6" />
+  <link rel="stylesheet" href="mobileSheet.css?v=7" />
   <link rel="stylesheet" href="mobileChartLayout.css?v=5" />
 </head>
 <body>
@@ -72,23 +72,45 @@
       <button data-nav="auto"><b>⚙</b><span>Auto Trade</span></button>
     </nav>
   </main>
+
   <div id="mobileBackdrop" class="sheet-backdrop hidden" aria-hidden="true"></div>
-  <aside id="mobileMenu" class="drawer sheet hidden" aria-hidden="true">
-    <div class="sheet-handle" aria-hidden="true"></div>
-    <div class="drawer-head"><div><small>FLOW SIGNAL</small><strong>Menu</strong></div><button id="mobileMenuClose" type="button" aria-label="Close menu">×</button></div>
-    <div class="menu-grid">
-      <button data-panel="fundamental"><span class="menu-icon">◎</span><span><strong>Fundamentals</strong><small>Bias & macro insight</small></span><b>›</b></button>
-      <button data-panel="v2"><span class="menu-icon">V2</span><span><strong>V2 Shadow</strong><small>Research comparison</small></span><b>›</b></button>
-      <button data-panel="smc"><span class="menu-icon">⚡</span><span><strong>SMC Plan</strong><small>Full structure details</small></span><b>›</b></button>
-      <button data-panel="history"><span class="menu-icon">↻</span><span><strong>Signal History</strong><small>Recent decisions & results</small></span><b>›</b></button>
-      <a href="index.html?desktop=1"><span class="menu-icon">▣</span><span><strong>Desktop Dashboard</strong><small>Open full desktop view</small></span><b>›</b></a>
+  <aside id="mobileMenu" class="drawer sheet full-menu-drawer hidden" aria-hidden="true">
+    <div class="drawer-head full-menu-head">
+      <div><small>FLOW SIGNAL</small><strong>Menu</strong></div>
+      <button id="mobileMenuClose" type="button" aria-label="Close menu">×</button>
     </div>
+
+    <nav class="desktop-menu-list" aria-label="FlowSignal full menu">
+      <a class="desktop-menu-row" href="mobile.html"><span>⌂</span><strong>Dashboard</strong></a>
+      <a class="desktop-menu-row" href="index.html?desktop=1&open=menuAssistantBtn"><span>◉</span><strong>Flow Assistant</strong></a>
+      <a class="desktop-menu-row" href="index.html?desktop=1&open=menuPaperBtn"><span>↗</span><strong>Live Trading</strong></a>
+      <a class="desktop-menu-row" href="index.html?desktop=1&open=menuFeedbackBtn"><span>💬</span><strong>Feedback</strong></a>
+      <a class="desktop-menu-row" href="index.html?desktop=1&open=menuHistoryBtn"><span>◷</span><strong>History</strong></a>
+      <a class="desktop-menu-row" href="index.html?desktop=1&open=menuStatsBtn"><span>▤</span><strong>Performance</strong></a>
+
+      <details class="desktop-settings-group" open>
+        <summary class="desktop-menu-row"><span>⚙</span><strong>Settings</strong><b>⌄</b></summary>
+        <div class="desktop-settings-submenu">
+          <a href="index.html?desktop=1&open=menuGeneralSettingsBtn">General</a>
+          <a href="index.html?desktop=1&open=menuRiskSettingsBtn">Risk Management</a>
+          <a href="index.html?desktop=1&open=menuBrokerAccountsBtn">Broker Accounts</a>
+          <a href="index.html?desktop=1&open=menuNotificationsSettingsBtn">Notifications</a>
+          <a href="index.html?desktop=1&open=menuStrategySettingsBtn">Strategy</a>
+        </div>
+      </details>
+
+      <button class="desktop-menu-row mobile-native-row" data-panel="fundamental" type="button"><span>◎</span><strong>Fundamental Insight</strong></button>
+      <button class="desktop-menu-row mobile-native-row" data-panel="v2" type="button"><span>V2</span><strong>V2 Shadow</strong></button>
+      <button class="desktop-menu-row mobile-native-row" data-panel="smc" type="button"><span>⚡</span><strong>SMC Plan</strong></button>
+    </nav>
   </aside>
+
   <section id="mobileDetail" class="detail sheet hidden" aria-hidden="true">
     <div class="sheet-handle" aria-hidden="true"></div>
     <header><div><small id="mobileDetailEyebrow">DETAILS</small><strong id="mobileDetailTitle">Details</strong></div><button id="mobileDetailClose" type="button" aria-label="Close details">×</button></header>
     <div id="mobileDetailBody"></div>
   </section>
+
   <script src="https://unpkg.com/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
   <script src="mobileChartFix.js?v=8"></script>
   <script src="mobileDashboard.js?v=8"></script>
