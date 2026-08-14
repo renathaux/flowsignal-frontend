@@ -52,6 +52,7 @@
     chart.addCandlestickSeries = function(seriesOptions = {}) {
       const series = originalAddCandlestickSeries({
         ...seriesOptions,
+        priceScaleId: "",
         lastValueVisible: false,
         priceFormat: {
           type: "custom",
@@ -61,6 +62,13 @@
             : Number(price).toFixed(5),
         },
       });
+
+      try {
+        series.priceScale().applyOptions({
+          autoScale: true,
+          scaleMargins: { top: 0.1, bottom: 0.12 },
+        });
+      } catch (_) {}
 
       const originalSetData = series.setData.bind(series);
       series.setData = function(rows) {
