@@ -1,14 +1,14 @@
-/* Mobile chart geometry: preserve a tall plotting area while keeping controls separate. */
+/* Mobile chart geometry: keep the plotting area large on iPhone Safari while controls stay separate. */
 .chart-card {
   min-height: 0;
-  grid-template-rows: 29px 18px minmax(195px, 1fr) 30px !important;
+  grid-template-rows: 29px 18px minmax(220px, 1fr) 30px !important;
 }
 
 #mobileChart.chart {
   width: 100% !important;
   height: 100% !important;
   min-width: 0 !important;
-  min-height: 195px !important;
+  min-height: 220px !important;
   max-width: 100% !important;
   overflow: hidden !important;
 }
@@ -25,12 +25,25 @@
   background: #06101b;
 }
 
+/* Safari's browser chrome can reduce the visual viewport below 820px.
+   Do not collapse the chart just because the address bar is visible. */
 @media (max-height: 820px) {
   .chart-card {
-    grid-template-rows: 26px 16px minmax(170px, 1fr) 28px !important;
+    grid-template-rows: 26px 16px minmax(205px, 1fr) 28px !important;
   }
 
   #mobileChart.chart {
-    min-height: 170px !important;
+    min-height: 205px !important;
+  }
+}
+
+/* Only genuinely short screens get the compact plotting area. */
+@media (max-height: 700px) {
+  .chart-card {
+    grid-template-rows: 25px 15px minmax(180px, 1fr) 27px !important;
+  }
+
+  #mobileChart.chart {
+    min-height: 180px !important;
   }
 }
