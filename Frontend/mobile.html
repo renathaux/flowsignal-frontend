@@ -8,7 +8,7 @@
   <script>
     (function(){try{var a=JSON.parse(localStorage.getItem("flowsignal_access")||"null");var r=String(localStorage.getItem("flowsignal_role")||"").toLowerCase();if(!(a&&a.granted===true)&&r!=="admin"&&r!=="user")window.location.replace("index.html");}catch(e){window.location.replace("index.html");}})();
   </script>
-  <link rel="stylesheet" href="mobile.css?v=3" />
+  <link rel="stylesheet" href="mobile.css?v=4" />
 </head>
 <body>
   <main class="mobile-app" id="mobileApp">
@@ -75,18 +75,27 @@
     </nav>
   </main>
 
-  <aside id="mobileMenu" class="drawer hidden" aria-hidden="true">
-    <div class="drawer-head"><strong>FlowSignal</strong><button id="mobileMenuClose" type="button">×</button></div>
-    <button data-panel="fundamental">Fundamental Insight</button>
-    <button data-panel="v2">V2 Shadow</button>
-    <button data-panel="smc">Full SMC Plan</button>
-    <button data-panel="history">Signal History</button>
-    <a href="index.html?desktop=1">Desktop Dashboard</a>
+  <div id="mobileBackdrop" class="sheet-backdrop hidden" aria-hidden="true"></div>
+
+  <aside id="mobileMenu" class="drawer sheet hidden" aria-hidden="true">
+    <div class="sheet-handle" aria-hidden="true"></div>
+    <div class="drawer-head"><div><small>FLOW SIGNAL</small><strong>Menu</strong></div><button id="mobileMenuClose" type="button" aria-label="Close menu">×</button></div>
+    <div class="menu-grid">
+      <button data-panel="fundamental"><span class="menu-icon">◎</span><span><strong>Fundamentals</strong><small>Bias & macro insight</small></span><b>›</b></button>
+      <button data-panel="v2"><span class="menu-icon">V2</span><span><strong>V2 Shadow</strong><small>Research comparison</small></span><b>›</b></button>
+      <button data-panel="smc"><span class="menu-icon">⚡</span><span><strong>SMC Plan</strong><small>Full structure details</small></span><b>›</b></button>
+      <button data-panel="history"><span class="menu-icon">↻</span><span><strong>Signal History</strong><small>Recent decisions & results</small></span><b>›</b></button>
+      <a href="index.html?desktop=1"><span class="menu-icon">▣</span><span><strong>Desktop Dashboard</strong><small>Open full desktop view</small></span><b>›</b></a>
+    </div>
   </aside>
 
-  <section id="mobileDetail" class="detail hidden"><header><strong id="mobileDetailTitle">Details</strong><button id="mobileDetailClose" type="button">×</button></header><div id="mobileDetailBody"></div></section>
+  <section id="mobileDetail" class="detail sheet hidden" aria-hidden="true">
+    <div class="sheet-handle" aria-hidden="true"></div>
+    <header><div><small id="mobileDetailEyebrow">DETAILS</small><strong id="mobileDetailTitle">Details</strong></div><button id="mobileDetailClose" type="button" aria-label="Close details">×</button></header>
+    <div id="mobileDetailBody"></div>
+  </section>
 
   <script async src="https://unpkg.com/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
-  <script src="mobileDashboard.js?v=3"></script>
+  <script src="mobileDashboard.js?v=4"></script>
 </body>
 </html>
