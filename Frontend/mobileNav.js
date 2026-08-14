@@ -11,6 +11,7 @@
   const FUND_CACHE_KEY = symbol => `flowsignal_mobile_fund_cache_${symbol}_v1`;
   const cache = { panel: null, fundamentals: {} };
   let activePanel = "home";
+  let panelRefreshInFlight = null;
 
   function selectedSymbol(){
     return document.querySelector(".symbol-switch-btn.active")?.dataset.symbol || "EURUSD";
@@ -64,17 +65,23 @@
   }
 
   async function refreshPanelCache(){
-    try{
-      const res=await fetch(`${BASE_URL}/panel-data`,{credentials:"include",cache:"no-store"});
-      if(!res.ok) throw new Error(`panel ${res.status}`);
-      cache.panel=await res.json();
-      try{localStorage.setItem(PANEL_CACHE_KEY,JSON.stringify(cache.panel));}catch(e){}
-      rerenderOpenPanel();
-      return cache.panel;
-    }catch(e){
-      console.warn("mobile nav panel refresh failed",e);
-      return cache.panel;
-    }
+    if(panelRefreshInFlight) return panelRefreshInFlight;
+    panelRefreshInFlight=(async()=>{
+      try{
+        const res=await fetch(`${BASE_URL}/panel-data`,{credentials:"include",cache:"no-store"});
+        if(!res.ok) throw new Error(`panel ${res.status}`);
+        cache.panel=await res.json();
+        try{localStorage.setItem(PANEL_CACHE_KEY,JSON.stringify(cache.panel));}catch(e){}
+        rerenderOpenPanel();
+        return cache.panel;
+      }catch(e){
+        console.warn("mobile nav panel refresh failed",e);
+        return cache.panel;
+      }finally{
+        panelRefreshInFlight=null;
+      }
+    })();
+    return panelRefreshInFlight;
   }
 
   async function refreshFundamental(symbol){
@@ -210,8 +217,13 @@
   });
 
   loadStoredCache();
-  refreshPanelCache();
-  ["EURUSD","XAUUSD"].forEach(refreshFundamental);
-  setInterval(refreshPanelCache,5000);
-  setInterval(()=>["EURUSD","XAUUSD"].forEach(refreshFundamental),60000);
+
+  // Do not duplicate the main dashboard's 5-second /panel-data polling here.
+  // Menu panels refresh only when opened. Fundamentals are prefetched later,
+  // after the dashboard has already established its main connection.
+  setTimeout(()=>{
+    ["EURUSD","XAUUSD"].forEach(symbol=>{
+      if(!cache.fundamentals[symbol]) refreshFundamental(symbol);
+    });
+  },12000);
 })();
