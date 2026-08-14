@@ -5,16 +5,23 @@
   const originalCreateChart = L.createChart.bind(L);
 
   L.createChart = function(container, options = {}) {
+    // The chart must consume the full mobile card width. Keep only the
+    // minimum gutter needed for a complete price label on the right.
+    container.style.width = "100%";
+    container.style.maxWidth = "100%";
+    container.style.minWidth = "0";
+
     const chart = originalCreateChart(container, {
       ...options,
       rightPriceScale: {
         ...(options.rightPriceScale || {}),
-        minimumWidth: 86,
+        visible: true,
+        minimumWidth: 58,
         entireTextOnly: true,
       },
       timeScale: {
         ...(options.timeScale || {}),
-        rightOffset: 4,
+        rightOffset: 2,
       },
     });
 
@@ -25,7 +32,9 @@
         priceFormat: {
           type: "custom",
           minMove: 0.00001,
-          formatter: (price) => Number(price) >= 100 ? Number(price).toFixed(2) : Number(price).toFixed(5),
+          formatter: (price) => Number(price) >= 100
+            ? Number(price).toFixed(2)
+            : Number(price).toFixed(5),
         },
       });
     };
@@ -36,11 +45,20 @@
         ...nextOptions,
         rightPriceScale: {
           ...(nextOptions.rightPriceScale || {}),
-          minimumWidth: 86,
+          visible: true,
+          minimumWidth: 58,
           entireTextOnly: true,
+        },
+        timeScale: {
+          ...(nextOptions.timeScale || {}),
+          rightOffset: 2,
         },
       });
     };
+
+    requestAnimationFrame(() => {
+      chart.resize(container.clientWidth, container.clientHeight);
+    });
 
     return chart;
   };
