@@ -6,12 +6,16 @@
 
   L.createChart = function(container, options = {}) {
     container.style.width = "100%";
+    container.style.height = "100%";
     container.style.maxWidth = "100%";
     container.style.minWidth = "0";
+    container.style.minHeight = "0";
     container.style.position = "relative";
 
     const chart = originalCreateChart(container, {
       ...options,
+      width: container.clientWidth,
+      height: container.clientHeight,
       rightPriceScale: {
         ...(options.rightPriceScale || {}),
         visible: false,
@@ -20,7 +24,7 @@
       },
       timeScale: {
         ...(options.timeScale || {}),
-        rightOffset: 2,
+        rightOffset: 0,
       },
     });
 
@@ -95,12 +99,17 @@
         },
         timeScale: {
           ...(nextOptions.timeScale || {}),
-          rightOffset: 2,
+          rightOffset: 0,
         },
       });
     };
 
-    const resize = () => chart.resize(container.clientWidth, container.clientHeight);
+    const resize = () => {
+      const width = Math.max(1, container.clientWidth);
+      const height = Math.max(1, container.clientHeight);
+      chart.resize(width, height);
+    };
+
     requestAnimationFrame(resize);
     if (window.ResizeObserver) {
       const observer = new ResizeObserver(resize);
