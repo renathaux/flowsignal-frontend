@@ -1,14 +1,14 @@
-/* Mobile chart geometry override: keep the chart canvas fully inside its grid slot. */
+/* Mobile chart geometry: preserve a tall plotting area while keeping controls separate. */
 .chart-card {
   min-height: 0;
-  grid-template-rows: 31px 21px minmax(0, 1fr) 32px !important;
+  grid-template-rows: 29px 18px minmax(195px, 1fr) 30px !important;
 }
 
 #mobileChart.chart {
   width: 100% !important;
   height: 100% !important;
   min-width: 0 !important;
-  min-height: 0 !important;
+  min-height: 195px !important;
   max-width: 100% !important;
   overflow: hidden !important;
 }
@@ -27,6 +27,10 @@
 
 @media (max-height: 820px) {
   .chart-card {
-    grid-template-rows: 28px 18px minmax(0, 1fr) 30px !important;
+    grid-template-rows: 26px 16px minmax(170px, 1fr) 28px !important;
+  }
+
+  #mobileChart.chart {
+    min-height: 170px !important;
   }
 }
