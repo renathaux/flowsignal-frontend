@@ -89,6 +89,49 @@
     return true;
   }
 
+  function openRequestedDesktopPanel() {
+    let requested = "";
+    try {
+      requested = new URLSearchParams(window.location.search).get("open") || "";
+    } catch (_error) {
+      return;
+    }
+    if (!requested) return;
+
+    const allowed = new Set([
+      "menuDashboardBtn",
+      "menuAssistantBtn",
+      "menuPaperBtn",
+      "menuFeedbackBtn",
+      "menuHistoryBtn",
+      "menuStatsBtn",
+      "menuGeneralSettingsBtn",
+      "menuRiskSettingsBtn",
+      "menuBrokerAccountsBtn",
+      "menuNotificationsSettingsBtn",
+      "menuStrategySettingsBtn",
+    ]);
+    if (!allowed.has(requested)) return;
+
+    let attempts = 0;
+    const tryOpen = () => {
+      attempts += 1;
+      const target = document.getElementById(requested);
+      if (target && typeof target.click === "function") {
+        target.click();
+        record("requested_desktop_panel_opened", { requested });
+        try {
+          const url = new URL(window.location.href);
+          url.searchParams.delete("open");
+          history.replaceState(null, "", url.toString());
+        } catch (_error) {}
+        return;
+      }
+      if (attempts < 30) window.setTimeout(tryOpen, 100);
+    };
+    window.setTimeout(tryOpen, 150);
+  }
+
   function setTransportStatus(state, message) {
     const status = document.getElementById("status");
     if (!status) return;
@@ -109,6 +152,8 @@
       message: event.reason?.message || String(event.reason || "Unknown rejection"),
     });
   });
+
+  window.addEventListener("load", openRequestedDesktopPanel, { once: true });
 
   window.FlowSignalStartup = {
     startedAt,
