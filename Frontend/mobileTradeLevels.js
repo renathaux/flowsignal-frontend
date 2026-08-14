@@ -1,14 +1,6 @@
 (() => {
-  const BASE_URL = location.hostname === "127.0.0.1" || location.hostname === "localhost"
-    ? "http://127.0.0.1:8001"
-    : "https://flowsignal-backend-3.onrender.com";
-
-  let levelSeries = [];
-  let refreshing = false;
-
   const $ = id => document.getElementById(id);
-  const first = (...values) => values.find(v => v !== undefined && v !== null && v !== "");
-  const finite = (v, fallback = NaN) => Number.isFinite(Number(v)) ? Number(v) : fallback;
+  let overlay = null;
 
   function numberFromText(id) {
     const value = Number(String($(id)?.textContent || "").trim().replace(/,/g, ""));
@@ -19,154 +11,98 @@
     return String(document.querySelector('.symbol-switch-btn.active')?.dataset?.symbol || 'EURUSD').toUpperCase();
   }
 
-  function activeTimeframe() {
-    return String(document.querySelector('.tf.active')?.dataset?.tf || '5m').toLowerCase();
-  }
-
   function tradeSymbol() {
     return String($("mTradeSymbol")?.textContent || "").trim().toUpperCase();
   }
 
-  function candleTime(v) {
-    if (typeof v === "number") return v > 2e12 ? Math.floor(v / 1000) : Math.floor(v);
-    const t = new Date(v).getTime();
-    return Number.isFinite(t) ? Math.floor(t / 1000) : 0;
+  function ensureOverlay() {
+    const host = $("mobileChart");
+    if (!host) return null;
+    if (getComputedStyle(host).position === "static") host.style.position = "relative";
+
+    if (!overlay || !overlay.isConnected) {
+      overlay = document.createElement("div");
+      overlay.id = "mobileTradeLevelOverlay";
+      Object.assign(overlay.style, {
+        position: "absolute",
+        inset: "0",
+        pointerEvents: "none",
+        zIndex: "20",
+        overflow: "hidden",
+      });
+      host.appendChild(overlay);
+    }
+    return overlay;
   }
 
-  function normalizeCandles(rows) {
-    return Array.isArray(rows)
-      ? rows.map(c => ({
-          time: candleTime(first(c.time, c.timestamp, c.ts, c.open_time, c.openTime)),
-          open: finite(c.open),
-          high: finite(c.high),
-          low: finite(c.low),
-          close: finite(c.close),
-        })).filter(c => c.time && [c.open, c.high, c.low, c.close].every(Number.isFinite)).sort((a, b) => a.time - b.time)
-      : [];
+  function clearOverlay() {
+    const layer = ensureOverlay();
+    if (layer) layer.replaceChildren();
   }
 
-  function aggregate(rows, seconds) {
-    const map = new Map();
-    rows.forEach(c => {
-      const time = Math.floor(c.time / seconds) * seconds;
-      const existing = map.get(time);
-      if (!existing) map.set(time, { ...c, time });
-      else {
-        existing.high = Math.max(existing.high, c.high);
-        existing.low = Math.min(existing.low, c.low);
-        existing.close = c.close;
-      }
+  function addLevel(price, color, dashed = false) {
+    const series = window.FlowSignalMobileCandleSeries;
+    const layer = ensureOverlay();
+    if (!series || !layer || !Number.isFinite(price)) return;
+
+    let y = null;
+    try { y = series.priceToCoordinate(price); } catch (_) {}
+    if (!Number.isFinite(y)) return;
+
+    const line = document.createElement("div");
+    Object.assign(line.style, {
+      position: "absolute",
+      left: "0",
+      right: "0",
+      top: `${Math.round(y)}px`,
+      height: dashed ? "0" : "2px",
+      borderTop: dashed ? `2px dashed ${color}` : "none",
+      background: dashed ? "transparent" : color,
+      opacity: "0.98",
+      boxShadow: dashed ? "none" : `0 0 2px ${color}`,
     });
-    return [...map.values()].sort((a, b) => a.time - b.time);
+    layer.appendChild(line);
   }
 
-  function rawCandles(data, symbol, tf) {
-    return first(
-      data?.candles?.[symbol]?.[tf],
-      data?.[symbol]?.candles?.[tf],
-      data?.market_data?.[symbol]?.[tf],
-      []
-    ) || [];
-  }
+  function renderLevels() {
+    const series = window.FlowSignalMobileCandleSeries;
+    if (!series) return;
 
-  function candlesFor(data, symbol, tf) {
-    const direct = normalizeCandles(rawCandles(data, symbol, tf));
-    if (direct.length) return direct;
-    const hourly = normalizeCandles(rawCandles(data, symbol, "1h"));
-    if (tf === "4h") return aggregate(hourly, 14400);
-    if (tf === "1d") return aggregate(hourly, 86400);
-    return [];
-  }
+    clearOverlay();
+    if (tradeSymbol() !== activeSymbol()) return;
 
-  function clearLevels() {
-    const chart = window.FlowSignalMobileChart;
-    if (chart) {
-      levelSeries.forEach(series => {
-        try { chart.removeSeries(series); } catch (_) {}
-      });
-    }
-    levelSeries = [];
-  }
-
-  function addLevel(firstTime, lastTime, price, color, style, width = 2) {
-    const chart = window.FlowSignalMobileChart;
-    if (!chart || !Number.isFinite(price) || !firstTime || !lastTime) return;
-
-    try {
-      const series = chart.addLineSeries({
-        priceScaleId: "",
-        color,
-        lineWidth: width,
-        lineStyle: style,
-        lastValueVisible: false,
-        priceLineVisible: false,
-        crosshairMarkerVisible: false,
-      });
-      series.setData([
-        { time: firstTime, value: price },
-        { time: lastTime, value: price },
-      ]);
-      levelSeries.push(series);
-    } catch (error) {
-      console.warn("Mobile trade level series failed", error);
-    }
-  }
-
-  function renderLevels(data) {
-    const L = window.LightweightCharts;
-    const chart = window.FlowSignalMobileChart;
-    if (!L || !chart) return;
-
-    clearLevels();
-
-    const symbol = activeSymbol();
-    if (tradeSymbol() !== symbol) return;
-
-    const rows = candlesFor(data, symbol, activeTimeframe());
-    if (rows.length < 2) return;
-
-    const firstTime = rows[0].time;
-    const lastTime = rows[rows.length - 1].time;
     const entry = numberFromText("mEntry");
     const sl = numberFromText("mSl");
     const tp1 = numberFromText("mTp1");
     const tp2 = numberFromText("mTp2");
 
-    addLevel(firstTime, lastTime, entry, "#f8fafc", L.LineStyle.Solid, 2);
-    addLevel(firstTime, lastTime, sl, "#ef4444", L.LineStyle.Solid, 2);
-    addLevel(firstTime, lastTime, tp1, "#facc15", L.LineStyle.Dashed, 2);
-    addLevel(firstTime, lastTime, tp2, "#22c55e", L.LineStyle.Solid, 2);
+    addLevel(entry, "#f8fafc");
+    addLevel(sl, "#ef4444");
+    addLevel(tp1, "#facc15", true);
+    addLevel(tp2, "#22c55e");
   }
 
-  async function refresh() {
-    if (refreshing || !window.FlowSignalMobileChart) return;
-    refreshing = true;
-    try {
-      const response = await fetch(`${BASE_URL}/panel-data`, { credentials: "include", cache: "no-store" });
-      if (!response.ok) return;
-      renderLevels(await response.json());
-    } catch (error) {
-      console.warn("Mobile trade levels refresh failed", error);
-    } finally {
-      refreshing = false;
-    }
+  function scheduleRender(delay = 0) {
+    setTimeout(() => {
+      requestAnimationFrame(() => requestAnimationFrame(renderLevels));
+    }, delay);
   }
 
-  document.addEventListener("flowsignal:mobile-chart-ready", () => setTimeout(refresh, 50));
+  document.addEventListener("flowsignal:mobile-chart-ready", () => scheduleRender(50));
   document.addEventListener("click", event => {
     if (event.target.closest(".symbol-switch-btn") || event.target.closest(".tf")) {
-      setTimeout(refresh, 150);
+      scheduleRender(180);
     }
   });
-  window.addEventListener("load", () => setTimeout(refresh, 700));
 
-  const observer = new MutationObserver(() => {
-    if (window.FlowSignalMobileChart) setTimeout(refresh, 50);
-  });
-  ["mTradeSymbol", "mEntry", "mSl", "mTp1", "mTp2"].forEach(id => {
+  window.addEventListener("load", () => scheduleRender(800));
+  window.addEventListener("resize", () => scheduleRender(50));
+
+  const observer = new MutationObserver(() => scheduleRender(25));
+  ["mTradeSymbol", "mEntry", "mSl", "mTp1", "mTp2", "mOhlc"].forEach(id => {
     const node = $(id);
     if (node) observer.observe(node, { childList: true, characterData: true, subtree: true });
   });
 
-  setInterval(refresh, 3000);
+  setInterval(renderLevels, 2000);
 })();
