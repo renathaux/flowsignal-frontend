@@ -28,6 +28,8 @@
       },
     });
 
+    window.FlowSignalMobileChart = chart;
+
     const originalAddCandlestickSeries = chart.addCandlestickSeries.bind(chart);
     chart.addCandlestickSeries = function(seriesOptions = {}) {
       const series = originalAddCandlestickSeries({
@@ -51,6 +53,8 @@
         });
       } catch (_) {}
 
+      window.FlowSignalMobileCandleSeries = series;
+      document.dispatchEvent(new CustomEvent("flowsignal:mobile-chart-ready"));
       return series;
     };
 
