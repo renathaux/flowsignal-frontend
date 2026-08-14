@@ -1,21 +1,34 @@
-/* Mobile chart geometry: keep the plotting area large on iPhone Safari while controls stay separate. */
+/* Mobile chart geometry: the TradingView plot fills the chart card's inner area edge-to-edge. */
 .chart-card {
   min-height: 0;
   grid-template-rows: 29px 18px minmax(220px, 1fr) 30px !important;
+  overflow: hidden;
 }
 
+/* Keep toolbar/title/buttons padded, but let the actual plot break out of the card's 6px padding. */
 #mobileChart.chart {
-  width: 100% !important;
+  width: calc(100% + 12px) !important;
   height: 100% !important;
   min-width: 0 !important;
   min-height: 220px !important;
-  max-width: 100% !important;
+  max-width: none !important;
+  margin-left: -6px !important;
+  margin-right: -6px !important;
+  margin-bottom: 0 !important;
+  border-radius: 0 !important;
   overflow: hidden !important;
+  background: #06101b;
 }
 
 #mobileChart > div,
 #mobileChart table {
-  max-width: 100% !important;
+  width: 100% !important;
+  max-width: none !important;
+  height: 100% !important;
+}
+
+#mobileChart canvas {
+  display: block;
 }
 
 .tf-row {
@@ -25,8 +38,6 @@
   background: #06101b;
 }
 
-/* Safari's browser chrome can reduce the visual viewport below 820px.
-   Do not collapse the chart just because the address bar is visible. */
 @media (max-height: 820px) {
   .chart-card {
     grid-template-rows: 26px 16px minmax(205px, 1fr) 28px !important;
@@ -37,7 +48,6 @@
   }
 }
 
-/* Only genuinely short screens get the compact plotting area. */
 @media (max-height: 700px) {
   .chart-card {
     grid-template-rows: 25px 15px minmax(180px, 1fr) 27px !important;
