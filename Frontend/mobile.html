@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover" />
+  <meta name="theme-color" content="#020812" />
+  <title>FlowSignal Mobile</title>
+  <link rel="stylesheet" href="mobile.css?v=1" />
+</head>
+<body>
+  <main class="mobile-app" id="mobileApp">
+    <header class="app-head">
+      <button id="mobileMenuBtn" class="icon-btn" type="button" aria-label="Open menu">☰</button>
+      <div class="brand"><span>≋</span>FlowSignal</div>
+      <div id="mobileConnection" class="live-pill">LIVE loading…</div>
+    </header>
+
+    <section class="pl-strip" aria-label="Performance">
+      <div><span>DAILY P/L</span><strong id="mDaily">$0.00</strong></div>
+      <div><span>WEEKLY P/L</span><strong id="mWeekly">$0.00</strong></div>
+      <div><span>OPEN TRADES</span><strong id="mOpenCount">0</strong></div>
+      <div><span>LIVE P/L</span><strong id="mLive">$0.00</strong></div>
+    </section>
+
+    <section class="signal-grid">
+      <article class="signal-card" data-symbol="EURUSD">
+        <div class="signal-head"><strong>EURUSD 🇪🇺🇺🇸</strong></div>
+        <div class="signal-main"><b id="mEurSignal">WAIT</b><div class="meters"><span>B <i><em id="mEurBuy"></em></i><small id="mEurBuyText">0%</small></span><span>S <i><em id="mEurSell"></em></i><small id="mEurSellText">0%</small></span><span>STR <i><em id="mEurStr"></em></i><small id="mEurStrText">0%</small></span></div></div>
+      </article>
+      <article class="signal-card" data-symbol="XAUUSD">
+        <div class="signal-head"><strong>XAUUSD 🟨</strong></div>
+        <div class="signal-main"><b id="mGoldSignal">WAIT</b><div class="meters"><span>B <i><em id="mGoldBuy"></em></i><small id="mGoldBuyText">0%</small></span><span>S <i><em id="mGoldSell"></em></i><small id="mGoldSellText">0%</small></span><span>STR <i><em id="mGoldStr"></em></i><small id="mGoldStrText">0%</small></span></div></div>
+      </article>
+    </section>
+
+    <section class="trade-card">
+      <div class="section-head"><strong>OPEN TRADE</strong><span id="mTradeLive">● LIVE</span></div>
+      <div id="mTradeEmpty" class="empty">No active live trade</div>
+      <div id="mTradeBody" class="trade-body hidden">
+        <div class="trade-title"><div><strong id="mTradeSymbol">--</strong><span id="mTradeSide">--</span></div><b id="mTradePnl">$0.00</b></div>
+        <div class="trade-values"><span>LOT<b id="mLot">--</b></span><span>ENTRY<b id="mEntry">--</b></span><span>SL<b id="mSl">--</b></span><span>TP1<b id="mTp1">--</b></span><span>TP2<b id="mTp2">--</b></span></div>
+      </div>
+    </section>
+
+    <section class="chart-card">
+      <div class="chart-toolbar"><div><button class="symbol-tab active" data-symbol="EURUSD">EURUSD</button><button class="symbol-tab" data-symbol="XAUUSD">GOLD</button></div><div><button class="tf active" data-tf="5m">5m</button><button class="tf" data-tf="15m">15m</button><button class="tf" data-tf="1h">1h</button></div></div>
+      <div class="chart-title"><strong id="mChartTitle">EURUSD · 5m</strong><small id="mOhlc">O -- H -- L -- C --</small></div>
+      <div id="mobileChart" class="chart"></div>
+      <div class="tf-row"><button class="tf active" data-tf="5m">5m</button><button class="tf" data-tf="15m">15m</button><button class="tf" data-tf="1h">1H</button><button class="tf" data-tf="4h">4H</button><button class="tf" data-tf="1d">1D</button></div>
+    </section>
+
+    <button id="mSmcBtn" class="smc-strip" type="button">
+      <span>⚡ SMC PLAN</span>
+      <span><small>MARKET STRUCTURE</small><strong id="mSmcStructure">--</strong></span>
+      <span><small>NEXT TRIGGER</small><strong id="mSmcTrigger">--</strong></span>
+      <span class="arrow">›</span>
+    </button>
+  </main>
+
+  <aside id="mobileMenu" class="drawer hidden" aria-hidden="true">
+    <div class="drawer-head"><strong>FlowSignal</strong><button id="mobileMenuClose" type="button">×</button></div>
+    <button data-panel="fundamental">Fundamental Insight</button>
+    <button data-panel="v2">V2 Shadow</button>
+    <button data-panel="smc">Full SMC Plan</button>
+    <button data-panel="history">Signal History</button>
+    <a href="index.html?desktop=1">Desktop Dashboard</a>
+  </aside>
+
+  <section id="mobileDetail" class="detail hidden"><header><strong id="mobileDetailTitle">Details</strong><button id="mobileDetailClose" type="button">×</button></header><div id="mobileDetailBody"></div></section>
+
+  <script async src="https://unpkg.com/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
+  <script src="mobileDashboard.js?v=1"></script>
+</body>
+</html>
