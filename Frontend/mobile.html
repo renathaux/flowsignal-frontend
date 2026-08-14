@@ -65,10 +65,10 @@
     </button>
     <nav class="bottom-nav" aria-label="Mobile navigation">
       <button class="active" data-nav="home"><b>⌂</b><span>Home</span></button>
-      <button data-nav="chart"><b>⌗</b><span>Chart</span></button>
-      <button data-nav="trades"><b>▣</b><span>Trades</span></button>
-      <button data-nav="signals"><b>◎</b><span>Signals</span></button>
-      <button data-nav="menu"><b>•••</b><span>Menu</span></button>
+      <button data-nav="isch"><b>✓</b><span>ISCH</span></button>
+      <button data-nav="fundamental"><b>◉</b><span>Fundamental</span></button>
+      <button data-nav="history"><b>↻</b><span>History</span></button>
+      <button data-nav="auto"><b>⚙</b><span>Auto Trade</span></button>
     </nav>
   </main>
   <div id="mobileBackdrop" class="sheet-backdrop hidden" aria-hidden="true"></div>
@@ -90,6 +90,7 @@
   </section>
   <script async src="https://unpkg.com/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
   <script src="mobileDashboard.js?v=5"></script>
+  <script src="mobileNav.js?v=1"></script>
   <script>
     window.addEventListener('pageshow', function(){
       var menu=document.getElementById('mobileMenu'), detail=document.getElementById('mobileDetail'), back=document.getElementById('mobileBackdrop');
