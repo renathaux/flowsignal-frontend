@@ -1,4 +1,27 @@
 (function () {
+  function shouldUseSeparatedMobileDashboard() {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get("desktop") === "1") return false;
+      if (!window.matchMedia("(max-width: 700px)").matches) return false;
+      if (/\/mobile\.html$/i.test(window.location.pathname)) return false;
+
+      const access = JSON.parse(localStorage.getItem("flowsignal_access") || "null");
+      const role = String(localStorage.getItem("flowsignal_role") || "").toLowerCase();
+      const authenticated = access?.granted === true || role === "admin" || role === "user";
+      return authenticated;
+    } catch (_error) {
+      return false;
+    }
+  }
+
+  if (shouldUseSeparatedMobileDashboard()) {
+    const target = new URL("mobile.html", window.location.href);
+    target.searchParams.set("from", "dashboard");
+    window.location.replace(target.toString());
+    return;
+  }
+
   const startedAt = new Date().toISOString();
   const events = [];
   let menuOpen = false;
