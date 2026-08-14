@@ -1,4 +1,4 @@
-/* Mobile chart layout: keep the card compact and let the actual plot consume the card's inner pane. */
+/* Mobile chart layout: the chart host fills the card; Lightweight Charts owns its internal canvas geometry. */
 .chart-card {
   min-height: 0;
   padding: 6px 0 !important;
@@ -13,14 +13,13 @@
   padding-right: 6px;
 }
 
-/* No second inset box: the Lightweight Charts host goes edge-to-edge horizontally
-   and uses every pixel of the plot row vertically. */
 #mobileChart.chart {
+  display: block !important;
   width: 100% !important;
   height: 100% !important;
   min-width: 0 !important;
   min-height: 0 !important;
-  max-width: 100% !important;
+  max-width: none !important;
   margin: 0 !important;
   padding: 0 !important;
   border: 0 !important;
@@ -29,13 +28,15 @@
   background: #06101b;
 }
 
-#mobileChart > div,
-#mobileChart table,
-#mobileChart canvas {
-  width: 100% !important;
-  max-width: 100% !important;
-  height: 100% !important;
+/* IMPORTANT: do not force width/height on Lightweight Charts' generated table/canvas.
+   The library calculates those pieces itself. Forcing each child to 100% creates the
+   empty strip on the right and makes the visible plot look like a second inset card. */
+#mobileChart > div {
   margin: 0 !important;
+}
+
+#mobileChart canvas {
+  display: block;
 }
 
 .tf-row {
@@ -45,8 +46,6 @@
   background: #06101b;
 }
 
-/* Restore the compact dashboard allocation. We do not make the chart card taller;
-   we make the chart inside it larger. */
 @media (max-height: 820px) {
   .mobile-app {
     grid-template-rows: 40px 50px 38px 92px 112px minmax(220px, 1fr) 56px 56px !important;
