@@ -36,4 +36,95 @@
     max-height: 38px !important;
     overflow: hidden !important;
   }
+
+  .desktop-chart-fullscreen-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    min-height: 32px;
+    padding: 0 11px;
+    margin-left: auto;
+    border: 1px solid rgba(80, 145, 220, 0.52);
+    border-radius: 8px;
+    background: rgba(8, 20, 35, 0.92);
+    color: #dcecff;
+    font: inherit;
+    font-size: 12px;
+    font-weight: 700;
+    line-height: 1;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+
+  .desktop-chart-fullscreen-btn:hover,
+  .desktop-chart-fullscreen-btn[aria-pressed="true"] {
+    border-color: #3f9cff;
+    background: #0b2b50;
+    color: #ffffff;
+  }
+
+  .chart-panel .chart-controls {
+    align-items: center;
+  }
+
+  .chart-section.is-desktop-chart-fullscreen,
+  .chart-section:fullscreen,
+  .chart-section:-webkit-full-screen {
+    width: 100vw !important;
+    height: 100vh !important;
+    max-width: none !important;
+    max-height: none !important;
+    margin: 0 !important;
+    padding: 14px !important;
+    border-radius: 0 !important;
+    background: #020812 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    overflow: hidden !important;
+    box-sizing: border-box !important;
+  }
+
+  .chart-section.is-desktop-chart-fullscreen .chart-controls,
+  .chart-section:fullscreen .chart-controls,
+  .chart-section:-webkit-full-screen .chart-controls {
+    flex: 0 0 auto !important;
+    margin-bottom: 10px !important;
+  }
+
+  .chart-section.is-desktop-chart-fullscreen .chart-box,
+  .chart-section:fullscreen .chart-box,
+  .chart-section:-webkit-full-screen .chart-box {
+    flex: 1 1 auto !important;
+    width: 100% !important;
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    margin: 0 !important;
+  }
+
+  .chart-section.is-desktop-chart-fullscreen #chartContainer,
+  .chart-section:fullscreen #chartContainer,
+  .chart-section:-webkit-full-screen #chartContainer {
+    width: 100% !important;
+    height: 100% !important;
+    min-height: 0 !important;
+    max-height: none !important;
+  }
+
+  .chart-section.is-desktop-chart-fullscreen .chart-overlay-header,
+  .chart-section:fullscreen .chart-overlay-header,
+  .chart-section:-webkit-full-screen .chart-overlay-header {
+    z-index: 6 !important;
+  }
+
+  body.desktop-chart-fullscreen-open {
+    overflow: hidden !important;
+  }
+
+  body.desktop-chart-fullscreen-open .chart-section.is-desktop-chart-fullscreen:not(:fullscreen) {
+    position: fixed !important;
+    inset: 0 !important;
+    z-index: 10000 !important;
+  }
 }
