@@ -82,6 +82,7 @@
       || String(url || "").includes("/news-impact")
       || String(url || "").includes("/ctrader-status")
       || String(url || "").includes("/ctrader/status")
+      || String(url || "").includes("/chart/live-ticks")
       || String(url || "").includes("/modify-live-position-levels")
     );
 
@@ -126,4 +127,19 @@
   };
 
   window.fetch = apiFetch;
+
+  // Keep chart streaming implementation out of the main application bundle.
+  // This loader is intentionally the only integration point. The controller
+  // itself lives under Frontend/chart/live-candles/ and never touches strategy
+  // or broker execution logic.
+  if (!document.querySelector('script[data-flow-live-candles]')) {
+    const liveCandleScript = document.createElement("script");
+    liveCandleScript.src = "chart/live-candles/live-candle-controller.js?v=1";
+    liveCandleScript.async = false;
+    liveCandleScript.dataset.flowLiveCandles = "true";
+    liveCandleScript.addEventListener("error", () => {
+      console.warn("FLOW_LIVE_CANDLES_MODULE_LOAD_FAILED");
+    });
+    document.head.appendChild(liveCandleScript);
+  }
 })();
