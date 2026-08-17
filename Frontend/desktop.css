@@ -53,11 +53,6 @@
   body.flowsignal-chrome-desktop.fit-mode .chart-panel .chart-section { height:auto !important;min-height:400px !important;flex:0 0 auto !important;overflow:visible !important; }
   body.flowsignal-chrome-desktop.fit-mode .chart-panel .chart-box { flex:0 0 330px !important;height:330px !important;min-height:330px !important; }
 
-  /* Safari/WebKit needs its own normal-flow override. With height:100% plus
-     an internally scrolling flex column, WebKit can keep the right column at
-     the chart height and place Fundamental/V2 below an invisible scroll area.
-     Keep Safari content in document flow instead. Chrome rules above are
-     intentionally separate and are not changed by this block. */
   body.flowsignal-safari-desktop.fit-mode { overflow-y:auto !important;overflow-x:hidden !important; }
   body.flowsignal-safari-desktop.fit-mode #mainApp.app:not(.locked) { height:auto !important;min-height:100vh !important;overflow:visible !important; }
   body.flowsignal-safari-desktop.fit-mode #mainApp.app:not(.locked) > .dashboard-grid { height:auto !important;min-height:calc(100vh - 150px) !important;overflow:visible !important;align-items:start !important; }
@@ -69,8 +64,7 @@
   body.flowsignal-safari-desktop.fit-mode .chart-panel #fundamental-insight-card,
   body.flowsignal-safari-desktop.fit-mode .chart-panel #v2-shadow-card { display:block !important;visibility:visible !important;opacity:1 !important;position:relative !important;inset:auto !important;transform:none !important;width:100% !important;height:auto !important;max-height:none !important;overflow:visible !important;flex:0 0 auto !important; }
 
-  /* Safe visual ordering only: no DOM mutation. Strategy Checks now sit
-     directly below the signal percentages, with SMC Plan underneath. */
+  /* Safe visual ordering only: no DOM mutation. */
   body.flowsignal-chrome-desktop.fit-mode .main-trade-card,
   body.flowsignal-safari-desktop.fit-mode .main-trade-card { display:flex !important;flex-direction:column !important; }
   body.flowsignal-chrome-desktop.fit-mode .main-trade-header,
@@ -83,20 +77,16 @@
   body.flowsignal-safari-desktop.fit-mode .main-metrics { order:30 !important; }
   body.flowsignal-chrome-desktop.fit-mode .bias-only-note,
   body.flowsignal-safari-desktop.fit-mode .bias-only-note { order:31 !important; }
-  body.flowsignal-chrome-desktop.fit-mode .entry-strategy-debug,
-  body.flowsignal-safari-desktop.fit-mode .entry-strategy-debug { order:40 !important; }
   body.flowsignal-chrome-desktop.fit-mode .main-smc-panel,
-  body.flowsignal-safari-desktop.fit-mode .main-smc-panel { order:50 !important; }
+  body.flowsignal-safari-desktop.fit-mode .main-smc-panel { order:40 !important; }
+  body.flowsignal-chrome-desktop.fit-mode .entry-strategy-debug,
+  body.flowsignal-safari-desktop.fit-mode .entry-strategy-debug { order:50 !important; }
   body.flowsignal-chrome-desktop.fit-mode .main-buttons-row,
   body.flowsignal-safari-desktop.fit-mode .main-buttons-row { order:60 !important; }
   body.flowsignal-chrome-desktop.fit-mode .main-bottom-row,
   body.flowsignal-safari-desktop.fit-mode .main-bottom-row { order:70 !important; }
 
-  /* Chrome-only readability: the large generic clamp made NEUTRAL collide
-     with the strength columns at this dashboard width. */
   body.flowsignal-chrome-desktop.fit-mode .fundamental-bias { font-size:clamp(28px,3vw,40px) !important;letter-spacing:-.02em !important; }
-
-  /* Let the live WAIT reason be readable instead of clipped to an ellipsis. */
   body.flowsignal-chrome-desktop.fit-mode #strategy-debug-block-reason { max-width:none !important;min-height:0 !important;max-height:none !important;overflow:visible !important;text-overflow:clip !important;white-space:normal !important;overflow-wrap:anywhere !important;line-height:1.25 !important; }
 
   .chart-section.is-desktop-chart-fullscreen,.chart-section:fullscreen,.chart-section:-webkit-full-screen { width:100vw !important;height:100vh !important;max-width:none !important;max-height:none !important;margin:0 !important;padding:14px !important;border-radius:0 !important;background:#020812 !important;display:flex !important;flex-direction:column !important;overflow:hidden !important;box-sizing:border-box !important; }
