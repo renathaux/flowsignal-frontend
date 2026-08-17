@@ -97,6 +97,12 @@
     return null;
   }
 
+  function emitContext() {
+    window.dispatchEvent(new CustomEvent("flowsignal:chart-context", {
+      detail: { symbol: state.symbol, timeframe: state.timeframe },
+    }));
+  }
+
   function attachSeries(series) {
     if (!series) return;
     state.series = series;
@@ -114,6 +120,10 @@
       };
       series.__flowLiveSetDataWrapped = true;
     }
+    window.dispatchEvent(new CustomEvent("flowsignal:chart-candle-series", {
+      detail: { candleSeries: series, symbol: state.symbol, timeframe: state.timeframe },
+    }));
+    emitContext();
     if (state.endpoint && !state.running) api.start();
   }
 
@@ -154,6 +164,7 @@
         state.candle = null;
         state.lastTickTimestamp = 0;
         state.lastTickPrice = null;
+        emitContext();
       }
     },
     seed(candle) {
@@ -215,7 +226,7 @@
   state.endpoint = `${base}/chart/live-ticks`;
 
   document.addEventListener("click", (event) => {
-    const button = event.target.closest?.(".chart-symbol-tabs button, .chart-timeframes button");
+    const button = event.target.closest?.(".chart-symbols button, .chart-timeframes button");
     const context = inferContextFromButton(button);
     if (context) api.setContext(context);
   }, true);

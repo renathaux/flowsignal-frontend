@@ -31,26 +31,55 @@
       this.lines = [];
     }
 
+    addLine(options) {
+      if (!this.series || typeof this.series.createPriceLine !== "function") return;
+      const line = this.series.createPriceLine(options);
+      this.lines.push(line);
+    }
+
     render(structure) {
       this.clear();
       if (!this.enabled || !this.series || !structure) return;
 
       const events = Array.isArray(structure.events) ? structure.events : [];
-      events.slice(-12).forEach((event) => {
+      events.slice(-10).forEach((event) => {
         const price = Number(event.broken_level);
         if (!Number.isFinite(price)) return;
         const isChoch = String(event.event_type || "").toUpperCase() === "CHOCH";
         const isBullish = String(event.direction || "").toUpperCase() === "BULLISH";
-        const line = this.series.createPriceLine({
+        this.addLine({
           price,
           lineWidth: isChoch ? 2 : 1,
-          lineStyle: 2,
+          lineStyle: isChoch ? 1 : 2,
           axisLabelVisible: false,
           title: `${isChoch ? "CHoCH" : "BOS"} ${isBullish ? "▲" : "▼"}`,
-          color: isChoch ? "#ff6b6b" : (isBullish ? "#20d67b" : "#4f8cff"),
+          color: isChoch ? "#ffb020" : (isBullish ? "#20d67b" : "#ff5f6d"),
         });
-        this.lines.push(line);
       });
+
+      const swingHigh = Number(structure.last_swing_high?.price);
+      if (Number.isFinite(swingHigh)) {
+        this.addLine({
+          price: swingHigh,
+          lineWidth: 1,
+          lineStyle: 3,
+          axisLabelVisible: false,
+          title: "Swing High",
+          color: "#7aa2ff",
+        });
+      }
+
+      const swingLow = Number(structure.last_swing_low?.price);
+      if (Number.isFinite(swingLow)) {
+        this.addLine({
+          price: swingLow,
+          lineWidth: 1,
+          lineStyle: 3,
+          axisLabelVisible: false,
+          title: "Swing Low",
+          color: "#d68cff",
+        });
+      }
     }
   }
 
