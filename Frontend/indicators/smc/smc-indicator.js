@@ -14,6 +14,8 @@
     timer: null,
     requestInFlight: false,
     lastError: null,
+    localReady: false,
+    localCandleCount: 0,
   };
 
   function renderer() {
@@ -32,6 +34,10 @@
 
   async function loadStructure() {
     if (!state.enabled || state.requestInFlight) return;
+    if (state.localReady) {
+      schedule();
+      return;
+    }
     state.requestInFlight = true;
     try {
       const url = new URL(`${base}/chart/smc-structure`);
@@ -50,6 +56,29 @@
       state.requestInFlight = false;
       schedule();
     }
+  }
+
+  function applyLocalCandles(detail) {
+    const engine = window.FlowSignalSmcLocalEngine;
+    if (!engine || typeof engine.analyze !== "function") return false;
+    const symbol = String(detail?.symbol || state.symbol).toUpperCase();
+    const timeframe = String(detail?.timeframe || state.timeframe).toLowerCase();
+    if (symbol !== state.symbol || timeframe !== state.timeframe) return false;
+    const candles = Array.isArray(detail?.candles) ? detail.candles : [];
+    if (candles.length < 10) return false;
+
+    const structure = engine.analyze(candles, { leftBars: 2, rightBars: 2 });
+    structure.symbol = symbol;
+    structure.timeframe = timeframe;
+    structure.source = "browser_closed_chart_candles";
+    structure.observation_only = true;
+    structure.affects_strategy = false;
+
+    state.localReady = true;
+    state.localCandleCount = candles.length;
+    state.lastError = null;
+    api.applyStructure(structure);
+    return true;
   }
 
   const api = {
@@ -71,6 +100,8 @@
       state.timeframe = nextTimeframe;
       if (changed) {
         state.latest = null;
+        state.localReady = false;
+        state.localCandleCount = 0;
         renderer()?.clear();
         if (state.enabled) schedule(100);
       }
@@ -83,6 +114,7 @@
       renderer()?.setEnabled(state.enabled);
       if (state.enabled) {
         if (state.latest) renderer()?.render(state.latest);
+        window.FlowSignalSmcCandleTap?.wrap?.();
         schedule(0);
       } else {
         window.clearTimeout(state.timer);
@@ -92,6 +124,7 @@
     },
 
     refresh() {
+      window.FlowSignalSmcCandleTap?.wrap?.();
       if (state.enabled) schedule(0);
     },
 
@@ -104,8 +137,12 @@
       });
     },
 
+    applyLocalCandles,
+
     clear() {
       state.latest = null;
+      state.localReady = false;
+      state.localCandleCount = 0;
       renderer()?.clear();
     },
 
@@ -117,6 +154,9 @@
         mounted: state.mounted,
         bias: state.latest?.bias || "NEUTRAL",
         closedCandleCount: state.latest?.closed_candle_count || 0,
+        localReady: state.localReady,
+        localCandleCount: state.localCandleCount,
+        source: state.latest?.source || null,
         lastError: state.lastError,
         affectsStrategy: false,
       };
@@ -132,13 +172,16 @@
   window.addEventListener("flowsignal:chart-context", (event) => {
     api.setContext(event.detail || {});
   });
+  window.addEventListener("flowsignal:chart-candles", (event) => {
+    applyLocalCandles(event.detail || {});
+  });
   window.addEventListener("flowsignal:live-candle", (event) => {
     const detail = event.detail || {};
     if (detail.symbol !== state.symbol || detail.timeframe !== state.timeframe) return;
     const candleTime = Number(detail.candle?.time);
     if (!Number.isFinite(candleTime)) return;
     const lastSeen = Number(state.latest?._visual_live_bucket || 0);
-    if (candleTime !== lastSeen && state.enabled) {
+    if (candleTime !== lastSeen && state.enabled && !state.localReady) {
       if (state.latest) state.latest._visual_live_bucket = candleTime;
       schedule(250);
     }
