@@ -140,6 +140,102 @@
     status.textContent = message;
   }
 
+  function attachDesktopChartFullscreen() {
+    if (!window.matchMedia("(min-width: 701px)").matches) return false;
+
+    const chartSection = document.querySelector(".chart-panel .chart-section");
+    const controls = chartSection?.querySelector(".chart-controls");
+    if (!chartSection || !controls) {
+      record("desktop_chart_fullscreen_missing", {
+        chartSection: Boolean(chartSection),
+        controls: Boolean(controls),
+      });
+      return false;
+    }
+
+    if (document.getElementById("desktopChartFullscreenBtn")) return true;
+
+    const button = document.createElement("button");
+    button.id = "desktopChartFullscreenBtn";
+    button.className = "desktop-chart-fullscreen-btn";
+    button.type = "button";
+    button.setAttribute("aria-label", "Open chart in full screen");
+    button.setAttribute("aria-pressed", "false");
+    button.innerHTML = '<span aria-hidden="true">⛶</span><span class="desktop-chart-fullscreen-label">Full Screen</span>';
+    controls.appendChild(button);
+
+    let fallbackActive = false;
+
+    const fullscreenElement = () => document.fullscreenElement || document.webkitFullscreenElement || null;
+    const isNativeFullscreen = () => fullscreenElement() === chartSection;
+    const isActive = () => isNativeFullscreen() || fallbackActive;
+
+    const notifyChartResize = () => {
+      window.requestAnimationFrame(() => {
+        window.dispatchEvent(new Event("resize"));
+        window.setTimeout(() => window.dispatchEvent(new Event("resize")), 120);
+      });
+    };
+
+    const renderState = () => {
+      const active = isActive();
+      chartSection.classList.toggle("is-desktop-chart-fullscreen", active);
+      document.body.classList.toggle("desktop-chart-fullscreen-open", active);
+      button.setAttribute("aria-pressed", active ? "true" : "false");
+      button.setAttribute("aria-label", active ? "Exit chart full screen" : "Open chart in full screen");
+      button.innerHTML = active
+        ? '<span aria-hidden="true">✕</span><span class="desktop-chart-fullscreen-label">Exit Full Screen</span>'
+        : '<span aria-hidden="true">⛶</span><span class="desktop-chart-fullscreen-label">Full Screen</span>';
+      notifyChartResize();
+    };
+
+    const leaveFallback = () => {
+      if (!fallbackActive) return;
+      fallbackActive = false;
+      renderState();
+    };
+
+    button.addEventListener("click", async () => {
+      if (isActive()) {
+        if (isNativeFullscreen()) {
+          try {
+            if (document.exitFullscreen) await document.exitFullscreen();
+            else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
+          } catch (error) {
+            record("desktop_chart_fullscreen_exit_error", { message: error?.message });
+          }
+        } else {
+          leaveFallback();
+        }
+        return;
+      }
+
+      try {
+        if (chartSection.requestFullscreen) {
+          await chartSection.requestFullscreen({ navigationUI: "hide" });
+        } else if (chartSection.webkitRequestFullscreen) {
+          chartSection.webkitRequestFullscreen();
+        } else {
+          fallbackActive = true;
+          renderState();
+        }
+      } catch (error) {
+        record("desktop_chart_fullscreen_request_error", { message: error?.message });
+        fallbackActive = true;
+        renderState();
+      }
+    });
+
+    document.addEventListener("fullscreenchange", renderState);
+    document.addEventListener("webkitfullscreenchange", renderState);
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape" && fallbackActive) leaveFallback();
+    });
+
+    record("desktop_chart_fullscreen_attached");
+    return true;
+  }
+
   window.addEventListener("error", (event) => {
     record("uncaught_initialization_error", {
       message: event.message || "Unknown JavaScript error",
@@ -154,6 +250,7 @@
   });
 
   window.addEventListener("load", openRequestedDesktopPanel, { once: true });
+  window.addEventListener("load", attachDesktopChartFullscreen, { once: true });
 
   window.FlowSignalStartup = {
     startedAt,
@@ -163,6 +260,7 @@
     setMenuOpen,
     isMenuOpen: () => menuOpen,
     setTransportStatus,
+    attachDesktopChartFullscreen,
   };
 
   record("application_initialization_started");
