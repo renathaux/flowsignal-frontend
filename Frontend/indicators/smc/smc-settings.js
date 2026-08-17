@@ -36,9 +36,23 @@
   const smcEnabled = () => Boolean(smcApi()?.getState?.().enabled);
   const get = () => clone(state);
 
+  function redrawFromSettings() {
+    const renderer = window.FlowSignalSmcRenderer;
+    const enabled = smcEnabled();
+    if (!renderer) return;
+    renderer.setEnabled?.(enabled);
+    if (!enabled) {
+      renderer.clear?.();
+      return;
+    }
+    if (renderer.lastStructure) renderer.render?.(renderer.lastStructure);
+    else smcApi()?.refresh?.();
+  }
+
   function persist() {
     localStorage.setItem(KEY, JSON.stringify(state));
     window.dispatchEvent(new CustomEvent("flowsignal:smc-style-change", { detail: get() }));
+    redrawFromSettings();
   }
 
   function set(path, value) {
@@ -91,21 +105,25 @@
     button.textContent = enabled ? "SMC ON" : "SMC OFF";
     button.classList.toggle("is-on", enabled);
     button.setAttribute("aria-pressed", enabled ? "true" : "false");
+    window.FlowSignalSmcRenderer?.setEnabled?.(enabled);
+    if (!enabled) window.FlowSignalSmcRenderer?.clear?.();
   }
 
   function setSmcEnabled(enabled) {
     const api = smcApi();
     if (!api?.setEnabled) return false;
     api.setEnabled(Boolean(enabled));
+    window.FlowSignalSmcRenderer?.setEnabled?.(Boolean(enabled));
     if (!enabled) window.FlowSignalSmcRenderer?.clear?.();
-    else api.refresh?.();
+    else {
+      if (window.FlowSignalSmcRenderer?.lastStructure) window.FlowSignalSmcRenderer.render(window.FlowSignalSmcRenderer.lastStructure);
+      api.refresh?.();
+    }
     syncMasterToggle();
     return true;
   }
 
-  function closePanel() {
-    document.getElementById("smcSettingsPanel")?.remove();
-  }
+  function closePanel() { document.getElementById("smcSettingsPanel")?.remove(); }
 
   function resetPanelPosition(panel) {
     if (!panel) return;
@@ -118,10 +136,7 @@
     const panel = document.getElementById("smcSettingsPanel");
     if (!panel) return;
     const host = panelHost();
-    if (panel.parentNode !== host) {
-      host.appendChild(panel);
-      resetPanelPosition(panel);
-    }
+    if (panel.parentNode !== host) { host.appendChild(panel); resetPanelPosition(panel); }
   }
 
   function bindRows(panel) {
@@ -130,11 +145,13 @@
       const cfg = path.startsWith("fibs.") ? state.fibs[path.split(".")[1]] : state[path];
       rowEl.querySelector('[data-k="style"]').value = cfg.style;
       rowEl.querySelectorAll("input,select").forEach((input) => {
-        input.addEventListener("change", () => {
+        const applyValue = () => {
           const key = input.dataset.k;
           const value = input.type === "checkbox" ? input.checked : input.type === "number" ? Number(input.value) : input.value;
           set(`${path}.${key}`, value);
-        });
+        };
+        input.addEventListener("change", applyValue);
+        if (input.type === "color" || input.type === "number") input.addEventListener("input", applyValue);
       });
     });
   }
@@ -143,27 +160,20 @@
     ensureCss();
     let panel = document.getElementById("smcSettingsPanel");
     if (panel) { syncHost(); syncMasterToggle(); return; }
-
     panel = document.createElement("div");
     panel.id = "smcSettingsPanel";
     panel.className = "smc-settings-panel";
     panel.innerHTML = `
-      <div class="smc-settings-head" data-drag-handle>
-        <strong>SMC Settings</strong>
-        <button type="button" data-close aria-label="Close SMC settings">✕</button>
-      </div>
+      <div class="smc-settings-head" data-drag-handle><strong>SMC Settings</strong><button type="button" data-close aria-label="Close SMC settings">✕</button></div>
       <div class="smc-settings-body">
         <div class="smc-master-row"><strong>Indicator</strong><button type="button" class="smc-master-toggle" data-smc-master aria-pressed="false">SMC OFF</button></div>
-        ${row("BOS", "bos", state.bos)}
-        ${row("CHoCH", "choch", state.choch)}
-        ${row("Structure High/Low", "structure", state.structure)}
-        <div class="smc-settings-sub">Fibonacci</div>
-        ${Object.keys(state.fibs).map((key) => row(key, `fibs.${key}`, state.fibs[key])).join("")}
+        ${row("BOS", "bos", state.bos)}${row("CHoCH", "choch", state.choch)}${row("Structure High/Low", "structure", state.structure)}
+        <div class="smc-settings-sub">Fibonacci</div>${Object.keys(state.fibs).map((key) => row(key, `fibs.${key}`, state.fibs[key])).join("")}
         <button type="button" data-reset>Reset appearance</button>
       </div>`;
     panelHost().appendChild(panel);
     bindRows(panel);
-    syncMasterToggle();
+    window.setTimeout(syncMasterToggle, 0);
   }
 
   function attachButton() {
@@ -185,68 +195,27 @@
     return true;
   }
 
-  // One delegated capture handler owns the panel actions. This runs before chart/dashboard listeners.
   let drag = null;
-
   document.addEventListener("pointerdown", (event) => {
     const settingsButton = event.target.closest?.("#smcSettingsBtn");
-    if (settingsButton) {
-      event.preventDefault();
-      event.stopImmediatePropagation();
-      open();
-      return;
-    }
-
+    if (settingsButton) { event.preventDefault(); event.stopImmediatePropagation(); open(); return; }
     const panel = event.target.closest?.("#smcSettingsPanel");
     if (!panel) return;
-
     const close = event.target.closest?.("[data-close]");
-    if (close) {
-      event.preventDefault();
-      event.stopImmediatePropagation();
-      closePanel();
-      return;
-    }
-
+    if (close) { event.preventDefault(); event.stopImmediatePropagation(); closePanel(); return; }
     const master = event.target.closest?.("[data-smc-master]");
-    if (master) {
-      event.preventDefault();
-      event.stopImmediatePropagation();
-      setSmcEnabled(!smcEnabled());
-      return;
-    }
-
+    if (master) { event.preventDefault(); event.stopImmediatePropagation(); setSmcEnabled(!smcEnabled()); return; }
     const reset = event.target.closest?.("[data-reset]");
-    if (reset) {
-      event.preventDefault();
-      event.stopImmediatePropagation();
-      state = clone(defaults);
-      persist();
-      closePanel();
-      open();
-      return;
-    }
-
+    if (reset) { event.preventDefault(); event.stopImmediatePropagation(); state = clone(defaults); persist(); closePanel(); open(); return; }
     const handle = event.target.closest?.("[data-drag-handle]");
     if (handle && !event.target.closest?.("button,input,select,label")) {
       const rect = panel.getBoundingClientRect();
-      drag = {
-        pointerId: event.pointerId,
-        startX: event.clientX,
-        startY: event.clientY,
-        startLeft: rect.left,
-        startTop: rect.top,
-      };
-      panel.style.left = `${rect.left}px`;
-      panel.style.top = `${rect.top}px`;
-      panel.style.right = "auto";
+      drag = { pointerId:event.pointerId, startX:event.clientX, startY:event.clientY, startLeft:rect.left, startTop:rect.top };
+      panel.style.left = `${rect.left}px`; panel.style.top = `${rect.top}px`; panel.style.right = "auto";
       handle.classList.add("is-dragging");
       try { handle.setPointerCapture?.(event.pointerId); } catch (_) {}
-      event.preventDefault();
-      event.stopImmediatePropagation();
-      return;
+      event.preventDefault(); event.stopImmediatePropagation(); return;
     }
-
     event.stopPropagation();
   }, true);
 
@@ -255,26 +224,20 @@
     const panel = document.getElementById("smcSettingsPanel");
     if (!panel) { drag = null; return; }
     const host = panelHost();
-    const bounds = host === document.body
-      ? { left: 0, top: 0, width: window.innerWidth, height: window.innerHeight }
-      : host.getBoundingClientRect();
+    const bounds = host === document.body ? { left:0, top:0, width:window.innerWidth, height:window.innerHeight } : host.getBoundingClientRect();
     const rect = panel.getBoundingClientRect();
-    const minLeft = bounds.left + 4;
-    const minTop = bounds.top + 4;
+    const minLeft = bounds.left + 4, minTop = bounds.top + 4;
     const maxLeft = Math.max(minLeft, bounds.left + bounds.width - rect.width - 4);
     const maxTop = Math.max(minTop, bounds.top + bounds.height - rect.height - 4);
     panel.style.left = `${Math.min(maxLeft, Math.max(minLeft, drag.startLeft + event.clientX - drag.startX))}px`;
     panel.style.top = `${Math.min(maxTop, Math.max(minTop, drag.startTop + event.clientY - drag.startY))}px`;
-    event.preventDefault();
-    event.stopImmediatePropagation();
+    event.preventDefault(); event.stopImmediatePropagation();
   }, true);
 
   function endDrag(event) {
     if (!drag || (event.pointerId != null && event.pointerId !== drag.pointerId)) return;
     document.querySelector("#smcSettingsPanel [data-drag-handle]")?.classList.remove("is-dragging");
-    drag = null;
-    event.preventDefault?.();
-    event.stopImmediatePropagation?.();
+    drag = null; event.preventDefault?.(); event.stopImmediatePropagation?.();
   }
   document.addEventListener("pointerup", endDrag, true);
   document.addEventListener("pointercancel", endDrag, true);
@@ -282,27 +245,12 @@
   document.addEventListener("wheel", (event) => {
     const panel = event.target.closest?.("#smcSettingsPanel");
     if (!panel) return;
-    event.preventDefault();
-    event.stopImmediatePropagation();
-    panel.scrollTop += event.deltaY;
-    panel.scrollLeft += event.deltaX;
-  }, { capture: true, passive: false });
+    event.preventDefault(); event.stopImmediatePropagation(); panel.scrollTop += event.deltaY; panel.scrollLeft += event.deltaX;
+  }, { capture:true, passive:false });
 
-  window.FlowSignalSmcSettings = {
-    get,
-    set,
-    open,
-    close: closePanel,
-    attachButton,
-    syncHost,
-    defaults: () => clone(defaults),
-  };
-
-  window.addEventListener("load", () => {
-    attachButton();
-    window.setTimeout(attachButton, 250);
-  }, { once: true });
-  window.addEventListener("flowsignal:smc-toggle", syncMasterToggle);
+  window.FlowSignalSmcSettings = { get, set, open, close:closePanel, attachButton, syncHost, redraw:redrawFromSettings, defaults:()=>clone(defaults) };
+  window.addEventListener("load", () => { attachButton(); window.setTimeout(attachButton,250); window.setTimeout(() => { syncMasterToggle(); redrawFromSettings(); },500); }, { once:true });
+  window.addEventListener("flowsignal:smc-toggle", () => { syncMasterToggle(); redrawFromSettings(); });
   document.addEventListener("fullscreenchange", syncHost);
   document.addEventListener("webkitfullscreenchange", syncHost);
 })();
