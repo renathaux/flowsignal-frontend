@@ -1,157 +1,94 @@
-/* FlowSignal SMC settings runtime adapter.
- * Fixes dotted Fibonacci keys (0.786, 0.705, ...), keeps one appearance state,
- * and synchronizes the visible renderer with the master ON/OFF state.
+/* FlowSignal SMC settings compatibility shim.
+ * Keeps the original SMC Settings panel as the single owner.
+ * Only fixes dotted Fibonacci keys such as 0.786.
  * Appearance only; no strategy or broker impact.
  */
 (function () {
   "use strict";
 
   const KEY = "flowsignal_smc_visual_settings_v1";
-  const defaults = {
-    bos: { show: true, color: "#c7cbd1", width: 1, style: "solid" },
-    choch: { show: true, color: "#f0c419", width: 1, style: "solid" },
-    structure: { show: true, color: "#2962ff", width: 1, style: "solid" },
-    fibs: {
-      "0.786": { show: true, color: "#64b5f6", width: 1, style: "solid" },
-      "0.705": { show: true, color: "#f23645", width: 1, style: "solid" },
-      "0.618": { show: true, color: "#089981", width: 1, style: "solid" },
-      "0.5": { show: true, color: "#4caf50", width: 1, style: "solid" },
-      "0.382": { show: true, color: "#81c784", width: 1, style: "solid" },
-    },
-  };
 
-  const clone = (value) => JSON.parse(JSON.stringify(value));
-  function loadState() {
-    let saved = {};
-    try { saved = JSON.parse(localStorage.getItem(KEY) || "{}"); } catch (_) {}
-    const out = clone(defaults);
-    ["bos", "choch", "structure"].forEach((key) => Object.assign(out[key], saved?.[key] || {}));
-    Object.keys(out.fibs).forEach((key) => Object.assign(out.fibs[key], saved?.fibs?.[key] || {}));
-    return out;
+  function readSaved() {
+    try { return JSON.parse(localStorage.getItem(KEY) || "{}"); }
+    catch (_) { return {}; }
   }
 
-  let state = loadState();
-
-  function persist() {
-    localStorage.setItem(KEY, JSON.stringify(state));
+  function writeSaved(saved) {
+    localStorage.setItem(KEY, JSON.stringify(saved || {}));
   }
 
-  function resolve(path) {
-    const value = String(path || "");
-    if (value.startsWith("fibs.")) {
-      const rest = value.slice(5);
-      const lastDot = rest.lastIndexOf(".");
-      if (lastDot < 0) return null;
-      const fibKey = rest.slice(0, lastDot);
-      const property = rest.slice(lastDot + 1);
-      if (!Object.prototype.hasOwnProperty.call(state.fibs, fibKey)) return null;
-      return { target: state.fibs[fibKey], property };
-    }
-    const dot = value.indexOf(".");
-    if (dot < 0) return null;
-    const group = value.slice(0, dot);
-    const property = value.slice(dot + 1);
-    if (!state[group]) return null;
-    return { target: state[group], property };
-  }
-
-  function setValue(path, value) {
-    const resolved = resolve(path);
-    if (!resolved) return false;
-    resolved.target[resolved.property] = value;
-    persist();
-    redraw();
+  function installDynamicGetter() {
+    const api = window.FlowSignalSmcSettings;
+    if (!api || api.__fibCompatInstalled) return false;
+    const originalGet = typeof api.get === "function" ? api.get.bind(api) : null;
+    api.get = function () {
+      const base = originalGet ? originalGet() : {};
+      const saved = readSaved();
+      if (saved.bos) Object.assign(base.bos || (base.bos = {}), saved.bos);
+      if (saved.choch) Object.assign(base.choch || (base.choch = {}), saved.choch);
+      if (saved.structure) Object.assign(base.structure || (base.structure = {}), saved.structure);
+      base.fibs = base.fibs || {};
+      Object.entries(saved.fibs || {}).forEach(([key, value]) => {
+        Object.assign(base.fibs[key] || (base.fibs[key] = {}), value || {});
+      });
+      return base;
+    };
+    api.__fibCompatInstalled = true;
     return true;
   }
 
   function redraw() {
     const renderer = window.FlowSignalSmcRenderer;
-    const smc = window.FlowSignalSMC;
     if (!renderer) return;
-    const enabled = Boolean(smc?.getState?.().enabled);
+    const enabled = Boolean(window.FlowSignalSMC?.getState?.().enabled);
     renderer.setEnabled?.(enabled);
     if (!enabled) {
       renderer.clear?.();
       return;
     }
     if (renderer.lastStructure) renderer.render?.(renderer.lastStructure);
-    else smc?.refresh?.();
   }
 
-  function syncMaster() {
-    const smc = window.FlowSignalSMC;
-    const renderer = window.FlowSignalSmcRenderer;
-    if (!smc || !renderer) return;
-    const enabled = Boolean(smc.getState?.().enabled);
-    renderer.setEnabled?.(enabled);
-    if (!enabled) renderer.clear?.();
-    const button = document.querySelector("#smcSettingsPanel [data-smc-master]");
-    if (button) {
-      button.textContent = enabled ? "SMC ON" : "SMC OFF";
-      button.classList.toggle("is-on", enabled);
-      button.setAttribute("aria-pressed", enabled ? "true" : "false");
-    }
-  }
-
-  function rowPathFromInput(input) {
-    const row = input?.closest?.(".smc-settings-row");
-    const base = row?.dataset?.path;
-    const key = input?.dataset?.k;
-    return base && key ? `${base}.${key}` : null;
-  }
-
-  function inputValue(input) {
-    if (input.type === "checkbox") return input.checked;
-    if (input.type === "number") return Math.max(1, Math.min(5, Number(input.value) || 1));
-    return input.value;
-  }
-
-  function handleAppearanceInput(event) {
-    const input = event.target?.closest?.("#smcSettingsPanel .smc-settings-row input, #smcSettingsPanel .smc-settings-row select");
+  function handleFib(event) {
+    const input = event.target?.closest?.('#smcSettingsPanel .smc-settings-row[data-path^="fibs."] input, #smcSettingsPanel .smc-settings-row[data-path^="fibs."] select');
     if (!input) return;
-    const path = rowPathFromInput(input);
-    if (!path) return;
-    // Prevent the older dotted-path handler from running for the same control.
+    const row = input.closest('.smc-settings-row');
+    const path = String(row?.dataset?.path || "");
+    const fibKey = path.startsWith("fibs.") ? path.slice(5) : "";
+    const property = String(input.dataset.k || "");
+    if (!fibKey || !property) return;
+
+    // Stop only the original broken dotted-path handler for Fibonacci rows.
     event.stopImmediatePropagation();
-    setValue(path, inputValue(input));
-  }
 
-  document.addEventListener("change", handleAppearanceInput, true);
-  document.addEventListener("input", handleAppearanceInput, true);
-
-  // Replace the public accessor so the renderer reads this same canonical state.
-  function installApiAdapter() {
-    const api = window.FlowSignalSmcSettings;
-    if (!api) return false;
-    api.get = () => clone(state);
-    api.set = setValue;
-    api.redraw = redraw;
-    api.runtimeVersion = "2";
-    return true;
-  }
-
-  function reconcile() {
-    installApiAdapter();
-    syncMaster();
+    const saved = readSaved();
+    saved.fibs = saved.fibs || {};
+    saved.fibs[fibKey] = saved.fibs[fibKey] || {};
+    const value = input.type === "checkbox"
+      ? input.checked
+      : input.type === "number"
+        ? Math.max(1, Math.min(5, Number(input.value) || 1))
+        : input.value;
+    saved.fibs[fibKey][property] = value;
+    writeSaved(saved);
+    installDynamicGetter();
     redraw();
   }
 
-  window.addEventListener("flowsignal:smc-toggle", () => window.setTimeout(syncMaster, 0));
-  window.addEventListener("flowsignal:smc-style-change", () => {
-    state = loadState();
-    redraw();
-  });
-  window.addEventListener("load", () => {
-    reconcile();
-    window.setTimeout(reconcile, 250);
-    window.setTimeout(reconcile, 1000);
-  }, { once: true });
+  // Capture only Fibonacci appearance controls. BOS/CHoCH/Structure and master
+  // ON/OFF remain entirely owned by smc-settings.js.
+  document.addEventListener("change", handleFib, true);
+  document.addEventListener("input", handleFib, true);
+
+  function init() {
+    installDynamicGetter();
+  }
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init, { once: true });
+  else init();
+  window.addEventListener("load", init, { once: true });
 
   window.FlowSignalSmcSettingsRuntime = {
-    get: () => clone(state),
-    set: setValue,
     redraw,
-    reconcile,
-    version: "2",
+    version: "3-fib-only",
   };
 })();
