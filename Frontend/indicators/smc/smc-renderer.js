@@ -5,6 +5,7 @@
  */
 (function(){
   "use strict";
+  if(!window.FlowSignalSmcSettings&&!document.querySelector('script[data-flow-smc-settings]')){const s=document.createElement("script");s.src="indicators/smc/smc-settings.js?v=1";s.async=false;s.dataset.flowSmcSettings="true";document.head.appendChild(s);}
   function epoch(value){if(typeof value==="number"&&Number.isFinite(value))return value>1e10?Math.floor(value/1000):Math.floor(value);const p=Date.parse(String(value||""));return Number.isFinite(p)?Math.floor(p/1000):null;}
   function safeRemove(chart,series){try{if(chart&&series&&typeof chart.removeSeries==="function")chart.removeSeries(series);}catch(_){}}
   function midTime(a,b){return Math.max(a,Math.floor(a+(b-a)/2));}
