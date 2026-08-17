@@ -66,6 +66,17 @@
     element.style.setProperty("opacity", "1", "important");
   }
 
+  function applyChromeReadability() {
+    if (!chromeDesktop) return;
+    const bias = document.getElementById("fundamental-bias");
+    if (bias) {
+      bias.style.setProperty("font-size", "30px", "important");
+      bias.style.setProperty("line-height", "1", "important");
+      bias.style.setProperty("letter-spacing", "-0.02em", "important");
+      bias.style.setProperty("white-space", "nowrap", "important");
+    }
+  }
+
   function keepAnalysisCardsVisible() {
     const smcPlan = document.querySelector(".main-smc-panel");
     const smcIntel = document.getElementById("main-smc-plan-intel");
@@ -93,6 +104,7 @@
   function syncCurrentStrategyPresentation() {
     if (!chromeDesktop) return;
     keepAnalysisCardsVisible();
+    applyChromeReadability();
     if (!currentStrategyHasFreshSignal()) clearExpiredEntryChecks();
   }
 
@@ -128,6 +140,7 @@
       scheduled = true;
       window.requestAnimationFrame(() => {
         scheduled = false;
+        applyChromeReadability();
         if (getTabRole() === "user") ensureUserAnalysisVisibility();
       });
     });
@@ -145,6 +158,7 @@
     document.body.dataset.userRole = role;
     try { window.applyRoleVisibility?.(); } catch (_error) {}
     try { window.updatePnlVisibility?.(); } catch (_error) {}
+    applyChromeReadability();
     ensureUserAnalysisVisibility();
     attachDashboardObserver();
   }
@@ -190,6 +204,7 @@
 
   if (chromeDesktop) {
     window.setInterval(() => {
+      applyChromeReadability();
       if (getTabRole() === "user") ensureUserAnalysisVisibility();
     }, 750);
   }
