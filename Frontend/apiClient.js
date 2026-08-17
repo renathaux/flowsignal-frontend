@@ -43,9 +43,7 @@
 
   function ensureErrorPanel() {
     let panel = document.getElementById("frontendErrorPanel");
-
     if (panel) return panel;
-
     panel = document.createElement("div");
     panel.id = "frontendErrorPanel";
     panel.className = "frontend-error-panel hidden";
@@ -68,7 +66,6 @@
     const api = panel.querySelector("#frontendErrorApi");
     const status = panel.querySelector("#frontendErrorStatus");
     const message = panel.querySelector("#frontendErrorMessage");
-
     if (api) api.textContent = `Last API: ${state.lastApiCalled || "--"}`;
     if (status) status.textContent = `Status: ${state.statusCode || "--"}`;
     if (message) message.textContent = `Message: ${state.errorMessage || "--"}`;
@@ -87,16 +84,12 @@
       || String(url || "").includes("/modify-live-position-levels")
     );
 
-    if (!suppressErrorPanel) {
-      state.lastApiCalled = url || "unknown";
-    }
+    if (!suppressErrorPanel) state.lastApiCalled = url || "unknown";
 
     try {
       const response = await requestWithTimeout(input, init);
       if (suppressErrorPanel) return response;
-
       state.statusCode = response.status;
-
       if (!response.ok) {
         state.errorMessage = `HTTP ${response.status}`;
         renderErrorPanel();
@@ -104,11 +97,9 @@
         state.errorMessage = null;
         renderErrorPanel();
       }
-
       return response;
     } catch (error) {
       if (suppressErrorPanel) throw error;
-
       state.statusCode = "network";
       state.errorMessage = error.message || "Network request failed";
       renderErrorPanel();
@@ -129,18 +120,24 @@
 
   window.fetch = apiFetch;
 
-  // The live-candle controller is loaded once, parser-synchronously, by startup.js.
-  // Do not load it again here: a second copy can replace its mounted chart state.
-  // This small bridge is separate from the main application and explicitly mounts
-  // the SMC overlay to the chart series created later by script.js.
+  // Keep the SMC implementation outside the main application bundle.
+  // startup.js owns the main SMC modules; these tiny helpers only bridge the
+  // existing chart and provide a local closed-candle visual fallback.
   if (!document.querySelector('script[data-flow-smc-chart-bridge]')) {
     const smcBridgeScript = document.createElement("script");
-    smcBridgeScript.src = "indicators/smc/smc-chart-bridge.js?v=1";
+    smcBridgeScript.src = "indicators/smc/smc-chart-bridge.js?v=4";
     smcBridgeScript.async = false;
     smcBridgeScript.dataset.flowSmcChartBridge = "true";
-    smcBridgeScript.addEventListener("error", () => {
-      console.warn("FLOW_SMC_CHART_BRIDGE_LOAD_FAILED");
-    });
+    smcBridgeScript.addEventListener("error", () => console.warn("FLOW_SMC_CHART_BRIDGE_LOAD_FAILED"));
     document.head.appendChild(smcBridgeScript);
+  }
+
+  if (!document.querySelector('script[data-flow-smc-local-visual]')) {
+    const localVisualScript = document.createElement("script");
+    localVisualScript.src = "indicators/smc/smc-local-visual.js?v=1";
+    localVisualScript.async = false;
+    localVisualScript.dataset.flowSmcLocalVisual = "true";
+    localVisualScript.addEventListener("error", () => console.warn("FLOW_SMC_LOCAL_VISUAL_LOAD_FAILED"));
+    document.head.appendChild(localVisualScript);
   }
 })();
