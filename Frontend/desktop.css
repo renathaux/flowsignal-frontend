@@ -68,6 +68,117 @@
     align-items: center;
   }
 
+  /* User accounts do not render the admin performance strip. The legacy
+     desktop stylesheet still positioned the topbar as a 178px absolute box
+     intended to sit beside that strip. Keep the user status row in normal
+     document flow so the Live Auto badge can never overlap the EURUSD card. */
+  body[data-user-role="user"].fit-mode #mainApp.app:not(.locked) > .topbar {
+    position: static !important;
+    inset: auto !important;
+    width: 100% !important;
+    max-width: none !important;
+    min-height: 38px !important;
+    padding: 0 4px 8px !important;
+    margin: 0 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    flex-wrap: nowrap !important;
+    gap: 8px !important;
+    overflow: hidden !important;
+  }
+
+  body[data-user-role="user"].fit-mode #mainApp.app:not(.locked) > .topbar .status,
+  body[data-user-role="user"].fit-mode #mainApp.app:not(.locked) > .topbar .runtime-status-detail,
+  body[data-user-role="user"].fit-mode #mainApp.app:not(.locked) > .topbar .user-live-auto-status {
+    position: static !important;
+    flex: 0 0 auto !important;
+    min-width: 0 !important;
+    width: auto !important;
+    max-width: min(360px, 45vw) !important;
+    min-height: 30px !important;
+    margin: 0 !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+  }
+
+  body[data-user-role="user"].fit-mode #mainApp.app:not(.locked) > .topbar .user-live-auto-status {
+    margin-left: auto !important;
+  }
+
+  /* Desktop right column must not rely on flex-shrink calculations. WebKit
+     was shrinking the chart almost to zero and then visually stacking V2 and
+     history on top of Fundamental Insight. Make every major card a normal,
+     non-shrinking block and let the right column itself scroll. */
+  body.fit-mode .chart-panel {
+    display: flex !important;
+    flex-direction: column !important;
+    min-height: 0 !important;
+    height: 100% !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    gap: 12px !important;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  body.fit-mode .chart-panel > .chart-wrap {
+    flex: 0 0 auto !important;
+    width: 100% !important;
+    min-height: 400px !important;
+    height: 400px !important;
+    overflow: visible !important;
+  }
+
+  body.fit-mode .chart-panel .chart-section {
+    display: flex !important;
+    flex-direction: column !important;
+    width: 100% !important;
+    min-height: 400px !important;
+    height: 400px !important;
+    flex: 0 0 400px !important;
+    gap: 8px !important;
+    overflow: hidden !important;
+  }
+
+  body.fit-mode .chart-panel .chart-controls {
+    flex: 0 0 auto !important;
+    min-height: 40px !important;
+  }
+
+  body.fit-mode .chart-panel .chart-box {
+    position: relative !important;
+    flex: 1 1 auto !important;
+    width: 100% !important;
+    height: auto !important;
+    min-height: 330px !important;
+    max-height: none !important;
+    margin: 0 !important;
+  }
+
+  body.fit-mode .chart-panel .chart-box #chartContainer {
+    width: 100% !important;
+    height: 100% !important;
+    min-height: 330px !important;
+  }
+
+  body.fit-mode .chart-panel .news-impact-panel,
+  body.fit-mode .chart-panel #v2-shadow-card,
+  body.fit-mode .chart-panel .history-section {
+    position: relative !important;
+    inset: auto !important;
+    transform: none !important;
+    width: 100% !important;
+    flex: 0 0 auto !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    z-index: auto !important;
+  }
+
+  body.fit-mode .chart-panel .news-impact-panel {
+    overflow: visible !important;
+  }
+
   .chart-section.is-desktop-chart-fullscreen,
   .chart-section:fullscreen,
   .chart-section:-webkit-full-screen {
