@@ -188,6 +188,65 @@
     overflow: visible !important;
   }
 
+  /* Chrome desktop: keep the full dashboard content in normal page flow.
+     The generic desktop rules above intentionally constrain WebKit, but in
+     Chrome those fixed 400px/100% containers hide the cards that follow the
+     chart and trap the middle column inside an internal scroll box. */
+  body.flowsignal-chrome-desktop.fit-mode {
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+  }
+
+  body.flowsignal-chrome-desktop.fit-mode #mainApp.app:not(.locked) {
+    height: auto !important;
+    min-height: 100vh !important;
+    overflow-y: visible !important;
+  }
+
+  body.flowsignal-chrome-desktop.fit-mode #mainApp.app:not(.locked) > .dashboard-grid {
+    flex: 0 0 auto !important;
+    height: auto !important;
+    min-height: calc(100vh - 150px) !important;
+    overflow: visible !important;
+    align-items: start !important;
+  }
+
+  body.flowsignal-chrome-desktop.fit-mode .main-trade-panel,
+  body.flowsignal-chrome-desktop.fit-mode .main-trade-card {
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+  }
+
+  body.flowsignal-chrome-desktop.fit-mode .entry-strategy-debug {
+    overflow: visible !important;
+  }
+
+  body.flowsignal-chrome-desktop.fit-mode .chart-panel {
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+  }
+
+  body.flowsignal-chrome-desktop.fit-mode .chart-panel > .chart-wrap {
+    height: auto !important;
+    min-height: 400px !important;
+    overflow: visible !important;
+  }
+
+  body.flowsignal-chrome-desktop.fit-mode .chart-panel .chart-section {
+    height: auto !important;
+    min-height: 400px !important;
+    flex: 0 0 auto !important;
+    overflow: visible !important;
+  }
+
+  body.flowsignal-chrome-desktop.fit-mode .chart-panel .chart-box {
+    flex: 0 0 330px !important;
+    height: 330px !important;
+    min-height: 330px !important;
+  }
+
   .chart-section.is-desktop-chart-fullscreen,
   .chart-section:fullscreen,
   .chart-section:-webkit-full-screen {
