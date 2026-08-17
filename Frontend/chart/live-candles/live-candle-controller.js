@@ -234,9 +234,14 @@
     if (!document.hidden && state.running) schedulePoll(0);
   });
 
-  let hookAttempts = 0;
-  const hookTimer = window.setInterval(() => {
-    hookAttempts += 1;
-    if (hookChartLibrary() || hookAttempts > 100) window.clearInterval(hookTimer);
-  }, 25);
+  // Critical: hook synchronously when Lightweight Charts is already available.
+  // The previous 25ms-only retry path could lose the chart series if script.js
+  // created it before the first timer tick, leaving SMC ON with nothing mounted.
+  if (!hookChartLibrary()) {
+    let hookAttempts = 0;
+    const hookTimer = window.setInterval(() => {
+      hookAttempts += 1;
+      if (hookChartLibrary() || hookAttempts > 1200) window.clearInterval(hookTimer);
+    }, 25);
+  }
 })();
