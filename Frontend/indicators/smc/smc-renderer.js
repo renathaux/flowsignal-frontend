@@ -1,5 +1,18 @@
+/*
+ * FlowSignal SMC renderer.
+ * Structure/Fibonacci presentation adapted from "SMC Structures and FVG"
+ * © LudoGH68, MPL-2.0. FVG intentionally excluded.
+ */
 (function () {
   "use strict";
+
+  const FIB_COLORS = {
+    "0.786": "#64b5f6",
+    "0.705": "#f23645",
+    "0.618": "#089981",
+    "0.5": "#4caf50",
+    "0.382": "#81c784",
+  };
 
   function epoch(value) {
     if (typeof value === "number" && Number.isFinite(value)) {
@@ -10,16 +23,18 @@
   }
 
   function safeRemoveSeries(chart, series) {
-    try {
-      if (chart && series && typeof chart.removeSeries === "function") chart.removeSeries(series);
-    } catch (_) {}
+    try { if (chart && series && typeof chart.removeSeries === "function") chart.removeSeries(series); } catch (_) {}
+  }
+
+  function midTime(start, end) {
+    return Math.max(start, Math.floor(start + (end - start) / 2));
   }
 
   class SmcRenderer {
     constructor() {
       this.chart = null;
       this.candleSeries = null;
-      this.structureSeries = [];
+      this.series = [];
       this.enabled = false;
     }
 
@@ -35,59 +50,108 @@
     }
 
     clear() {
-      this.structureSeries.forEach((series) => safeRemoveSeries(this.chart, series));
-      this.structureSeries = [];
+      this.series.forEach((item) => safeRemoveSeries(this.chart, item));
+      this.series = [];
     }
 
-    addSegment(event) {
+    addHorizontal({ start, end, price, color, width = 1, label = null, labelPosition = "aboveBar", dashed = false }) {
       if (!this.chart || typeof this.chart.addLineSeries !== "function") return;
-
-      const price = Number(event?.broken_level);
-      let start = epoch(event?.broken_swing_timestamp);
-      let end = epoch(event?.timestamp);
-      if (!Number.isFinite(price) || !Number.isFinite(start) || !Number.isFinite(end)) return;
-      if (end <= start) end = start + 1;
-
-      const isChoch = String(event?.event_type || "").toUpperCase() === "CHOCH";
-      const isBullish = String(event?.direction || "").toUpperCase() === "BULLISH";
-      const color = isChoch ? "#6d8cff" : (isBullish ? "#d9e3f0" : "#f0c9cf");
-      const lineWidth = isChoch ? 2 : 1;
-
-      const series = this.chart.addLineSeries({
+      if (![start, end, price].every(Number.isFinite)) return;
+      const finalEnd = end <= start ? start + 1 : end;
+      const middle = midTime(start, finalEnd);
+      const line = this.chart.addLineSeries({
         color,
-        lineWidth,
-        lineStyle: 0,
+        lineWidth: width,
+        lineStyle: dashed ? 2 : 0,
         lastValueVisible: false,
         priceLineVisible: false,
         crosshairMarkerVisible: false,
         autoscaleInfoProvider: () => null,
       });
-
-      series.setData([
+      line.setData([
         { time: start, value: price },
-        { time: end, value: price },
+        { time: middle, value: price },
+        { time: finalEnd, value: price },
       ]);
-
-      if (typeof series.setMarkers === "function") {
-        series.setMarkers([{
-          time: end,
-          position: isBullish ? "aboveBar" : "belowBar",
-          shape: isBullish ? "arrowUp" : "arrowDown",
+      if (label && typeof line.setMarkers === "function") {
+        line.setMarkers([{
+          time: middle,
+          position: labelPosition,
+          shape: "circle",
           color,
-          text: isChoch ? "CHoCH" : "BOS",
-          size: 0.55,
+          text: label,
+          size: 0.1,
         }]);
       }
+      this.series.push(line);
+    }
 
-      this.structureSeries.push(series);
+    addBreak(event) {
+      const price = Number(event?.broken_level);
+      const start = epoch(event?.broken_swing_timestamp);
+      const end = epoch(event?.timestamp);
+      if (![price, start, end].every(Number.isFinite)) return;
+      const isChoch = String(event?.event_type || "").toUpperCase() === "CHOCH";
+      const isBullish = String(event?.direction || "").toUpperCase() === "BULLISH";
+      const color = isChoch ? "#f0c419" : "#c7cbd1";
+      this.addHorizontal({
+        start,
+        end,
+        price,
+        color,
+        width: 1,
+        label: isChoch ? "CHoCH" : "BOS",
+        labelPosition: isBullish ? "aboveBar" : "belowBar",
+      });
+    }
+
+    addCurrentStructure(structure) {
+      const current = structure?.current_structure;
+      if (!current) return;
+      const end = epoch(current.end_timestamp);
+      const highStart = epoch(current.high_start_timestamp);
+      const lowStart = epoch(current.low_start_timestamp);
+      const high = Number(current.high);
+      const low = Number(current.low);
+      const color = "#2962ff";
+      if ([highStart, end, high].every(Number.isFinite)) {
+        this.addHorizontal({ start: highStart, end, price: high, color, width: 1, label: "Structure High", labelPosition: "aboveBar" });
+      }
+      if ([lowStart, end, low].every(Number.isFinite)) {
+        this.addHorizontal({ start: lowStart, end, price: low, color, width: 1, label: "Structure Low", labelPosition: "belowBar" });
+      }
+    }
+
+    addFibs(structure) {
+      const end = epoch(structure?.current_structure?.end_timestamp);
+      const levels = Array.isArray(structure?.fib_levels) ? structure.fib_levels : [];
+      if (!Number.isFinite(end)) return;
+      levels.forEach((level) => {
+        const value = Number(level?.value);
+        const price = Number(level?.price);
+        const start = epoch(level?.start_timestamp);
+        if (![value, price, start].every(Number.isFinite)) return;
+        const key = String(value);
+        const color = FIB_COLORS[key] || "#8ea0b8";
+        this.addHorizontal({
+          start,
+          end,
+          price,
+          color,
+          width: 1,
+          label: key,
+          labelPosition: "aboveBar",
+        });
+      });
     }
 
     render(structure) {
       this.clear();
       if (!this.enabled || !this.chart || !this.candleSeries || !structure) return;
-
       const events = Array.isArray(structure.events) ? structure.events : [];
-      events.slice(-14).forEach((event) => this.addSegment(event));
+      events.slice(-10).forEach((event) => this.addBreak(event));
+      this.addCurrentStructure(structure);
+      this.addFibs(structure);
     }
   }
 
