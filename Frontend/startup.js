@@ -1,9 +1,11 @@
 (function () {
-  // Keep the live chart transport in its own module.  Because startup.js is
-  // parser-blocking, document.write loads this module before the main chart
-  // script boots, allowing it to attach to the candlestick series safely.
-  if (!window.FlowSignalLiveCandles && document.readyState === "loading") {
-    document.write('<script src="chart/live-candles/live-candle-controller.js?v=1"><\/script>');
+  if (document.readyState === "loading") {
+    if (!window.FlowSignalLiveCandles) {
+      document.write('<script src="chart/live-candles/live-candle-controller.js?v=2"><\/script>');
+    }
+    document.write('<link rel="stylesheet" href="indicators/smc/smc.css?v=2">');
+    document.write('<script src="indicators/smc/smc-renderer.js?v=2"><\/script>');
+    document.write('<script src="indicators/smc/smc-indicator.js?v=2"><\/script>');
   }
 
   function shouldUseSeparatedMobileDashboard() {
@@ -12,14 +14,10 @@
       if (params.get("desktop") === "1") return false;
       if (!window.matchMedia("(max-width: 700px)").matches) return false;
       if (/\/mobile\.html$/i.test(window.location.pathname)) return false;
-
       const access = JSON.parse(localStorage.getItem("flowsignal_access") || "null");
       const role = String(localStorage.getItem("flowsignal_role") || "").toLowerCase();
-      const authenticated = access?.granted === true || role === "admin" || role === "user";
-      return authenticated;
-    } catch (_error) {
-      return false;
-    }
+      return access?.granted === true || role === "admin" || role === "user";
+    } catch (_error) { return false; }
   }
 
   if (shouldUseSeparatedMobileDashboard()) {
@@ -77,9 +75,7 @@
     button.disabled = false;
     button.setAttribute("aria-controls", "sideMenu");
     button.addEventListener("click", (event) => {
-      event.preventDefault();
-      event.stopPropagation();
-      setMenuOpen(!menuOpen);
+      event.preventDefault(); event.stopPropagation(); setMenuOpen(!menuOpen);
     });
     record("menu_listener_attached");
     return true;
@@ -112,6 +108,33 @@
     status.dataset.transportState = state;
     status.title = message;
     status.textContent = message;
+  }
+
+  function renderSmcToggle(button) {
+    const smcState = window.FlowSignalSMC?.getState?.() || { enabled: false };
+    button.setAttribute("aria-pressed", smcState.enabled ? "true" : "false");
+    button.title = "Visual SMC overlay only — does not affect V1/V2 trading";
+    button.innerHTML = `<span class="smc-overlay-toggle__dot" aria-hidden="true"></span><span>SMC ${smcState.enabled ? "ON" : "OFF"}</span>`;
+  }
+
+  function attachSmcOverlayToggle() {
+    const controls = document.querySelector(".chart-panel .chart-controls");
+    if (!controls || !window.FlowSignalSMC) return false;
+    let button = document.getElementById("smcOverlayToggleBtn");
+    if (!button) {
+      button = document.createElement("button");
+      button.id = "smcOverlayToggleBtn";
+      button.type = "button";
+      button.className = "smc-overlay-toggle";
+      controls.appendChild(button);
+      button.addEventListener("click", () => {
+        window.FlowSignalSMC.setEnabled(!window.FlowSignalSMC.getState().enabled);
+        renderSmcToggle(button);
+      });
+    }
+    renderSmcToggle(button);
+    record("smc_overlay_toggle_attached", window.FlowSignalSMC.getState());
+    return true;
   }
 
   function attachDesktopChartFullscreen() {
@@ -170,9 +193,15 @@
   window.addEventListener("unhandledrejection", (event) => record("unhandled_initialization_rejection", { message: event.reason?.message || String(event.reason || "Unknown rejection") }));
   window.addEventListener("load", openRequestedDesktopPanel, { once: true });
   window.addEventListener("load", attachDesktopChartFullscreen, { once: true });
+  window.addEventListener("load", attachSmcOverlayToggle, { once: true });
+  window.addEventListener("flowsignal:smc-toggle", () => {
+    const button = document.getElementById("smcOverlayToggleBtn");
+    if (button) renderSmcToggle(button);
+  });
 
-  window.FlowSignalStartup = { startedAt, record, events: () => events.slice(), attachMenu, setMenuOpen, isMenuOpen: () => menuOpen, setTransportStatus, attachDesktopChartFullscreen };
+  window.FlowSignalStartup = { startedAt, record, events: () => events.slice(), attachMenu, setMenuOpen, isMenuOpen: () => menuOpen, setTransportStatus, attachDesktopChartFullscreen, attachSmcOverlayToggle };
   record("application_initialization_started");
-  record("live_chart_tick_transport_ready", { transport: "ctrader_tick_snapshot", pollMs: 500 });
+  record("live_chart_tick_transport_ready", { transport: "ctrader_tick_snapshot", pollMs: 250 });
+  record("smc_overlay_module_ready", { observationOnly: true, affectsStrategy: false });
   attachMenu();
 })();
