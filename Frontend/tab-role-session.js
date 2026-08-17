@@ -21,6 +21,7 @@
 
   const chromeDesktop = isChromeDesktop();
   const safariDesktop = isSafariDesktop();
+  const supportedDesktop = chromeDesktop || safariDesktop;
   if (chromeDesktop) document.body?.classList.add("flowsignal-chrome-desktop");
   if (safariDesktop) document.body?.classList.add("flowsignal-safari-desktop");
 
@@ -101,7 +102,7 @@
   }
 
   function clearExpiredEntryChecks() {
-    if (!chromeDesktop || currentStrategyHasFreshSignal()) return;
+    if (!supportedDesktop || currentStrategyHasFreshSignal()) return;
     keepAnalysisCardsVisible();
     [
       "strategy-debug-smc",
@@ -115,15 +116,15 @@
   }
 
   function syncCurrentStrategyPresentation() {
-    if (!chromeDesktop) return;
+    if (!supportedDesktop) return;
     keepAnalysisCardsVisible();
     applyChromeReadability();
     if (!currentStrategyHasFreshSignal()) clearExpiredEntryChecks();
   }
 
   function ensureUserAnalysisVisibility() {
-    if (getTabRole() !== "user") {
-      syncCurrentStrategyPresentation();
+    if (!supportedDesktop || getTabRole() !== "user") {
+      if (supportedDesktop) syncCurrentStrategyPresentation();
       return;
     }
 
@@ -143,7 +144,7 @@
   }
 
   function attachDashboardObserver() {
-    if (!chromeDesktop && !safariDesktop) return;
+    if (!supportedDesktop) return;
     const dashboard = document.querySelector(".dashboard-grid") || document.getElementById("mainApp");
     if (!dashboard || dashboard.dataset.flowSignalUserAnalysisObserver === "true") return;
     dashboard.dataset.flowSignalUserAnalysisObserver = "true";
@@ -155,7 +156,7 @@
         scheduled = false;
         applyChromeReadability();
         ensureSafariInsightVisibility();
-        if (chromeDesktop && getTabRole() === "user") ensureUserAnalysisVisibility();
+        if (getTabRole() === "user") ensureUserAnalysisVisibility();
       });
     });
     observer.observe(dashboard, {
@@ -174,7 +175,7 @@
     try { window.updatePnlVisibility?.(); } catch (_error) {}
     applyChromeReadability();
     ensureSafariInsightVisibility();
-    if (chromeDesktop) ensureUserAnalysisVisibility();
+    if (supportedDesktop) ensureUserAnalysisVisibility();
     attachDashboardObserver();
   }
 
@@ -217,11 +218,11 @@
     window.setTimeout(refreshRoleUi, 300);
   }, { once: true });
 
-  if (chromeDesktop || safariDesktop) {
+  if (supportedDesktop) {
     window.setInterval(() => {
       applyChromeReadability();
       ensureSafariInsightVisibility();
-      if (chromeDesktop && getTabRole() === "user") ensureUserAnalysisVisibility();
+      if (getTabRole() === "user") ensureUserAnalysisVisibility();
     }, 750);
   }
 
