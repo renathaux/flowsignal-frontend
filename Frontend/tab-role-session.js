@@ -7,6 +7,16 @@
     return role === "admin" || role === "user" ? role : "";
   }
 
+  function isChromeDesktop() {
+    const ua = String(navigator.userAgent || "");
+    const chrome = /Chrome\//.test(ua) && !/(Edg|OPR|SamsungBrowser)\//.test(ua);
+    return chrome && window.matchMedia("(min-width: 701px)").matches;
+  }
+
+  if (isChromeDesktop()) {
+    document.body?.classList.add("flowsignal-chrome-desktop");
+  }
+
   function getTabRole() {
     return normalizeRole(sessionStorage.getItem(TAB_ROLE_KEY));
   }
