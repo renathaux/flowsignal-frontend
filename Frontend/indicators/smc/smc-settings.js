@@ -14,83 +14,92 @@
   function chartSection(){return document.querySelector(".chart-panel .chart-section");}
   function fullscreenElement(){return document.fullscreenElement||document.webkitFullscreenElement||null;}
   function panelHost(){const section=chartSection();return section&&fullscreenElement()===section?section:document.body;}
-  function movePanelToCorrectHost(){const p=document.getElementById("smcSettingsPanel");if(!p)return;const host=panelHost();if(host&&p.parentNode!==host)host.appendChild(p);}
+  function movePanelToCorrectHost(){const p=document.getElementById("smcSettingsPanel");if(!p)return;const host=panelHost();if(host&&p.parentNode!==host){host.appendChild(p);resetPanelPosition(p);}}
 
   function ensureCss(){
     if(document.getElementById("smcSettingsCss"))return;
     const s=document.createElement("style");
     s.id="smcSettingsCss";
     s.textContent=`
-      .smc-settings-btn{display:inline-flex;align-items:center;justify-content:center;min-width:34px;height:34px;border:1px solid #31506f;background:#101b29;color:#d9e7f7;border-radius:9px;padding:0 8px;font-weight:700;cursor:pointer;flex:0 0 auto}
-      .smc-settings-panel{position:fixed;right:22px;top:85px;z-index:2147483646;width:min(430px,calc(100vw - 30px));background:#0d1724;border:1px solid #29425f;border-radius:14px;box-shadow:0 18px 50px #0009;color:#eaf2fb}
-      .smc-settings-head{display:flex;justify-content:space-between;align-items:center;padding:14px 16px;border-bottom:1px solid #24364d}
-      .smc-settings-head button,.smc-settings-body>button{background:#132238;color:#dce9f8;border:1px solid #304968;border-radius:8px;padding:7px 10px;cursor:pointer}
-      .smc-settings-body{padding:12px 14px 16px}
+      .smc-settings-btn{display:inline-flex;align-items:center;justify-content:center;min-width:42px;height:34px;border:1px solid #31506f;background:#101b29;color:#d9e7f7;border-radius:9px;padding:0 10px;font-weight:700;cursor:pointer;flex:0 0 auto;pointer-events:auto;position:relative;z-index:5}
+      .smc-settings-panel{position:fixed;right:22px;top:85px;left:auto;z-index:2147483646;width:min(430px,calc(100vw - 30px));max-height:calc(100vh - 110px);overflow:auto;background:#0d1724;border:1px solid #29425f;border-radius:14px;box-shadow:0 18px 50px #0009;color:#eaf2fb;pointer-events:auto;user-select:none}
+      .smc-settings-head{display:flex;justify-content:space-between;align-items:center;padding:14px 16px;border-bottom:1px solid #24364d;cursor:move;touch-action:none;background:#101c2b;border-radius:14px 14px 0 0}
+      .smc-settings-head button,.smc-settings-body>button{background:#132238;color:#dce9f8;border:1px solid #304968;border-radius:8px;padding:7px 10px;cursor:pointer;pointer-events:auto;position:relative;z-index:2}
+      .smc-settings-head button{cursor:pointer;min-width:36px}
+      .smc-master-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px;margin-bottom:8px;background:#101c2b;border:1px solid #24364d;border-radius:10px}
+      .smc-master-row strong{font-size:13px}.smc-master-toggle{border:1px solid #31506f;background:#182638;color:#b8c7da;border-radius:999px;padding:7px 14px;font-weight:800;cursor:pointer;min-width:78px}.smc-master-toggle.is-on{border-color:#1dbf73;background:rgba(29,191,115,.14);color:#55e59b}
+      .smc-settings-body{padding:12px 14px 16px;user-select:auto}
       .smc-settings-sub{font-weight:800;margin:14px 0 7px;color:#9eb5cf}
       .smc-settings-row{display:grid;grid-template-columns:minmax(145px,1fr) 44px 94px 58px;gap:8px;align-items:center;padding:7px 0;border-bottom:1px solid #172538}
       .smc-settings-row label{font-size:13px}.smc-settings-row input[type=color]{width:40px;height:30px;border:0;background:transparent}
       .smc-settings-row select,.smc-settings-row input[type=number]{width:100%;background:#101d2c;color:#dce8f7;border:1px solid #30445e;border-radius:6px;padding:6px}
       .smc-settings-body>button{margin-top:14px;width:100%}
-      .chart-section:fullscreen .smc-settings-panel,.chart-section:-webkit-full-screen .smc-settings-panel{top:68px;right:16px}
+      .chart-section:fullscreen .smc-settings-panel,.chart-section:-webkit-full-screen .smc-settings-panel{top:68px;right:16px;max-height:calc(100vh - 90px)}
       @media(max-width:700px){.smc-settings-panel{right:10px;top:65px}.smc-settings-row{grid-template-columns:1fr 42px 82px 52px}}
     `;
     document.head.appendChild(s);
   }
 
-  function closePanel(){document.getElementById("smcSettingsPanel")?.remove();}
+  function smcEnabled(){return Boolean(window.FlowSignalSMC?.getState?.().enabled);}
+  function setSmcEnabled(enabled){window.FlowSignalSMC?.setEnabled?.(Boolean(enabled));syncMasterToggle();}
+  function syncMasterToggle(){const b=document.querySelector("#smcSettingsPanel [data-smc-master]");if(!b)return;const on=smcEnabled();b.textContent=on?"SMC ON":"SMC OFF";b.classList.toggle("is-on",on);b.setAttribute("aria-pressed",on?"true":"false");}
+  function closePanel(event){event?.preventDefault?.();event?.stopPropagation?.();document.getElementById("smcSettingsPanel")?.remove();}
+  function resetPanelPosition(p){if(!p)return;p.style.left="";p.style.top="";p.style.right="";if(panelHost()===document.body){p.style.right="22px";p.style.top="85px";}else{p.style.right="16px";p.style.top="68px";}}
+
+  function makeDraggable(panel){
+    const head=panel.querySelector(".smc-settings-head");
+    if(!head||head.dataset.dragBound==="1")return;
+    head.dataset.dragBound="1";
+    let dragging=false,startX=0,startY=0,startLeft=0,startTop=0;
+    const move=(e)=>{
+      if(!dragging)return;
+      const host=panelHost();
+      const bounds=host===document.body?{left:0,top:0,width:window.innerWidth,height:window.innerHeight}:host.getBoundingClientRect();
+      const rect=panel.getBoundingClientRect();
+      const minLeft=bounds.left+4,minTop=bounds.top+4,maxLeft=Math.max(minLeft,bounds.left+bounds.width-rect.width-4),maxTop=Math.max(minTop,bounds.top+bounds.height-rect.height-4);
+      panel.style.left=`${Math.min(maxLeft,Math.max(minLeft,startLeft+(e.clientX-startX)))}px`;
+      panel.style.top=`${Math.min(maxTop,Math.max(minTop,startTop+(e.clientY-startY)))}px`;
+      panel.style.right="auto";
+    };
+    const stop=()=>{dragging=false;window.removeEventListener("pointermove",move);window.removeEventListener("pointerup",stop);window.removeEventListener("pointercancel",stop);};
+    head.addEventListener("pointerdown",(e)=>{
+      if(e.target.closest("button,input,select,label"))return;
+      const rect=panel.getBoundingClientRect();dragging=true;startX=e.clientX;startY=e.clientY;startLeft=rect.left;startTop=rect.top;
+      try{head.setPointerCapture?.(e.pointerId);}catch(_){}
+      window.addEventListener("pointermove",move);window.addEventListener("pointerup",stop);window.addEventListener("pointercancel",stop);e.preventDefault();
+    });
+  }
+
+  function bindRows(p){
+    p.querySelectorAll(".smc-settings-row").forEach(r=>{
+      const path=r.dataset.path;const cfg=path.startsWith("fibs.")?state.fibs[path.split(".")[1]]:state[path];
+      r.querySelector('[data-k="style"]').value=cfg.style;
+      r.querySelectorAll("input,select").forEach(el=>el.addEventListener("change",()=>{const k=el.dataset.k;const v=el.type==="checkbox"?el.checked:el.type==="number"?Number(el.value):el.value;set(`${path}.${k}`,v);}));
+    });
+  }
 
   function open(){
     ensureCss();
     let p=document.getElementById("smcSettingsPanel");
-    if(p){movePanelToCorrectHost();return;}
-    p=document.createElement("div");
-    p.id="smcSettingsPanel";
-    p.className="smc-settings-panel";
-    p.innerHTML=`<div class="smc-settings-head"><strong>SMC Appearance</strong><button type="button" data-close aria-label="Close SMC settings">✕</button></div><div class="smc-settings-body">${row("BOS","bos",state.bos)}${row("CHoCH","choch",state.choch)}${row("Structure High/Low","structure",state.structure)}<div class="smc-settings-sub">Fibonacci</div>${Object.keys(state.fibs).map(k=>row(k,`fibs.${k}`,state.fibs[k])).join("")}<button type="button" data-reset>Reset appearance</button></div>`;
-    panelHost().appendChild(p);
-    p.querySelectorAll(".smc-settings-row").forEach(r=>{
-      const path=r.dataset.path;
-      const cfg=path.startsWith("fibs.")?state.fibs[path.split(".")[1]]:state[path];
-      r.querySelector('[data-k="style"]').value=cfg.style;
-      r.querySelectorAll("input,select").forEach(el=>el.addEventListener("change",()=>{
-        const k=el.dataset.k;
-        const v=el.type==="checkbox"?el.checked:el.type==="number"?Number(el.value):el.value;
-        set(`${path}.${k}`,v);
-      }));
-    });
-    p.querySelector("[data-close]").addEventListener("click",closePanel);
+    if(p){movePanelToCorrectHost();syncMasterToggle();return;}
+    p=document.createElement("div");p.id="smcSettingsPanel";p.className="smc-settings-panel";
+    p.innerHTML=`<div class="smc-settings-head"><strong>SMC Settings</strong><button type="button" data-close aria-label="Close SMC settings">✕</button></div><div class="smc-settings-body"><div class="smc-master-row"><strong>Indicator</strong><button type="button" class="smc-master-toggle" data-smc-master aria-pressed="false">SMC OFF</button></div>${row("BOS","bos",state.bos)}${row("CHoCH","choch",state.choch)}${row("Structure High/Low","structure",state.structure)}<div class="smc-settings-sub">Fibonacci</div>${Object.keys(state.fibs).map(k=>row(k,`fibs.${k}`,state.fibs[k])).join("")}<button type="button" data-reset>Reset appearance</button></div>`;
+    panelHost().appendChild(p);bindRows(p);makeDraggable(p);syncMasterToggle();
+    const close=p.querySelector("[data-close]");close.addEventListener("pointerdown",e=>{e.stopPropagation();});close.addEventListener("click",closePanel);
+    p.querySelector("[data-smc-master]").addEventListener("click",()=>setSmcEnabled(!smcEnabled()));
     p.querySelector("[data-reset]").addEventListener("click",()=>{state=clone(defaults);persist();closePanel();open();});
   }
 
+  function removeLegacyToggle(){document.getElementById("smcOverlayToggleBtn")?.remove();}
   function attachButton(){
-    ensureCss();
-    const controls=document.querySelector(".chart-panel .chart-controls");
-    if(!controls)return false;
-    let b=document.getElementById("smcSettingsBtn");
-    if(!b){
-      b=document.createElement("button");
-      b.id="smcSettingsBtn";
-      b.type="button";
-      b.className="smc-settings-btn";
-      b.textContent="⚙";
-      b.setAttribute("aria-label","SMC appearance settings");
-      b.title="SMC appearance settings";
-      b.addEventListener("click",open);
-    }
-    const smcToggle=document.getElementById("smcOverlayToggleBtn");
-    if(smcToggle&&b.nextSibling!==smcToggle)controls.insertBefore(b,smcToggle);
-    else if(!b.parentNode)controls.appendChild(b);
-    return true;
+    ensureCss();const controls=document.querySelector(".chart-panel .chart-controls");if(!controls)return false;removeLegacyToggle();
+    let b=document.getElementById("smcSettingsBtn");if(!b){b=document.createElement("button");b.id="smcSettingsBtn";b.type="button";b.className="smc-settings-btn";b.textContent="⚙";b.setAttribute("aria-label","SMC settings");b.title="SMC settings";b.addEventListener("click",open);controls.appendChild(b);}else if(!b.parentNode){controls.appendChild(b);}return true;
   }
 
-  function onFullscreenChange(){
-    movePanelToCorrectHost();
-    attachButton();
-  }
-
+  function onFullscreenChange(){movePanelToCorrectHost();attachButton();}
   window.FlowSignalSmcSettings={get,set,open,close:closePanel,attachButton,defaults:()=>clone(defaults)};
   window.addEventListener("load",()=>{attachButton();setTimeout(attachButton,300);},{once:true});
-  document.addEventListener("fullscreenchange",onFullscreenChange);
-  document.addEventListener("webkitfullscreenchange",onFullscreenChange);
-  const t=setInterval(()=>{if(attachButton())clearInterval(t);},500);
+  window.addEventListener("flowsignal:smc-toggle",syncMasterToggle);
+  document.addEventListener("fullscreenchange",onFullscreenChange);document.addEventListener("webkitfullscreenchange",onFullscreenChange);
+  const t=setInterval(()=>{attachButton();removeLegacyToggle();if(document.getElementById("smcSettingsBtn"))clearInterval(t);},300);
 })();
