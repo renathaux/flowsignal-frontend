@@ -73,7 +73,9 @@
       "strategy-debug-swing-sl",
     ].forEach((id) => setText(id, "NO"));
     setText("strategy-debug-decision", "WAIT");
-    setText("strategy-debug-block-reason", "--");
+    // Do NOT overwrite strategy-debug-block-reason here. script.js already
+    // renders the live WAIT reason (for example WAIT_NO_15M_BREAK). Clearing
+    // it to -- made User mode lose the explanation while SMC still had it.
   }
 
   function syncCurrentStrategyPresentation() {
@@ -174,8 +176,6 @@
     window.setTimeout(refreshRoleUi, 300);
   }, { once: true });
 
-  // Live panel refreshes can replace the middle-column DOM. Re-assert the
-  // user analysis panels against the current elements, not stale references.
   if (chromeDesktop) {
     window.setInterval(() => {
       if (getTabRole() === "user") ensureUserAnalysisVisibility();
