@@ -18,24 +18,14 @@
   }
   function normalize(rows) {
     if (!Array.isArray(rows)) return [];
-    return rows.map((c) => ({
-      time: Number(c?.time), open: Number(c?.open), high: Number(c?.high), low: Number(c?.low), close: Number(c?.close),
-    })).filter((c) => [c.time, c.open, c.high, c.low, c.close].every(Number.isFinite)).sort((a,b) => a.time - b.time);
+    return rows.map((c) => ({ time:Number(c?.time), open:Number(c?.open), high:Number(c?.high), low:Number(c?.low), close:Number(c?.close) }))
+      .filter((c) => [c.time,c.open,c.high,c.low,c.close].every(Number.isFinite)).sort((a,b) => a.time-b.time);
   }
-
   function analyze(rows) {
     const engine = window.FlowSignalSmcLocalEngine;
     if (!engine || typeof engine.analyze !== "function") return null;
-    return engine.analyze(rows, {
-      leftBars: 3,
-      rightBars: 3,
-      atrPeriod: 14,
-      minSwingAtr: 0.8,
-      breakBufferAtr: 0.10,
-      minBarsBetween: 3,
-    });
+    return engine.analyze(rows);
   }
-
   function apply() {
     const smc = window.FlowSignalSMC;
     if (!smc?.getState?.().enabled || lastCandles.length < 15) return false;
@@ -46,7 +36,7 @@
       if (!structure) return false;
       structure.symbol = currentSymbol();
       structure.timeframe = currentTimeframe();
-      smc.setContext?.({ symbol: currentSymbol(), timeframe: currentTimeframe() });
+      smc.setContext?.({ symbol:currentSymbol(), timeframe:currentTimeframe() });
       smc.applyStructure?.(structure);
       return true;
     } catch (error) {
@@ -54,20 +44,16 @@
       return false;
     }
   }
-
   function wrap() {
     const series = currentSeries();
     if (!series || typeof series.setData !== "function") return false;
     if (series === wrappedSeries && series.__flowSmcLocalVisualWrapped) return true;
     if (!series.__flowSmcLocalVisualWrapped) {
       const original = series.setData.bind(series);
-      series.setData = function(candles){
+      series.setData = function(candles) {
         const result = original(candles);
         const normalized = normalize(candles);
-        if (normalized.length) {
-          lastCandles = normalized;
-          window.setTimeout(apply, 0);
-        }
+        if (normalized.length) { lastCandles = normalized; window.setTimeout(apply, 0); }
         return result;
       };
       series.__flowSmcLocalVisualWrapped = true;
@@ -75,23 +61,11 @@
     wrappedSeries = series;
     return true;
   }
-
   function tick(){ wrap(); apply(); }
   window.addEventListener("load", ()=>{ tick(); setTimeout(tick,250); setTimeout(tick,1000); });
   window.addEventListener("flowsignal:smc-toggle", ()=>setTimeout(tick,0));
   document.addEventListener("click", ()=>setTimeout(tick,0), true);
   const timer=setInterval(tick,1000);
   window.addEventListener("beforeunload",()=>clearInterval(timer),{once:true});
-
-  window.FlowSignalSmcLocalVisual={
-    wrap,
-    apply,
-    getState:()=>({
-      candles:lastCandles.length,
-      symbol:currentSymbol(),
-      timeframe:currentTimeframe(),
-      wrapped:Boolean(wrappedSeries),
-      engine:"major_atr_structure_v2",
-    }),
-  };
+  window.FlowSignalSmcLocalVisual={ wrap, apply, getState:()=>({ candles:lastCandles.length, symbol:currentSymbol(), timeframe:currentTimeframe(), wrapped:Boolean(wrappedSeries), engine:"ludogh68_structure_port_no_fvg" }) };
 })();
