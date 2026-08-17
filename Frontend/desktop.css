@@ -107,6 +107,15 @@
     margin-left: auto !important;
   }
 
+  /* The legacy stylesheet still reserves 58px below the user status row for
+     the old floating fetch badge. The badge now lives inside the topbar, so
+     that reservation is obsolete and creates the large blank gap. */
+  body.fit-mode #mainApp.app.user-no-performance:not(.locked) > .dashboard-grid,
+  body.fit-mode .app.user-no-performance .dashboard-grid,
+  .app.user-no-performance .dashboard-grid {
+    margin-top: 0 !important;
+  }
+
   /* Desktop right column must not rely on flex-shrink calculations. WebKit
      was shrinking the chart almost to zero and then visually stacking V2 and
      history on top of Fundamental Insight. Make every major card a normal,
