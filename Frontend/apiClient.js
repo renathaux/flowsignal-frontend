@@ -83,6 +83,7 @@
       || String(url || "").includes("/ctrader-status")
       || String(url || "").includes("/ctrader/status")
       || String(url || "").includes("/chart/live-ticks")
+      || String(url || "").includes("/chart/smc-structure")
       || String(url || "").includes("/modify-live-position-levels")
     );
 
@@ -128,18 +129,18 @@
 
   window.fetch = apiFetch;
 
-  // Keep chart streaming implementation out of the main application bundle.
-  // This loader is intentionally the only integration point. The controller
-  // itself lives under Frontend/chart/live-candles/ and never touches strategy
-  // or broker execution logic.
-  if (!document.querySelector('script[data-flow-live-candles]')) {
-    const liveCandleScript = document.createElement("script");
-    liveCandleScript.src = "chart/live-candles/live-candle-controller.js?v=1";
-    liveCandleScript.async = false;
-    liveCandleScript.dataset.flowLiveCandles = "true";
-    liveCandleScript.addEventListener("error", () => {
-      console.warn("FLOW_LIVE_CANDLES_MODULE_LOAD_FAILED");
+  // The live-candle controller is loaded once, parser-synchronously, by startup.js.
+  // Do not load it again here: a second copy can replace its mounted chart state.
+  // This small bridge is separate from the main application and explicitly mounts
+  // the SMC overlay to the chart series created later by script.js.
+  if (!document.querySelector('script[data-flow-smc-chart-bridge]')) {
+    const smcBridgeScript = document.createElement("script");
+    smcBridgeScript.src = "indicators/smc/smc-chart-bridge.js?v=1";
+    smcBridgeScript.async = false;
+    smcBridgeScript.dataset.flowSmcChartBridge = "true";
+    smcBridgeScript.addEventListener("error", () => {
+      console.warn("FLOW_SMC_CHART_BRIDGE_LOAD_FAILED");
     });
-    document.head.appendChild(liveCandleScript);
+    document.head.appendChild(smcBridgeScript);
   }
 })();
