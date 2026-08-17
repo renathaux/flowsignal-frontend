@@ -13,8 +13,16 @@
     return chrome && window.matchMedia("(min-width: 701px)").matches;
   }
 
+  function isSafariDesktop() {
+    const ua = String(navigator.userAgent || "");
+    const safari = /Safari\//.test(ua) && /Version\//.test(ua) && !/(Chrome|Chromium|CriOS|Edg|OPR|Firefox|FxiOS)\//.test(ua);
+    return safari && window.matchMedia("(min-width: 701px)").matches;
+  }
+
   const chromeDesktop = isChromeDesktop();
+  const safariDesktop = isSafariDesktop();
   if (chromeDesktop) document.body?.classList.add("flowsignal-chrome-desktop");
+  if (safariDesktop) document.body?.classList.add("flowsignal-safari-desktop");
 
   function getTabRole() { return normalizeRole(sessionStorage.getItem(TAB_ROLE_KEY)); }
   function setTabRole(role) {
@@ -48,10 +56,8 @@
       document.getElementById("main-rr")?.textContent,
       document.getElementById("v2-shadow-reason")?.textContent,
     ].map((value) => String(value || "").trim()).filter(Boolean);
-
     const explicitWait = values.find((value) => /^WAIT(?:_|$)/i.test(value));
     if (explicitWait) return explicitWait;
-
     const meaningful = values.find((value) => value !== "--" && value !== "WAIT");
     return meaningful || "--";
   }
@@ -75,6 +81,13 @@
       bias.style.setProperty("letter-spacing", "-0.02em", "important");
       bias.style.setProperty("white-space", "nowrap", "important");
     }
+  }
+
+  function ensureSafariInsightVisibility() {
+    if (!safariDesktop) return;
+    forceVisible(document.querySelector(".news-impact-panel"));
+    forceVisible(document.getElementById("fundamental-insight-card"));
+    forceVisible(document.getElementById("v2-shadow-card"));
   }
 
   function keepAnalysisCardsVisible() {
@@ -130,7 +143,7 @@
   }
 
   function attachDashboardObserver() {
-    if (!chromeDesktop) return;
+    if (!chromeDesktop && !safariDesktop) return;
     const dashboard = document.querySelector(".dashboard-grid") || document.getElementById("mainApp");
     if (!dashboard || dashboard.dataset.flowSignalUserAnalysisObserver === "true") return;
     dashboard.dataset.flowSignalUserAnalysisObserver = "true";
@@ -141,7 +154,8 @@
       window.requestAnimationFrame(() => {
         scheduled = false;
         applyChromeReadability();
-        if (getTabRole() === "user") ensureUserAnalysisVisibility();
+        ensureSafariInsightVisibility();
+        if (chromeDesktop && getTabRole() === "user") ensureUserAnalysisVisibility();
       });
     });
     observer.observe(dashboard, {
@@ -159,7 +173,8 @@
     try { window.applyRoleVisibility?.(); } catch (_error) {}
     try { window.updatePnlVisibility?.(); } catch (_error) {}
     applyChromeReadability();
-    ensureUserAnalysisVisibility();
+    ensureSafariInsightVisibility();
+    if (chromeDesktop) ensureUserAnalysisVisibility();
     attachDashboardObserver();
   }
 
@@ -202,10 +217,11 @@
     window.setTimeout(refreshRoleUi, 300);
   }, { once: true });
 
-  if (chromeDesktop) {
+  if (chromeDesktop || safariDesktop) {
     window.setInterval(() => {
       applyChromeReadability();
-      if (getTabRole() === "user") ensureUserAnalysisVisibility();
+      ensureSafariInsightVisibility();
+      if (chromeDesktop && getTabRole() === "user") ensureUserAnalysisVisibility();
     }, 750);
   }
 
