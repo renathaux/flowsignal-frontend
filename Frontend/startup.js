@@ -4,7 +4,7 @@
       document.write('<script src="chart/live-candles/live-candle-controller.js?v=3"><\/script>');
     }
     document.write('<link rel="stylesheet" href="indicators/smc/smc.css?v=4">');
-    document.write('<script src="indicators/smc/smc-settings.js?v=6"><\/script>');
+    document.write('<script src="indicators/smc/smc-settings.js?v=7"><\/script>');
     document.write('<script src="indicators/smc/smc-renderer.js?v=9"><\/script>');
     document.write('<script src="indicators/smc/smc-indicator.js?v=4"><\/script>');
     document.write('<script src="indicators/smc/smc-chart-bridge.js?v=6"><\/script>');
