@@ -57,14 +57,27 @@
 
   async function apiFetch(input, init) {
     const url = typeof input === "string" ? input : input?.url;
-    const suppressErrorPanel = Boolean(init?.suppressErrorPanel || String(url || "").includes("/news-impact") || String(url || "").includes("/ctrader-status") || String(url || "").includes("/ctrader/status") || String(url || "").includes("/chart/live-ticks") || String(url || "").includes("/chart/smc-structure") || String(url || "").includes("/modify-live-position-levels"));
+    const suppressErrorPanel = Boolean(
+      init?.suppressErrorPanel
+      || String(url || "").includes("/news-impact")
+      || String(url || "").includes("/ctrader-status")
+      || String(url || "").includes("/ctrader/status")
+      || String(url || "").includes("/chart/live-ticks")
+      || String(url || "").includes("/chart/smc-structure")
+      || String(url || "").includes("/modify-live-position-levels")
+    );
     if (!suppressErrorPanel) state.lastApiCalled = url || "unknown";
     try {
       const response = await requestWithTimeout(input, init);
       if (suppressErrorPanel) return response;
       state.statusCode = response.status;
-      if (!response.ok) { state.errorMessage = `HTTP ${response.status}`; renderErrorPanel(); }
-      else if (state.errorMessage) { state.errorMessage = null; renderErrorPanel(); }
+      if (!response.ok) {
+        state.errorMessage = `HTTP ${response.status}`;
+        renderErrorPanel();
+      } else if (state.errorMessage) {
+        state.errorMessage = null;
+        renderErrorPanel();
+      }
       return response;
     } catch (error) {
       if (suppressErrorPanel) throw error;
@@ -83,20 +96,4 @@
     clearError: () => { state.errorMessage = null; renderErrorPanel(); },
   };
   window.fetch = apiFetch;
-
-  function loadScriptOnce(selector, src, dataKey, warning) {
-    if (document.querySelector(selector)) return;
-    const script = document.createElement("script");
-    script.src = src;
-    script.async = false;
-    script.dataset[dataKey] = "true";
-    script.addEventListener("error", () => console.warn(warning));
-    document.head.appendChild(script);
-  }
-
-  // startup.js owns the single renderer/indicator/chart-bridge instance.
-  // Only load the supplemental settings + local analysis helpers here.
-  loadScriptOnce('script[data-flow-smc-settings]', "indicators/smc/smc-settings.js?v=4", "flowSmcSettings", "FLOW_SMC_SETTINGS_LOAD_FAILED");
-  loadScriptOnce('script[data-flow-smc-local-engine]', "indicators/smc/smc-local-engine.js?v=4", "flowSmcLocalEngine", "FLOW_SMC_LOCAL_ENGINE_LOAD_FAILED");
-  loadScriptOnce('script[data-flow-smc-local-visual]', "indicators/smc/smc-local-visual.js?v=5", "flowSmcLocalVisual", "FLOW_SMC_LOCAL_VISUAL_LOAD_FAILED");
 })();
