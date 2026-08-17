@@ -94,9 +94,9 @@
     document.head.appendChild(script);
   }
 
-  loadScriptOnce('script[data-flow-smc-settings]', "indicators/smc/smc-settings.js?v=3", "flowSmcSettings", "FLOW_SMC_SETTINGS_LOAD_FAILED");
-  loadScriptOnce('script[data-flow-smc-renderer-port]', "indicators/smc/smc-renderer.js?v=7", "flowSmcRendererPort", "FLOW_SMC_RENDERER_PORT_LOAD_FAILED");
-  loadScriptOnce('script[data-flow-smc-chart-bridge]', "indicators/smc/smc-chart-bridge.js?v=5", "flowSmcChartBridge", "FLOW_SMC_CHART_BRIDGE_LOAD_FAILED");
-  loadScriptOnce('script[data-flow-smc-local-engine]', "indicators/smc/smc-local-engine.js?v=3", "flowSmcLocalEngine", "FLOW_SMC_LOCAL_ENGINE_LOAD_FAILED");
-  loadScriptOnce('script[data-flow-smc-local-visual]', "indicators/smc/smc-local-visual.js?v=4", "flowSmcLocalVisual", "FLOW_SMC_LOCAL_VISUAL_LOAD_FAILED");
+  // startup.js owns the single renderer/indicator/chart-bridge instance.
+  // Only load the supplemental settings + local analysis helpers here.
+  loadScriptOnce('script[data-flow-smc-settings]', "indicators/smc/smc-settings.js?v=4", "flowSmcSettings", "FLOW_SMC_SETTINGS_LOAD_FAILED");
+  loadScriptOnce('script[data-flow-smc-local-engine]', "indicators/smc/smc-local-engine.js?v=4", "flowSmcLocalEngine", "FLOW_SMC_LOCAL_ENGINE_LOAD_FAILED");
+  loadScriptOnce('script[data-flow-smc-local-visual]', "indicators/smc/smc-local-visual.js?v=5", "flowSmcLocalVisual", "FLOW_SMC_LOCAL_VISUAL_LOAD_FAILED");
 })();
