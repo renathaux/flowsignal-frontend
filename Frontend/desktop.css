@@ -127,4 +127,65 @@
     inset: 0 !important;
     z-index: 10000 !important;
   }
+
+  /* Fullscreen must be chart-only. Do not depend on the section class being
+     applied correctly: the body fullscreen state is the source of truth. */
+  body.desktop-chart-fullscreen-open .chart-section {
+    position: fixed !important;
+    inset: 0 !important;
+    z-index: 2147483000 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    min-width: 100vw !important;
+    min-height: 100vh !important;
+    max-width: none !important;
+    max-height: none !important;
+    margin: 0 !important;
+    padding: 14px !important;
+    border-radius: 0 !important;
+    background: #020812 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    overflow: hidden !important;
+    box-sizing: border-box !important;
+  }
+
+  body.desktop-chart-fullscreen-open .chart-section > .chart-controls {
+    display: flex !important;
+    visibility: visible !important;
+    flex: 0 0 auto !important;
+    margin: 0 0 10px !important;
+  }
+
+  body.desktop-chart-fullscreen-open .chart-section > .chart-box {
+    display: block !important;
+    visibility: visible !important;
+    flex: 1 1 auto !important;
+    width: 100% !important;
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    margin: 0 !important;
+  }
+
+  body.desktop-chart-fullscreen-open .chart-section > .chart-box #chartContainer {
+    width: 100% !important;
+    height: 100% !important;
+    min-height: 0 !important;
+    max-height: none !important;
+  }
+
+  body.desktop-chart-fullscreen-open .chart-section > :not(.chart-controls):not(.chart-box) {
+    display: none !important;
+    visibility: hidden !important;
+  }
+
+  body.desktop-chart-fullscreen-open .news-impact-panel,
+  body.desktop-chart-fullscreen-open #v2-shadow-card,
+  body.desktop-chart-fullscreen-open .history-section,
+  body.desktop-chart-fullscreen-open .mobile-timeframe-row,
+  body.desktop-chart-fullscreen-open #mobileOpenTradeCard {
+    display: none !important;
+    visibility: hidden !important;
+  }
 }
