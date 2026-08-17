@@ -11,360 +11,70 @@
       minmax(122px, 0.58fr) !important;
   }
 
-  .performance-daily {
-    grid-template-columns: 30px minmax(96px, 1fr) !important;
-  }
+  .performance-daily { grid-template-columns: 30px minmax(96px, 1fr) !important; }
+  .performance-monthly { grid-template-columns: 30px minmax(108px, 1fr) !important; }
 
-  .performance-monthly {
-    grid-template-columns: 30px minmax(108px, 1fr) !important;
-  }
+  body.fit-mode .main-trade-card { justify-content: flex-start !important; overflow-y: auto !important; }
+  body.fit-mode .entry-strategy-debug { min-height: 178px !important; margin-bottom: 18px !important; overflow: hidden !important; }
+  body.fit-mode #strategy-debug-block-reason { display: block !important; min-height: 30px !important; max-height: 38px !important; overflow: hidden !important; }
 
-  body.fit-mode .main-trade-card {
-    justify-content: flex-start !important;
-    overflow-y: auto !important;
-  }
+  .desktop-chart-fullscreen-btn { display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:32px;padding:0 11px;margin-left:auto;border:1px solid rgba(80,145,220,.52);border-radius:8px;background:rgba(8,20,35,.92);color:#dcecff;font:inherit;font-size:12px;font-weight:700;line-height:1;cursor:pointer;white-space:nowrap; }
+  .desktop-chart-fullscreen-btn:hover,.desktop-chart-fullscreen-btn[aria-pressed="true"] { border-color:#3f9cff;background:#0b2b50;color:#fff; }
+  .chart-panel .chart-controls { align-items:center; }
 
-  body.fit-mode .entry-strategy-debug {
-    min-height: 178px !important;
-    margin-bottom: 18px !important;
-    overflow: hidden !important;
-  }
-
-  body.fit-mode #strategy-debug-block-reason {
-    display: block !important;
-    min-height: 30px !important;
-    max-height: 38px !important;
-    overflow: hidden !important;
-  }
-
-  .desktop-chart-fullscreen-btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 7px;
-    min-height: 32px;
-    padding: 0 11px;
-    margin-left: auto;
-    border: 1px solid rgba(80, 145, 220, 0.52);
-    border-radius: 8px;
-    background: rgba(8, 20, 35, 0.92);
-    color: #dcecff;
-    font: inherit;
-    font-size: 12px;
-    font-weight: 700;
-    line-height: 1;
-    cursor: pointer;
-    white-space: nowrap;
-  }
-
-  .desktop-chart-fullscreen-btn:hover,
-  .desktop-chart-fullscreen-btn[aria-pressed="true"] {
-    border-color: #3f9cff;
-    background: #0b2b50;
-    color: #ffffff;
-  }
-
-  .chart-panel .chart-controls {
-    align-items: center;
-  }
-
-  /* User accounts do not render the admin performance strip. The legacy
-     desktop stylesheet still positioned the topbar as a 178px absolute box
-     intended to sit beside that strip. Keep the user status row in normal
-     document flow so the Live Auto badge can never overlap the EURUSD card. */
-  body[data-user-role="user"].fit-mode #mainApp.app:not(.locked) > .topbar {
-    position: static !important;
-    inset: auto !important;
-    width: 100% !important;
-    max-width: none !important;
-    min-height: 38px !important;
-    padding: 0 4px 8px !important;
-    margin: 0 !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: flex-start !important;
-    flex-wrap: nowrap !important;
-    gap: 8px !important;
-    overflow: hidden !important;
-  }
-
+  body[data-user-role="user"].fit-mode #mainApp.app:not(.locked) > .topbar { position:static !important;inset:auto !important;width:100% !important;max-width:none !important;min-height:38px !important;padding:0 4px 8px !important;margin:0 !important;display:flex !important;align-items:center !important;justify-content:flex-start !important;flex-wrap:nowrap !important;gap:8px !important;overflow:hidden !important; }
   body[data-user-role="user"].fit-mode #mainApp.app:not(.locked) > .topbar .status,
   body[data-user-role="user"].fit-mode #mainApp.app:not(.locked) > .topbar .runtime-status-detail,
-  body[data-user-role="user"].fit-mode #mainApp.app:not(.locked) > .topbar .user-live-auto-status {
-    position: static !important;
-    flex: 0 0 auto !important;
-    min-width: 0 !important;
-    width: auto !important;
-    max-width: min(360px, 45vw) !important;
-    min-height: 30px !important;
-    margin: 0 !important;
-    white-space: nowrap !important;
-    overflow: hidden !important;
-    text-overflow: ellipsis !important;
-  }
-
-  body[data-user-role="user"].fit-mode #mainApp.app:not(.locked) > .topbar .user-live-auto-status {
-    margin-left: auto !important;
-  }
-
-  /* The legacy stylesheet still reserves 58px below the user status row for
-     the old floating fetch badge. The badge now lives inside the topbar, so
-     that reservation is obsolete and creates the large blank gap. */
+  body[data-user-role="user"].fit-mode #mainApp.app:not(.locked) > .topbar .user-live-auto-status { position:static !important;flex:0 0 auto !important;min-width:0 !important;width:auto !important;max-width:min(360px,45vw) !important;min-height:30px !important;margin:0 !important;white-space:nowrap !important;overflow:hidden !important;text-overflow:ellipsis !important; }
+  body[data-user-role="user"].fit-mode #mainApp.app:not(.locked) > .topbar .user-live-auto-status { margin-left:auto !important; }
   body.fit-mode #mainApp.app.user-no-performance:not(.locked) > .dashboard-grid,
   body.fit-mode .app.user-no-performance .dashboard-grid,
-  .app.user-no-performance .dashboard-grid {
-    margin-top: 0 !important;
-  }
+  .app.user-no-performance .dashboard-grid { margin-top:0 !important; }
 
-  /* Desktop right column must not rely on flex-shrink calculations. WebKit
-     was shrinking the chart almost to zero and then visually stacking V2 and
-     history on top of Fundamental Insight. Make every major card a normal,
-     non-shrinking block and let the right column itself scroll. */
-  body.fit-mode .chart-panel {
-    display: flex !important;
-    flex-direction: column !important;
-    min-height: 0 !important;
-    height: 100% !important;
-    overflow-y: auto !important;
-    overflow-x: hidden !important;
-    gap: 12px !important;
-    -webkit-overflow-scrolling: touch;
-  }
-
-  body.fit-mode .chart-panel > .chart-wrap {
-    flex: 0 0 auto !important;
-    width: 100% !important;
-    min-height: 400px !important;
-    height: 400px !important;
-    overflow: visible !important;
-  }
-
-  body.fit-mode .chart-panel .chart-section {
-    display: flex !important;
-    flex-direction: column !important;
-    width: 100% !important;
-    min-height: 400px !important;
-    height: 400px !important;
-    flex: 0 0 400px !important;
-    gap: 8px !important;
-    overflow: hidden !important;
-  }
-
-  body.fit-mode .chart-panel .chart-controls {
-    flex: 0 0 auto !important;
-    min-height: 40px !important;
-  }
-
-  body.fit-mode .chart-panel .chart-box {
-    position: relative !important;
-    flex: 1 1 auto !important;
-    width: 100% !important;
-    height: auto !important;
-    min-height: 330px !important;
-    max-height: none !important;
-    margin: 0 !important;
-  }
-
-  body.fit-mode .chart-panel .chart-box #chartContainer {
-    width: 100% !important;
-    height: 100% !important;
-    min-height: 330px !important;
-  }
-
+  body.fit-mode .chart-panel { display:flex !important;flex-direction:column !important;min-height:0 !important;height:100% !important;overflow-y:auto !important;overflow-x:hidden !important;gap:12px !important;-webkit-overflow-scrolling:touch; }
+  body.fit-mode .chart-panel > .chart-wrap { flex:0 0 auto !important;width:100% !important;min-height:400px !important;height:400px !important;overflow:visible !important; }
+  body.fit-mode .chart-panel .chart-section { display:flex !important;flex-direction:column !important;width:100% !important;min-height:400px !important;height:400px !important;flex:0 0 400px !important;gap:8px !important;overflow:hidden !important; }
+  body.fit-mode .chart-panel .chart-controls { flex:0 0 auto !important;min-height:40px !important; }
+  body.fit-mode .chart-panel .chart-box { position:relative !important;flex:1 1 auto !important;width:100% !important;height:auto !important;min-height:330px !important;max-height:none !important;margin:0 !important; }
+  body.fit-mode .chart-panel .chart-box #chartContainer { width:100% !important;height:100% !important;min-height:330px !important; }
   body.fit-mode .chart-panel .news-impact-panel,
   body.fit-mode .chart-panel #v2-shadow-card,
-  body.fit-mode .chart-panel .history-section {
-    position: relative !important;
-    inset: auto !important;
-    transform: none !important;
-    width: 100% !important;
-    flex: 0 0 auto !important;
-    min-height: 0 !important;
-    margin: 0 !important;
-    z-index: auto !important;
-  }
+  body.fit-mode .chart-panel .history-section { position:relative !important;inset:auto !important;transform:none !important;width:100% !important;flex:0 0 auto !important;min-height:0 !important;margin:0 !important;z-index:auto !important; }
+  body.fit-mode .chart-panel .news-impact-panel { overflow:visible !important; }
 
-  body.fit-mode .chart-panel .news-impact-panel {
-    overflow: visible !important;
-  }
-
-  /* Chrome desktop: keep the full dashboard content in normal page flow.
-     The generic desktop rules above intentionally constrain WebKit, but in
-     Chrome those fixed 400px/100% containers hide the cards that follow the
-     chart and trap the middle column inside an internal scroll box. */
-  body.flowsignal-chrome-desktop.fit-mode {
-    overflow-y: auto !important;
-    overflow-x: hidden !important;
-  }
-
-  body.flowsignal-chrome-desktop.fit-mode #mainApp.app:not(.locked) {
-    height: auto !important;
-    min-height: 100vh !important;
-    overflow-y: visible !important;
-  }
-
-  body.flowsignal-chrome-desktop.fit-mode #mainApp.app:not(.locked) > .dashboard-grid {
-    flex: 0 0 auto !important;
-    height: auto !important;
-    min-height: calc(100vh - 150px) !important;
-    overflow: visible !important;
-    align-items: start !important;
-  }
-
+  body.flowsignal-chrome-desktop.fit-mode { overflow-y:auto !important;overflow-x:hidden !important; }
+  body.flowsignal-chrome-desktop.fit-mode #mainApp.app:not(.locked) { height:auto !important;min-height:100vh !important;overflow-y:visible !important; }
+  body.flowsignal-chrome-desktop.fit-mode #mainApp.app:not(.locked) > .dashboard-grid { flex:0 0 auto !important;height:auto !important;min-height:calc(100vh - 150px) !important;overflow:visible !important;align-items:start !important; }
   body.flowsignal-chrome-desktop.fit-mode .main-trade-panel,
-  body.flowsignal-chrome-desktop.fit-mode .main-trade-card {
-    height: auto !important;
-    max-height: none !important;
-    overflow: visible !important;
-  }
+  body.flowsignal-chrome-desktop.fit-mode .main-trade-card { height:auto !important;max-height:none !important;overflow:visible !important; }
+  body.flowsignal-chrome-desktop.fit-mode .entry-strategy-debug { overflow:visible !important; }
+  body.flowsignal-chrome-desktop.fit-mode .chart-panel { height:auto !important;max-height:none !important;overflow:visible !important; }
+  body.flowsignal-chrome-desktop.fit-mode .chart-panel > .chart-wrap { height:auto !important;min-height:400px !important;overflow:visible !important; }
+  body.flowsignal-chrome-desktop.fit-mode .chart-panel .chart-section { height:auto !important;min-height:400px !important;flex:0 0 auto !important;overflow:visible !important; }
+  body.flowsignal-chrome-desktop.fit-mode .chart-panel .chart-box { flex:0 0 330px !important;height:330px !important;min-height:330px !important; }
 
-  body.flowsignal-chrome-desktop.fit-mode .entry-strategy-debug {
-    overflow: visible !important;
-  }
+  /* Chrome-only readability: the large generic clamp made NEUTRAL collide
+     with the strength columns at this dashboard width. */
+  body.flowsignal-chrome-desktop.fit-mode .fundamental-bias { font-size:clamp(28px,3vw,40px) !important;letter-spacing:-.02em !important; }
 
-  body.flowsignal-chrome-desktop.fit-mode .chart-panel {
-    height: auto !important;
-    max-height: none !important;
-    overflow: visible !important;
-  }
+  /* Let the live WAIT reason be readable instead of clipped to an ellipsis. */
+  body.flowsignal-chrome-desktop.fit-mode #strategy-debug-block-reason { max-width:none !important;min-height:0 !important;max-height:none !important;overflow:visible !important;text-overflow:clip !important;white-space:normal !important;overflow-wrap:anywhere !important;line-height:1.25 !important; }
 
-  body.flowsignal-chrome-desktop.fit-mode .chart-panel > .chart-wrap {
-    height: auto !important;
-    min-height: 400px !important;
-    overflow: visible !important;
-  }
-
-  body.flowsignal-chrome-desktop.fit-mode .chart-panel .chart-section {
-    height: auto !important;
-    min-height: 400px !important;
-    flex: 0 0 auto !important;
-    overflow: visible !important;
-  }
-
-  body.flowsignal-chrome-desktop.fit-mode .chart-panel .chart-box {
-    flex: 0 0 330px !important;
-    height: 330px !important;
-    min-height: 330px !important;
-  }
-
-  .chart-section.is-desktop-chart-fullscreen,
-  .chart-section:fullscreen,
-  .chart-section:-webkit-full-screen {
-    width: 100vw !important;
-    height: 100vh !important;
-    max-width: none !important;
-    max-height: none !important;
-    margin: 0 !important;
-    padding: 14px !important;
-    border-radius: 0 !important;
-    background: #020812 !important;
-    display: flex !important;
-    flex-direction: column !important;
-    overflow: hidden !important;
-    box-sizing: border-box !important;
-  }
-
-  .chart-section.is-desktop-chart-fullscreen .chart-controls,
-  .chart-section:fullscreen .chart-controls,
-  .chart-section:-webkit-full-screen .chart-controls {
-    flex: 0 0 auto !important;
-    margin-bottom: 10px !important;
-  }
-
-  .chart-section.is-desktop-chart-fullscreen .chart-box,
-  .chart-section:fullscreen .chart-box,
-  .chart-section:-webkit-full-screen .chart-box {
-    flex: 1 1 auto !important;
-    width: 100% !important;
-    height: auto !important;
-    min-height: 0 !important;
-    max-height: none !important;
-    margin: 0 !important;
-  }
-
-  .chart-section.is-desktop-chart-fullscreen #chartContainer,
-  .chart-section:fullscreen #chartContainer,
-  .chart-section:-webkit-full-screen #chartContainer {
-    width: 100% !important;
-    height: 100% !important;
-    min-height: 0 !important;
-    max-height: none !important;
-  }
-
-  .chart-section.is-desktop-chart-fullscreen .chart-overlay-header,
-  .chart-section:fullscreen .chart-overlay-header,
-  .chart-section:-webkit-full-screen .chart-overlay-header {
-    z-index: 6 !important;
-  }
-
-  body.desktop-chart-fullscreen-open {
-    overflow: hidden !important;
-  }
-
-  body.desktop-chart-fullscreen-open .chart-section.is-desktop-chart-fullscreen:not(:fullscreen) {
-    position: fixed !important;
-    inset: 0 !important;
-    z-index: 10000 !important;
-  }
-
-  /* Fullscreen must be chart-only. Do not depend on the section class being
-     applied correctly: the body fullscreen state is the source of truth. */
-  body.desktop-chart-fullscreen-open .chart-section {
-    position: fixed !important;
-    inset: 0 !important;
-    z-index: 2147483000 !important;
-    width: 100vw !important;
-    height: 100vh !important;
-    min-width: 100vw !important;
-    min-height: 100vh !important;
-    max-width: none !important;
-    max-height: none !important;
-    margin: 0 !important;
-    padding: 14px !important;
-    border-radius: 0 !important;
-    background: #020812 !important;
-    display: flex !important;
-    flex-direction: column !important;
-    overflow: hidden !important;
-    box-sizing: border-box !important;
-  }
-
-  body.desktop-chart-fullscreen-open .chart-section > .chart-controls {
-    display: flex !important;
-    visibility: visible !important;
-    flex: 0 0 auto !important;
-    margin: 0 0 10px !important;
-  }
-
-  body.desktop-chart-fullscreen-open .chart-section > .chart-box {
-    display: block !important;
-    visibility: visible !important;
-    flex: 1 1 auto !important;
-    width: 100% !important;
-    height: auto !important;
-    min-height: 0 !important;
-    max-height: none !important;
-    margin: 0 !important;
-  }
-
-  body.desktop-chart-fullscreen-open .chart-section > .chart-box #chartContainer {
-    width: 100% !important;
-    height: 100% !important;
-    min-height: 0 !important;
-    max-height: none !important;
-  }
-
-  body.desktop-chart-fullscreen-open .chart-section > :not(.chart-controls):not(.chart-box) {
-    display: none !important;
-    visibility: hidden !important;
-  }
-
+  .chart-section.is-desktop-chart-fullscreen,.chart-section:fullscreen,.chart-section:-webkit-full-screen { width:100vw !important;height:100vh !important;max-width:none !important;max-height:none !important;margin:0 !important;padding:14px !important;border-radius:0 !important;background:#020812 !important;display:flex !important;flex-direction:column !important;overflow:hidden !important;box-sizing:border-box !important; }
+  .chart-section.is-desktop-chart-fullscreen .chart-controls,.chart-section:fullscreen .chart-controls,.chart-section:-webkit-full-screen .chart-controls { flex:0 0 auto !important;margin-bottom:10px !important; }
+  .chart-section.is-desktop-chart-fullscreen .chart-box,.chart-section:fullscreen .chart-box,.chart-section:-webkit-full-screen .chart-box { flex:1 1 auto !important;width:100% !important;height:auto !important;min-height:0 !important;max-height:none !important;margin:0 !important; }
+  .chart-section.is-desktop-chart-fullscreen #chartContainer,.chart-section:fullscreen #chartContainer,.chart-section:-webkit-full-screen #chartContainer { width:100% !important;height:100% !important;min-height:0 !important;max-height:none !important; }
+  .chart-section.is-desktop-chart-fullscreen .chart-overlay-header,.chart-section:fullscreen .chart-overlay-header,.chart-section:-webkit-full-screen .chart-overlay-header { z-index:6 !important; }
+  body.desktop-chart-fullscreen-open { overflow:hidden !important; }
+  body.desktop-chart-fullscreen-open .chart-section.is-desktop-chart-fullscreen:not(:fullscreen) { position:fixed !important;inset:0 !important;z-index:10000 !important; }
+  body.desktop-chart-fullscreen-open .chart-section { position:fixed !important;inset:0 !important;z-index:2147483000 !important;width:100vw !important;height:100vh !important;min-width:100vw !important;min-height:100vh !important;max-width:none !important;max-height:none !important;margin:0 !important;padding:14px !important;border-radius:0 !important;background:#020812 !important;display:flex !important;flex-direction:column !important;overflow:hidden !important;box-sizing:border-box !important; }
+  body.desktop-chart-fullscreen-open .chart-section > .chart-controls { display:flex !important;visibility:visible !important;flex:0 0 auto !important;margin:0 0 10px !important; }
+  body.desktop-chart-fullscreen-open .chart-section > .chart-box { display:block !important;visibility:visible !important;flex:1 1 auto !important;width:100% !important;height:auto !important;min-height:0 !important;max-height:none !important;margin:0 !important; }
+  body.desktop-chart-fullscreen-open .chart-section > .chart-box #chartContainer { width:100% !important;height:100% !important;min-height:0 !important;max-height:none !important; }
+  body.desktop-chart-fullscreen-open .chart-section > :not(.chart-controls):not(.chart-box) { display:none !important;visibility:hidden !important; }
   body.desktop-chart-fullscreen-open .news-impact-panel,
   body.desktop-chart-fullscreen-open #v2-shadow-card,
   body.desktop-chart-fullscreen-open .history-section,
   body.desktop-chart-fullscreen-open .mobile-timeframe-row,
-  body.desktop-chart-fullscreen-open #mobileOpenTradeCard {
-    display: none !important;
-    visibility: hidden !important;
-  }
+  body.desktop-chart-fullscreen-open #mobileOpenTradeCard { display:none !important;visibility:hidden !important; }
 }
