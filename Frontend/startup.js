@@ -3,10 +3,13 @@
     if (!window.FlowSignalLiveCandles) {
       document.write('<script src="chart/live-candles/live-candle-controller.js?v=3"><\/script>');
     }
-    document.write('<link rel="stylesheet" href="indicators/smc/smc.css?v=3">');
-    document.write('<script src="indicators/smc/smc-renderer.js?v=3"><\/script>');
-    document.write('<script src="indicators/smc/smc-indicator.js?v=3"><\/script>');
-    document.write('<script src="indicators/smc/smc-chart-bridge.js?v=3"><\/script>');
+    document.write('<link rel="stylesheet" href="indicators/smc/smc.css?v=4">');
+    document.write('<script src="indicators/smc/smc-settings.js?v=5"><\/script>');
+    document.write('<script src="indicators/smc/smc-renderer.js?v=8"><\/script>');
+    document.write('<script src="indicators/smc/smc-indicator.js?v=4"><\/script>');
+    document.write('<script src="indicators/smc/smc-chart-bridge.js?v=6"><\/script>');
+    document.write('<script src="indicators/smc/smc-local-engine.js?v=4"><\/script>');
+    document.write('<script src="indicators/smc/smc-local-visual.js?v=5"><\/script>');
   }
 
   function shouldUseSeparatedMobileDashboard() {
@@ -76,7 +79,9 @@
     button.disabled = false;
     button.setAttribute("aria-controls", "sideMenu");
     button.addEventListener("click", (event) => {
-      event.preventDefault(); event.stopPropagation(); setMenuOpen(!menuOpen);
+      event.preventDefault();
+      event.stopPropagation();
+      setMenuOpen(!menuOpen);
     });
     record("menu_listener_attached");
     return true;
@@ -95,7 +100,11 @@
       if (target && typeof target.click === "function") {
         target.click();
         record("requested_desktop_panel_opened", { requested });
-        try { const url = new URL(window.location.href); url.searchParams.delete("open"); history.replaceState(null, "", url.toString()); } catch (_error) {}
+        try {
+          const url = new URL(window.location.href);
+          url.searchParams.delete("open");
+          history.replaceState(null, "", url.toString());
+        } catch (_error) {}
         return;
       }
       if (attempts < 30) window.setTimeout(tryOpen, 100);
@@ -111,33 +120,6 @@
     status.textContent = message;
   }
 
-  function renderSmcToggle(button) {
-    const smcState = window.FlowSignalSMC?.getState?.() || { enabled: false };
-    button.setAttribute("aria-pressed", smcState.enabled ? "true" : "false");
-    button.title = "Visual SMC overlay only — does not affect V1/V2 trading";
-    button.innerHTML = `<span class="smc-overlay-toggle__dot" aria-hidden="true"></span><span>SMC ${smcState.enabled ? "ON" : "OFF"}</span>`;
-  }
-
-  function attachSmcOverlayToggle() {
-    const controls = document.querySelector(".chart-panel .chart-controls");
-    if (!controls || !window.FlowSignalSMC) return false;
-    let button = document.getElementById("smcOverlayToggleBtn");
-    if (!button) {
-      button = document.createElement("button");
-      button.id = "smcOverlayToggleBtn";
-      button.type = "button";
-      button.className = "smc-overlay-toggle";
-      controls.appendChild(button);
-      button.addEventListener("click", () => {
-        window.FlowSignalSMC.setEnabled(!window.FlowSignalSMC.getState().enabled);
-        renderSmcToggle(button);
-      });
-    }
-    renderSmcToggle(button);
-    record("smc_overlay_toggle_attached", window.FlowSignalSMC.getState());
-    return true;
-  }
-
   function attachDesktopChartFullscreen() {
     if (!window.matchMedia("(min-width: 701px)").matches) return false;
     const chartSection = document.querySelector(".chart-panel .chart-section");
@@ -147,6 +129,7 @@
       return false;
     }
     if (document.getElementById("desktopChartFullscreenBtn")) return true;
+
     const button = document.createElement("button");
     button.id = "desktopChartFullscreenBtn";
     button.className = "desktop-chart-fullscreen-btn";
@@ -155,54 +138,94 @@
     button.setAttribute("aria-pressed", "false");
     button.innerHTML = '<span aria-hidden="true">⛶</span><span class="desktop-chart-fullscreen-label">Full Screen</span>';
     controls.appendChild(button);
+
     let fallbackActive = false;
     const fullscreenElement = () => document.fullscreenElement || document.webkitFullscreenElement || null;
     const isNativeFullscreen = () => fullscreenElement() === chartSection;
     const isActive = () => isNativeFullscreen() || fallbackActive;
-    const notifyChartResize = () => window.requestAnimationFrame(() => { window.dispatchEvent(new Event("resize")); window.setTimeout(() => window.dispatchEvent(new Event("resize")), 120); });
+    const notifyChartResize = () => window.requestAnimationFrame(() => {
+      window.dispatchEvent(new Event("resize"));
+      window.setTimeout(() => window.dispatchEvent(new Event("resize")), 120);
+    });
     const renderState = () => {
       const active = isActive();
       chartSection.classList.toggle("is-desktop-chart-fullscreen", active);
       document.body.classList.toggle("desktop-chart-fullscreen-open", active);
       button.setAttribute("aria-pressed", active ? "true" : "false");
       button.setAttribute("aria-label", active ? "Exit chart full screen" : "Open chart in full screen");
-      button.innerHTML = active ? '<span aria-hidden="true">✕</span><span class="desktop-chart-fullscreen-label">Exit Full Screen</span>' : '<span aria-hidden="true">⛶</span><span class="desktop-chart-fullscreen-label">Full Screen</span>';
+      button.innerHTML = active
+        ? '<span aria-hidden="true">✕</span><span class="desktop-chart-fullscreen-label">Exit Full Screen</span>'
+        : '<span aria-hidden="true">⛶</span><span class="desktop-chart-fullscreen-label">Full Screen</span>';
+      window.FlowSignalSmcSettings?.syncHost?.();
       notifyChartResize();
     };
-    const leaveFallback = () => { if (!fallbackActive) return; fallbackActive = false; renderState(); };
+    const leaveFallback = () => {
+      if (!fallbackActive) return;
+      fallbackActive = false;
+      renderState();
+    };
+
     button.addEventListener("click", async () => {
       if (isActive()) {
         if (isNativeFullscreen()) {
-          try { if (document.exitFullscreen) await document.exitFullscreen(); else if (document.webkitExitFullscreen) document.webkitExitFullscreen(); } catch (error) { record("desktop_chart_fullscreen_exit_error", { message: error?.message }); }
-        } else leaveFallback();
+          try {
+            if (document.exitFullscreen) await document.exitFullscreen();
+            else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
+          } catch (error) {
+            record("desktop_chart_fullscreen_exit_error", { message: error?.message });
+          }
+        } else {
+          leaveFallback();
+        }
         return;
       }
       try {
         if (chartSection.requestFullscreen) await chartSection.requestFullscreen({ navigationUI: "hide" });
         else if (chartSection.webkitRequestFullscreen) chartSection.webkitRequestFullscreen();
-        else { fallbackActive = true; renderState(); }
-      } catch (error) { record("desktop_chart_fullscreen_request_error", { message: error?.message }); fallbackActive = true; renderState(); }
+        else {
+          fallbackActive = true;
+          renderState();
+        }
+      } catch (error) {
+        record("desktop_chart_fullscreen_request_error", { message: error?.message });
+        fallbackActive = true;
+        renderState();
+      }
     });
+
     document.addEventListener("fullscreenchange", renderState);
     document.addEventListener("webkitfullscreenchange", renderState);
-    document.addEventListener("keydown", (event) => { if (event.key === "Escape" && fallbackActive) leaveFallback(); });
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape" && fallbackActive) leaveFallback();
+    });
     record("desktop_chart_fullscreen_attached");
     return true;
   }
 
-  window.addEventListener("error", (event) => record("uncaught_initialization_error", { message: event.message || "Unknown JavaScript error", source: event.filename || null, line: event.lineno || null }));
-  window.addEventListener("unhandledrejection", (event) => record("unhandled_initialization_rejection", { message: event.reason?.message || String(event.reason || "Unknown rejection") }));
+  window.addEventListener("error", (event) => record("uncaught_initialization_error", {
+    message: event.message || "Unknown JavaScript error",
+    source: event.filename || null,
+    line: event.lineno || null,
+  }));
+  window.addEventListener("unhandledrejection", (event) => record("unhandled_initialization_rejection", {
+    message: event.reason?.message || String(event.reason || "Unknown rejection"),
+  }));
   window.addEventListener("load", openRequestedDesktopPanel, { once: true });
   window.addEventListener("load", attachDesktopChartFullscreen, { once: true });
-  window.addEventListener("load", attachSmcOverlayToggle, { once: true });
-  window.addEventListener("flowsignal:smc-toggle", () => {
-    const button = document.getElementById("smcOverlayToggleBtn");
-    if (button) renderSmcToggle(button);
-  });
 
-  window.FlowSignalStartup = { startedAt, record, events: () => events.slice(), attachMenu, setMenuOpen, isMenuOpen: () => menuOpen, setTransportStatus, attachDesktopChartFullscreen, attachSmcOverlayToggle };
+  window.FlowSignalStartup = {
+    startedAt,
+    record,
+    events: () => events.slice(),
+    attachMenu,
+    setMenuOpen,
+    isMenuOpen: () => menuOpen,
+    setTransportStatus,
+    attachDesktopChartFullscreen,
+  };
+
   record("application_initialization_started");
   record("live_chart_tick_transport_ready", { transport: "ctrader_tick_snapshot", pollMs: 250 });
-  record("smc_overlay_module_ready", { observationOnly: true, affectsStrategy: false });
+  record("smc_overlay_module_ready", { observationOnly: true, affectsStrategy: false, singleInstance: true });
   attachMenu();
 })();
