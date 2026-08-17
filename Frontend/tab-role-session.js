@@ -43,22 +43,46 @@
     return getTabRole() === "admin";
   };
 
+  function currentStrategyHasFreshSignal() {
+    const signal = String(document.getElementById("main-signal")?.textContent || "")
+      .trim()
+      .toUpperCase();
+    return signal === "BUY" || signal === "SELL";
+  }
+
+  function syncFreshStrategyVisibility() {
+    const freshSignal = currentStrategyHasFreshSignal();
+    const strategyChecks = document.querySelector(".entry-strategy-debug");
+    const smcIntel = document.getElementById("main-smc-plan-intel");
+
+    // These blocks describe the CURRENT setup only. A running broker position
+    // must never keep old setup checks visible after the strategy returns WAIT.
+    [strategyChecks, smcIntel].forEach((element) => {
+      if (!element) return;
+      if (freshSignal) {
+        element.style.removeProperty("display");
+        element.style.removeProperty("visibility");
+        element.classList.remove("hidden");
+      } else {
+        element.style.setProperty("display", "none", "important");
+        element.style.setProperty("visibility", "hidden", "important");
+      }
+    });
+
+    if (strategyChecks && freshSignal) strategyChecks.open = true;
+  }
+
   function ensureUserAnalysisVisibility() {
-    if (getTabRole() !== "user") return;
+    if (getTabRole() !== "user") {
+      syncFreshStrategyVisibility();
+      return;
+    }
 
     const smcPlan = document.querySelector(".main-smc-panel");
     if (smcPlan) {
       smcPlan.classList.remove("hidden");
       smcPlan.style.setProperty("display", "block", "important");
       smcPlan.style.setProperty("visibility", "visible", "important");
-    }
-
-    const strategyChecks = document.querySelector(".entry-strategy-debug");
-    if (strategyChecks) {
-      strategyChecks.classList.remove("hidden");
-      strategyChecks.open = true;
-      strategyChecks.style.setProperty("display", "block", "important");
-      strategyChecks.style.setProperty("visibility", "visible", "important");
     }
 
     const mainTradePanel = document.querySelector(".main-trade-panel");
@@ -72,6 +96,17 @@
       element.style.setProperty("max-height", "none", "important");
       element.style.setProperty("overflow", "visible", "important");
     });
+
+    syncFreshStrategyVisibility();
+  }
+
+  function attachFreshSignalObserver() {
+    const signal = document.getElementById("main-signal");
+    if (!signal || signal.dataset.flowSignalFreshObserver === "true") return;
+    signal.dataset.flowSignalFreshObserver = "true";
+    const observer = new MutationObserver(() => syncFreshStrategyVisibility());
+    observer.observe(signal, { childList: true, characterData: true, subtree: true });
+    syncFreshStrategyVisibility();
   }
 
   function refreshRoleUi() {
@@ -81,6 +116,7 @@
     try { window.applyRoleVisibility?.(); } catch (_error) {}
     try { window.updatePnlVisibility?.(); } catch (_error) {}
     ensureUserAnalysisVisibility();
+    attachFreshSignalObserver();
   }
 
   function adoptRequestedRole(requestedRole) {
