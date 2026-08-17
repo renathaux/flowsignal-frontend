@@ -2,11 +2,13 @@
 (function () {
   "use strict";
 
-  const KEY = "flowsignal_smc_visual_settings_v1";
+  const KEY = "flowsignal_smc_visual_settings_v2";
+  const LEGACY_KEY = "flowsignal_smc_visual_settings_v1";
   const defaults = {
     bos: { show: true, color: "#c7cbd1", width: 1, style: "solid" },
     choch: { show: true, color: "#f0c419", width: 1, style: "solid" },
-    structure: { show: true, color: "#2962ff", width: 1, style: "solid" },
+    structureHigh: { show: true, color: "#2962ff", width: 1, style: "solid" },
+    structureLow: { show: true, color: "#2962ff", width: 1, style: "solid" },
     fibs: {
       "0.786": { show: true, color: "#64b5f6", width: 1, style: "solid" },
       "0.705": { show: true, color: "#f23645", width: 1, style: "solid" },
@@ -16,16 +18,26 @@
     },
   };
 
-  const clone = (value) => JSON.parse(JSON.stringify(value));
-  let state = (() => {
-    let saved = {};
-    try { saved = JSON.parse(localStorage.getItem(KEY) || "{}"); } catch (_) {}
-    const output = clone(defaults);
-    ["bos", "choch", "structure"].forEach((key) => Object.assign(output[key], saved?.[key] || {}));
-    Object.keys(output.fibs).forEach((key) => Object.assign(output.fibs[key], saved?.fibs?.[key] || {}));
-    return output;
-  })();
+  const clone = (v) => JSON.parse(JSON.stringify(v));
 
+  function loadState() {
+    let saved = {};
+    let legacy = {};
+    try { saved = JSON.parse(localStorage.getItem(KEY) || "{}"); } catch (_) {}
+    try { legacy = JSON.parse(localStorage.getItem(LEGACY_KEY) || "{}"); } catch (_) {}
+    const out = clone(defaults);
+    ["bos", "choch", "structureHigh", "structureLow"].forEach((key) => {
+      Object.assign(out[key], saved?.[key] || {});
+    });
+    if (!saved?.structureHigh && legacy?.structure) Object.assign(out.structureHigh, legacy.structure);
+    if (!saved?.structureLow && legacy?.structure) Object.assign(out.structureLow, legacy.structure);
+    Object.keys(out.fibs).forEach((key) => {
+      Object.assign(out.fibs[key], saved?.fibs?.[key] || legacy?.fibs?.[key] || {});
+    });
+    return out;
+  }
+
+  let state = loadState();
   const chartSection = () => document.querySelector(".chart-panel .chart-section");
   const fullscreenElement = () => document.fullscreenElement || document.webkitFullscreenElement || null;
   const panelHost = () => {
@@ -33,34 +45,57 @@
     return section && fullscreenElement() === section ? section : document.body;
   };
   const smcApi = () => window.FlowSignalSMC || null;
-  const smcEnabled = () => Boolean(smcApi()?.getState?.().enabled);
+  const renderer = () => window.FlowSignalSmcRenderer || null;
   const get = () => clone(state);
 
-  function redrawFromSettings() {
-    const renderer = window.FlowSignalSmcRenderer;
-    const enabled = smcEnabled();
-    if (!renderer) return;
-    renderer.setEnabled?.(enabled);
-    if (!enabled) {
-      renderer.clear?.();
-      return;
-    }
-    if (renderer.lastStructure) renderer.render?.(renderer.lastStructure);
+  function effectiveEnabled() {
+    const apiEnabled = Boolean(smcApi()?.getState?.().enabled);
+    const rState = renderer()?.getState?.() || {};
+    return apiEnabled || Boolean(rState.enabled) || Number(rState.seriesCount || 0) > 0;
+  }
+
+  function reconcileEnabledState() {
+    const enabled = effectiveEnabled();
+    const api = smcApi();
+    const r = renderer();
+    if (enabled && api?.getState?.().enabled !== true) api?.setEnabled?.(true);
+    if (!enabled) r?.clear?.();
+    r?.setEnabled?.(enabled);
+    return enabled;
+  }
+
+  function redraw() {
+    const r = renderer();
+    if (!r) return;
+    const enabled = reconcileEnabledState();
+    if (!enabled) { r.clear?.(); return; }
+    if (r.lastStructure) r.render?.(r.lastStructure);
     else smcApi()?.refresh?.();
   }
 
   function persist() {
     localStorage.setItem(KEY, JSON.stringify(state));
-    window.dispatchEvent(new CustomEvent("flowsignal:smc-style-change", { detail: get() }));
-    redrawFromSettings();
+    redraw();
   }
 
-  function set(path, value) {
-    const parts = String(path).split(".");
-    let cursor = state;
-    for (let i = 0; i < parts.length - 1; i += 1) cursor = cursor[parts[i]];
-    cursor[parts[parts.length - 1]] = value;
+  function setValue(path, value) {
+    const p = String(path || "");
+    if (p.startsWith("fibs:")) {
+      const parts = p.split(":");
+      const fibKey = parts[1];
+      const prop = parts[2];
+      if (!state.fibs?.[fibKey] || !prop) return false;
+      state.fibs[fibKey][prop] = value;
+    } else {
+      const dot = p.indexOf(".");
+      if (dot < 1) return false;
+      const group = p.slice(0, dot);
+      const prop = p.slice(dot + 1);
+      if (!state[group] || !prop) return false;
+      state[group][prop] = value;
+    }
     persist();
+    return true;
   }
 
   function row(label, path, cfg) {
@@ -84,7 +119,6 @@
       .smc-settings-head button,.smc-settings-body>button{background:#132238;color:#dce9f8;border:1px solid #304968;border-radius:8px;padding:7px 10px;cursor:pointer;position:relative;z-index:5}
       .smc-settings-head button{min-width:38px;min-height:34px;font-size:18px;line-height:1}
       .smc-master-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px;margin-bottom:8px;background:#101c2b;border:1px solid #24364d;border-radius:10px}
-      .smc-master-row strong{font-size:13px}
       .smc-master-toggle{border:1px solid #31506f;background:#182638;color:#b8c7da;border-radius:999px;padding:7px 14px;font-weight:800;cursor:pointer;min-width:88px}
       .smc-master-toggle.is-on{border-color:#1dbf73;background:rgba(29,191,115,.14);color:#55e59b}
       .smc-settings-body{padding:12px 14px 16px;user-select:auto}
@@ -101,37 +135,30 @@
   function syncMasterToggle() {
     const button = document.querySelector("#smcSettingsPanel [data-smc-master]");
     if (!button) return;
-    const enabled = smcEnabled();
+    const enabled = reconcileEnabledState();
     button.textContent = enabled ? "SMC ON" : "SMC OFF";
     button.classList.toggle("is-on", enabled);
     button.setAttribute("aria-pressed", enabled ? "true" : "false");
-    window.FlowSignalSmcRenderer?.setEnabled?.(enabled);
-    if (!enabled) window.FlowSignalSmcRenderer?.clear?.();
   }
 
   function setSmcEnabled(enabled) {
     const api = smcApi();
-    if (!api?.setEnabled) return false;
-    api.setEnabled(Boolean(enabled));
-    window.FlowSignalSmcRenderer?.setEnabled?.(Boolean(enabled));
-    if (!enabled) window.FlowSignalSmcRenderer?.clear?.();
-    else {
-      if (window.FlowSignalSmcRenderer?.lastStructure) window.FlowSignalSmcRenderer.render(window.FlowSignalSmcRenderer.lastStructure);
-      api.refresh?.();
-    }
+    const r = renderer();
+    api?.setEnabled?.(Boolean(enabled));
+    r?.setEnabled?.(Boolean(enabled));
+    if (!enabled) r?.clear?.();
+    else if (r?.lastStructure) r.render?.(r.lastStructure);
+    else api?.refresh?.();
     syncMasterToggle();
-    return true;
   }
 
   function closePanel() { document.getElementById("smcSettingsPanel")?.remove(); }
-
   function resetPanelPosition(panel) {
     if (!panel) return;
     panel.style.left = "";
     panel.style.top = panelHost() === document.body ? "85px" : "68px";
     panel.style.right = panelHost() === document.body ? "22px" : "16px";
   }
-
   function syncHost() {
     const panel = document.getElementById("smcSettingsPanel");
     if (!panel) return;
@@ -139,19 +166,29 @@
     if (panel.parentNode !== host) { host.appendChild(panel); resetPanelPosition(panel); }
   }
 
+  function cfgForPath(path) {
+    if (path.startsWith("fibs:")) return state.fibs[path.split(":")[1]];
+    return state[path];
+  }
+
   function bindRows(panel) {
     panel.querySelectorAll(".smc-settings-row").forEach((rowEl) => {
       const path = rowEl.dataset.path;
-      const cfg = path.startsWith("fibs.") ? state.fibs[path.split(".")[1]] : state[path];
-      rowEl.querySelector('[data-k="style"]').value = cfg.style;
+      const cfg = cfgForPath(path);
+      if (!cfg) return;
+      const style = rowEl.querySelector('[data-k="style"]');
+      if (style) style.value = cfg.style;
       rowEl.querySelectorAll("input,select").forEach((input) => {
-        const applyValue = () => {
+        const apply = () => {
           const key = input.dataset.k;
-          const value = input.type === "checkbox" ? input.checked : input.type === "number" ? Number(input.value) : input.value;
-          set(`${path}.${key}`, value);
+          let value = input.value;
+          if (input.type === "checkbox") value = input.checked;
+          if (input.type === "number") value = Math.max(1, Math.min(5, Number(input.value) || 1));
+          const fullPath = path.startsWith("fibs:") ? `${path}:${key}` : `${path}.${key}`;
+          setValue(fullPath, value);
         };
-        input.addEventListener("change", applyValue);
-        if (input.type === "color" || input.type === "number") input.addEventListener("input", applyValue);
+        input.addEventListener("change", apply);
+        if (input.type === "color" || input.type === "number") input.addEventListener("input", apply);
       });
     });
   }
@@ -166,14 +203,18 @@
     panel.innerHTML = `
       <div class="smc-settings-head" data-drag-handle><strong>SMC Settings</strong><button type="button" data-close aria-label="Close SMC settings">✕</button></div>
       <div class="smc-settings-body">
-        <div class="smc-master-row"><strong>Indicator</strong><button type="button" class="smc-master-toggle" data-smc-master aria-pressed="false">SMC OFF</button></div>
-        ${row("BOS", "bos", state.bos)}${row("CHoCH", "choch", state.choch)}${row("Structure High/Low", "structure", state.structure)}
-        <div class="smc-settings-sub">Fibonacci</div>${Object.keys(state.fibs).map((key) => row(key, `fibs.${key}`, state.fibs[key])).join("")}
+        <div class="smc-master-row"><strong>Indicator</strong><button type="button" class="smc-master-toggle" data-smc-master>SMC OFF</button></div>
+        ${row("BOS", "bos", state.bos)}
+        ${row("CHoCH", "choch", state.choch)}
+        ${row("Structure High", "structureHigh", state.structureHigh)}
+        ${row("Structure Low", "structureLow", state.structureLow)}
+        <div class="smc-settings-sub">Fibonacci</div>
+        ${Object.keys(state.fibs).map((key) => row(key, `fibs:${key}`, state.fibs[key])).join("")}
         <button type="button" data-reset>Reset appearance</button>
       </div>`;
     panelHost().appendChild(panel);
     bindRows(panel);
-    window.setTimeout(syncMasterToggle, 0);
+    syncMasterToggle();
   }
 
   function attachButton() {
@@ -201,22 +242,18 @@
     if (settingsButton) { event.preventDefault(); event.stopImmediatePropagation(); open(); return; }
     const panel = event.target.closest?.("#smcSettingsPanel");
     if (!panel) return;
-    const close = event.target.closest?.("[data-close]");
-    if (close) { event.preventDefault(); event.stopImmediatePropagation(); closePanel(); return; }
-    const master = event.target.closest?.("[data-smc-master]");
-    if (master) { event.preventDefault(); event.stopImmediatePropagation(); setSmcEnabled(!smcEnabled()); return; }
-    const reset = event.target.closest?.("[data-reset]");
-    if (reset) { event.preventDefault(); event.stopImmediatePropagation(); state = clone(defaults); persist(); closePanel(); open(); return; }
+    if (event.target.closest?.("[data-close]")) { event.preventDefault(); event.stopImmediatePropagation(); closePanel(); return; }
+    if (event.target.closest?.("[data-smc-master]")) { event.preventDefault(); event.stopImmediatePropagation(); setSmcEnabled(!effectiveEnabled()); return; }
+    if (event.target.closest?.("[data-reset]")) { event.preventDefault(); event.stopImmediatePropagation(); state = clone(defaults); persist(); closePanel(); open(); return; }
     const handle = event.target.closest?.("[data-drag-handle]");
     if (handle && !event.target.closest?.("button,input,select,label")) {
       const rect = panel.getBoundingClientRect();
-      drag = { pointerId:event.pointerId, startX:event.clientX, startY:event.clientY, startLeft:rect.left, startTop:rect.top };
+      drag = { pointerId:event.pointerId,startX:event.clientX,startY:event.clientY,startLeft:rect.left,startTop:rect.top };
       panel.style.left = `${rect.left}px`; panel.style.top = `${rect.top}px`; panel.style.right = "auto";
       handle.classList.add("is-dragging");
       try { handle.setPointerCapture?.(event.pointerId); } catch (_) {}
-      event.preventDefault(); event.stopImmediatePropagation(); return;
+      event.preventDefault(); event.stopImmediatePropagation();
     }
-    event.stopPropagation();
   }, true);
 
   document.addEventListener("pointermove", (event) => {
@@ -224,7 +261,7 @@
     const panel = document.getElementById("smcSettingsPanel");
     if (!panel) { drag = null; return; }
     const host = panelHost();
-    const bounds = host === document.body ? { left:0, top:0, width:window.innerWidth, height:window.innerHeight } : host.getBoundingClientRect();
+    const bounds = host === document.body ? {left:0,top:0,width:window.innerWidth,height:window.innerHeight} : host.getBoundingClientRect();
     const rect = panel.getBoundingClientRect();
     const minLeft = bounds.left + 4, minTop = bounds.top + 4;
     const maxLeft = Math.max(minLeft, bounds.left + bounds.width - rect.width - 4);
@@ -237,20 +274,20 @@
   function endDrag(event) {
     if (!drag || (event.pointerId != null && event.pointerId !== drag.pointerId)) return;
     document.querySelector("#smcSettingsPanel [data-drag-handle]")?.classList.remove("is-dragging");
-    drag = null; event.preventDefault?.(); event.stopImmediatePropagation?.();
+    drag = null;
   }
   document.addEventListener("pointerup", endDrag, true);
   document.addEventListener("pointercancel", endDrag, true);
-
   document.addEventListener("wheel", (event) => {
     const panel = event.target.closest?.("#smcSettingsPanel");
     if (!panel) return;
-    event.preventDefault(); event.stopImmediatePropagation(); panel.scrollTop += event.deltaY; panel.scrollLeft += event.deltaX;
-  }, { capture:true, passive:false });
+    event.preventDefault(); event.stopImmediatePropagation();
+    panel.scrollTop += event.deltaY; panel.scrollLeft += event.deltaX;
+  }, {capture:true,passive:false});
 
-  window.FlowSignalSmcSettings = { get, set, open, close:closePanel, attachButton, syncHost, redraw:redrawFromSettings, defaults:()=>clone(defaults) };
-  window.addEventListener("load", () => { attachButton(); window.setTimeout(attachButton,250); window.setTimeout(() => { syncMasterToggle(); redrawFromSettings(); },500); }, { once:true });
-  window.addEventListener("flowsignal:smc-toggle", () => { syncMasterToggle(); redrawFromSettings(); });
+  window.FlowSignalSmcSettings = { get, set:setValue, open, close:closePanel, attachButton, syncHost, redraw, defaults:()=>clone(defaults) };
+  window.addEventListener("load", () => { attachButton(); setTimeout(attachButton,250); setTimeout(syncMasterToggle,500); }, {once:true});
+  window.addEventListener("flowsignal:smc-toggle", syncMasterToggle);
   document.addEventListener("fullscreenchange", syncHost);
   document.addEventListener("webkitfullscreenchange", syncHost);
 })();
