@@ -120,21 +120,27 @@
 
   window.fetch = apiFetch;
 
-  // Keep the SMC implementation outside the main application bundle.
-  // startup.js owns the main SMC modules; these tiny helpers only bridge the
-  // existing chart and provide a local closed-candle visual fallback.
   if (!document.querySelector('script[data-flow-smc-chart-bridge]')) {
     const smcBridgeScript = document.createElement("script");
-    smcBridgeScript.src = "indicators/smc/smc-chart-bridge.js?v=4";
+    smcBridgeScript.src = "indicators/smc/smc-chart-bridge.js?v=5";
     smcBridgeScript.async = false;
     smcBridgeScript.dataset.flowSmcChartBridge = "true";
     smcBridgeScript.addEventListener("error", () => console.warn("FLOW_SMC_CHART_BRIDGE_LOAD_FAILED"));
     document.head.appendChild(smcBridgeScript);
   }
 
+  if (!document.querySelector('script[data-flow-smc-local-engine]')) {
+    const localEngineScript = document.createElement("script");
+    localEngineScript.src = "indicators/smc/smc-local-engine.js?v=2";
+    localEngineScript.async = false;
+    localEngineScript.dataset.flowSmcLocalEngine = "true";
+    localEngineScript.addEventListener("error", () => console.warn("FLOW_SMC_LOCAL_ENGINE_LOAD_FAILED"));
+    document.head.appendChild(localEngineScript);
+  }
+
   if (!document.querySelector('script[data-flow-smc-local-visual]')) {
     const localVisualScript = document.createElement("script");
-    localVisualScript.src = "indicators/smc/smc-local-visual.js?v=1";
+    localVisualScript.src = "indicators/smc/smc-local-visual.js?v=2";
     localVisualScript.async = false;
     localVisualScript.dataset.flowSmcLocalVisual = "true";
     localVisualScript.addEventListener("error", () => console.warn("FLOW_SMC_LOCAL_VISUAL_LOAD_FAILED"));
