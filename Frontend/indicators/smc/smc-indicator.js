@@ -1,12 +1,19 @@
 (function () {
   "use strict";
 
+  const base = window.location.hostname === "127.0.0.1" || window.location.hostname === "localhost"
+    ? "http://127.0.0.1:8001"
+    : "https://flowsignal-backend-3.onrender.com";
+
   const state = {
-    enabled: false,
+    enabled: localStorage.getItem("flowsignal_smc_overlay") === "1",
     symbol: "EURUSD",
-    timeframe: "15m",
+    timeframe: "5m",
     latest: null,
     mounted: false,
+    timer: null,
+    requestInFlight: false,
+    lastError: null,
   };
 
   function renderer() {
@@ -17,6 +24,34 @@
     window.dispatchEvent(new CustomEvent(name, { detail }));
   }
 
+  function schedule(delay = 15000) {
+    window.clearTimeout(state.timer);
+    if (!state.enabled) return;
+    state.timer = window.setTimeout(loadStructure, delay);
+  }
+
+  async function loadStructure() {
+    if (!state.enabled || state.requestInFlight) return;
+    state.requestInFlight = true;
+    try {
+      const url = new URL(`${base}/chart/smc-structure`);
+      url.searchParams.set("symbol", state.symbol);
+      url.searchParams.set("timeframe", state.timeframe);
+      url.searchParams.set("limit", "250");
+      const response = await fetch(url.toString(), { cache: "no-store", suppressErrorPanel: true });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const structure = await response.json();
+      state.lastError = null;
+      api.applyStructure(structure);
+    } catch (error) {
+      state.lastError = error?.message || String(error);
+      emit("flowsignal:smc-error", api.getState());
+    } finally {
+      state.requestInFlight = false;
+      schedule();
+    }
+  }
+
   const api = {
     mount({ candleSeries, symbol, timeframe } = {}) {
       if (symbol) state.symbol = String(symbol).toUpperCase();
@@ -24,20 +59,40 @@
       state.mounted = Boolean(renderer()?.mount({ candleSeries }));
       renderer()?.setEnabled(state.enabled);
       if (state.latest) renderer()?.render(state.latest);
+      if (state.enabled) schedule(0);
       return state.mounted;
     },
 
     setContext({ symbol, timeframe } = {}) {
-      if (symbol) state.symbol = String(symbol).toUpperCase();
-      if (timeframe) state.timeframe = String(timeframe).toLowerCase();
+      const nextSymbol = symbol ? String(symbol).toUpperCase() : state.symbol;
+      const nextTimeframe = timeframe ? String(timeframe).toLowerCase() : state.timeframe;
+      const changed = nextSymbol !== state.symbol || nextTimeframe !== state.timeframe;
+      state.symbol = nextSymbol;
+      state.timeframe = nextTimeframe;
+      if (changed) {
+        state.latest = null;
+        renderer()?.clear();
+        if (state.enabled) schedule(100);
+      }
       emit("flowsignal:smc-context", this.getState());
     },
 
     setEnabled(enabled) {
       state.enabled = Boolean(enabled);
+      localStorage.setItem("flowsignal_smc_overlay", state.enabled ? "1" : "0");
       renderer()?.setEnabled(state.enabled);
-      if (state.enabled && state.latest) renderer()?.render(state.latest);
+      if (state.enabled) {
+        if (state.latest) renderer()?.render(state.latest);
+        schedule(0);
+      } else {
+        window.clearTimeout(state.timer);
+        state.timer = null;
+      }
       emit("flowsignal:smc-toggle", this.getState());
+    },
+
+    refresh() {
+      if (state.enabled) schedule(0);
     },
 
     applyStructure(structure) {
@@ -61,9 +116,31 @@
         timeframe: state.timeframe,
         mounted: state.mounted,
         bias: state.latest?.bias || "NEUTRAL",
+        closedCandleCount: state.latest?.closed_candle_count || 0,
+        lastError: state.lastError,
+        affectsStrategy: false,
       };
     },
   };
 
   window.FlowSignalSMC = api;
+
+  window.addEventListener("flowsignal:chart-candle-series", (event) => {
+    const detail = event.detail || {};
+    api.mount(detail);
+  });
+  window.addEventListener("flowsignal:chart-context", (event) => {
+    api.setContext(event.detail || {});
+  });
+  window.addEventListener("flowsignal:live-candle", (event) => {
+    const detail = event.detail || {};
+    if (detail.symbol !== state.symbol || detail.timeframe !== state.timeframe) return;
+    const candleTime = Number(detail.candle?.time);
+    if (!Number.isFinite(candleTime)) return;
+    const lastSeen = Number(state.latest?._visual_live_bucket || 0);
+    if (candleTime !== lastSeen && state.enabled) {
+      if (state.latest) state.latest._visual_live_bucket = candleTime;
+      schedule(250);
+    }
+  });
 })();
