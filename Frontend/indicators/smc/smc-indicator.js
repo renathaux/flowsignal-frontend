@@ -18,13 +18,8 @@
     localCandleCount: 0,
   };
 
-  function renderer() {
-    return window.FlowSignalSmcRenderer || null;
-  }
-
-  function emit(name, detail) {
-    window.dispatchEvent(new CustomEvent(name, { detail }));
-  }
+  function renderer() { return window.FlowSignalSmcRenderer || null; }
+  function emit(name, detail) { window.dispatchEvent(new CustomEvent(name, { detail })); }
 
   function schedule(delay = 15000) {
     window.clearTimeout(state.timer);
@@ -34,10 +29,7 @@
 
   async function loadStructure() {
     if (!state.enabled || state.requestInFlight) return;
-    if (state.localReady) {
-      schedule();
-      return;
-    }
+    if (state.localReady) { schedule(); return; }
     state.requestInFlight = true;
     try {
       const url = new URL(`${base}/chart/smc-structure`);
@@ -82,10 +74,10 @@
   }
 
   const api = {
-    mount({ candleSeries, symbol, timeframe } = {}) {
+    mount({ chart, candleSeries, symbol, timeframe } = {}) {
       if (symbol) state.symbol = String(symbol).toUpperCase();
       if (timeframe) state.timeframe = String(timeframe).toLowerCase();
-      state.mounted = Boolean(renderer()?.mount({ candleSeries }));
+      state.mounted = Boolean(renderer()?.mount({ chart, candleSeries }));
       renderer()?.setEnabled(state.enabled);
       if (state.latest) renderer()?.render(state.latest);
       if (state.enabled) schedule(0);
@@ -131,10 +123,7 @@
     applyStructure(structure) {
       state.latest = structure || null;
       if (state.enabled) renderer()?.render(state.latest);
-      emit("flowsignal:smc-update", {
-        ...this.getState(),
-        structure: state.latest,
-      });
+      emit("flowsignal:smc-update", { ...this.getState(), structure: state.latest });
     },
 
     applyLocalCandles,
@@ -165,16 +154,9 @@
 
   window.FlowSignalSMC = api;
 
-  window.addEventListener("flowsignal:chart-candle-series", (event) => {
-    const detail = event.detail || {};
-    api.mount(detail);
-  });
-  window.addEventListener("flowsignal:chart-context", (event) => {
-    api.setContext(event.detail || {});
-  });
-  window.addEventListener("flowsignal:chart-candles", (event) => {
-    applyLocalCandles(event.detail || {});
-  });
+  window.addEventListener("flowsignal:chart-candle-series", (event) => api.mount(event.detail || {}));
+  window.addEventListener("flowsignal:chart-context", (event) => api.setContext(event.detail || {}));
+  window.addEventListener("flowsignal:chart-candles", (event) => applyLocalCandles(event.detail || {}));
   window.addEventListener("flowsignal:live-candle", (event) => {
     const detail = event.detail || {};
     if (detail.symbol !== state.symbol || detail.timeframe !== state.timeframe) return;
