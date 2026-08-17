@@ -42,29 +42,29 @@
     if (element && element.textContent !== value) element.textContent = value;
   }
 
+  function forceVisible(element, display = "block") {
+    if (!element) return;
+    element.classList.remove("hidden", "admin-only-hidden");
+    element.removeAttribute("hidden");
+    element.setAttribute("aria-hidden", "false");
+    element.style.setProperty("display", display, "important");
+    element.style.setProperty("visibility", "visible", "important");
+    element.style.setProperty("opacity", "1", "important");
+  }
+
   function keepAnalysisCardsVisible() {
-    const elements = [
-      document.querySelector(".main-smc-panel"),
-      document.getElementById("main-smc-plan-intel"),
-      document.querySelector(".entry-strategy-debug"),
-    ];
-    elements.forEach((element) => {
-      if (!element) return;
-      element.classList.remove("hidden");
-      element.style.removeProperty("display");
-      element.style.removeProperty("visibility");
-    });
-    const checks = document.querySelector(".entry-strategy-debug");
-    if (checks) checks.open = true;
+    const smcPlan = document.querySelector(".main-smc-panel");
+    const smcIntel = document.getElementById("main-smc-plan-intel");
+    const strategyChecks = document.querySelector(".entry-strategy-debug");
+    forceVisible(smcPlan);
+    forceVisible(smcIntel);
+    forceVisible(strategyChecks);
+    if (strategyChecks) strategyChecks.open = true;
   }
 
   function clearExpiredEntryChecks() {
     if (!chromeDesktop || currentStrategyHasFreshSignal()) return;
     keepAnalysisCardsVisible();
-
-    // Only ENTRY STRATEGY CHECKS are reset when the entry signal expires.
-    // SMC PLAN intelligence remains live and continues showing what the
-    // strategy is currently waiting for, its structure, levels and progress.
     [
       "strategy-debug-smc",
       "strategy-debug-swing-break",
@@ -88,48 +88,41 @@
       return;
     }
 
-    const smcPlan = document.querySelector(".main-smc-panel");
-    const smcIntel = document.getElementById("main-smc-plan-intel");
-    const strategyChecks = document.querySelector(".entry-strategy-debug");
-    [smcPlan, smcIntel, strategyChecks].forEach((element) => {
-      if (!element) return;
-      element.classList.remove("hidden");
-      element.style.setProperty("display", "block", "important");
-      element.style.setProperty("visibility", "visible", "important");
-    });
-    if (strategyChecks) strategyChecks.open = true;
-
     const mainTradePanel = document.querySelector(".main-trade-panel");
     const mainTradeCard = document.querySelector(".main-trade-card");
+    forceVisible(mainTradePanel);
+    forceVisible(mainTradeCard);
     [mainTradePanel, mainTradeCard].forEach((element) => {
       if (!element) return;
-      element.classList.remove("hidden");
-      element.style.setProperty("display", "block", "important");
-      element.style.setProperty("visibility", "visible", "important");
       element.style.setProperty("height", "auto", "important");
       element.style.setProperty("max-height", "none", "important");
       element.style.setProperty("overflow", "visible", "important");
     });
 
+    keepAnalysisCardsVisible();
     syncCurrentStrategyPresentation();
   }
 
-  function attachCurrentSetupObserver() {
+  function attachDashboardObserver() {
     if (!chromeDesktop) return;
-    const card = document.querySelector(".main-trade-card");
-    if (!card || card.dataset.flowSignalSetupObserver === "true") return;
-    card.dataset.flowSignalSetupObserver = "true";
+    const dashboard = document.querySelector(".dashboard-grid") || document.getElementById("mainApp");
+    if (!dashboard || dashboard.dataset.flowSignalUserAnalysisObserver === "true") return;
+    dashboard.dataset.flowSignalUserAnalysisObserver = "true";
     let scheduled = false;
     const observer = new MutationObserver(() => {
       if (scheduled) return;
       scheduled = true;
       window.requestAnimationFrame(() => {
         scheduled = false;
-        syncCurrentStrategyPresentation();
+        if (getTabRole() === "user") ensureUserAnalysisVisibility();
       });
     });
-    observer.observe(card, { childList: true, characterData: true, subtree: true });
-    syncCurrentStrategyPresentation();
+    observer.observe(dashboard, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ["class", "style", "hidden", "aria-hidden"],
+    });
   }
 
   function refreshRoleUi() {
@@ -139,7 +132,7 @@
     try { window.applyRoleVisibility?.(); } catch (_error) {}
     try { window.updatePnlVisibility?.(); } catch (_error) {}
     ensureUserAnalysisVisibility();
-    attachCurrentSetupObserver();
+    attachDashboardObserver();
   }
 
   function adoptRequestedRole(requestedRole) {
@@ -175,10 +168,19 @@
     window.setTimeout(refreshRoleUi, 0);
     window.setTimeout(refreshRoleUi, 250);
   });
+
   window.addEventListener("load", () => {
     window.setTimeout(refreshRoleUi, 0);
     window.setTimeout(refreshRoleUi, 300);
   }, { once: true });
+
+  // Live panel refreshes can replace the middle-column DOM. Re-assert the
+  // user analysis panels against the current elements, not stale references.
+  if (chromeDesktop) {
+    window.setInterval(() => {
+      if (getTabRole() === "user") ensureUserAnalysisVisibility();
+    }, 750);
+  }
 
   refreshRoleUi();
 
