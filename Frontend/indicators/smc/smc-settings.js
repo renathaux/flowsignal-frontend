@@ -17,17 +17,23 @@
   };
 
   const clone = (value) => JSON.parse(JSON.stringify(value));
-
-  function load() {
+  let state = (() => {
     let saved = {};
     try { saved = JSON.parse(localStorage.getItem(KEY) || "{}"); } catch (_) {}
     const output = clone(defaults);
     ["bos", "choch", "structure"].forEach((key) => Object.assign(output[key], saved?.[key] || {}));
     Object.keys(output.fibs).forEach((key) => Object.assign(output.fibs[key], saved?.fibs?.[key] || {}));
     return output;
-  }
+  })();
 
-  let state = load();
+  const chartSection = () => document.querySelector(".chart-panel .chart-section");
+  const fullscreenElement = () => document.fullscreenElement || document.webkitFullscreenElement || null;
+  const panelHost = () => {
+    const section = chartSection();
+    return section && fullscreenElement() === section ? section : document.body;
+  };
+  const smcApi = () => window.FlowSignalSMC || null;
+  const smcEnabled = () => Boolean(smcApi()?.getState?.().enabled);
   const get = () => clone(state);
 
   function persist() {
@@ -52,14 +58,6 @@
     </div>`;
   }
 
-  const chartSection = () => document.querySelector(".chart-panel .chart-section");
-  const fullscreenElement = () => document.fullscreenElement || document.webkitFullscreenElement || null;
-
-  function panelHost() {
-    const section = chartSection();
-    return section && fullscreenElement() === section ? section : document.body;
-  }
-
   function ensureCss() {
     if (document.getElementById("smcSettingsCss")) return;
     const style = document.createElement("style");
@@ -78,18 +76,13 @@
       .smc-settings-body{padding:12px 14px 16px;user-select:auto}
       .smc-settings-sub{font-weight:800;margin:14px 0 7px;color:#9eb5cf}
       .smc-settings-row{display:grid;grid-template-columns:minmax(145px,1fr) 44px 94px 58px;gap:8px;align-items:center;padding:7px 0;border-bottom:1px solid #172538}
-      .smc-settings-row label{font-size:13px}
-      .smc-settings-row input[type=color]{width:40px;height:30px;border:0;background:transparent}
+      .smc-settings-row label{font-size:13px}.smc-settings-row input[type=color]{width:40px;height:30px;border:0;background:transparent}
       .smc-settings-row select,.smc-settings-row input[type=number]{width:100%;background:#101d2c;color:#dce8f7;border:1px solid #30445e;border-radius:6px;padding:6px}
       .smc-settings-body>button{margin-top:14px;width:100%}
-      .chart-section:fullscreen .smc-settings-panel,.chart-section:-webkit-full-screen .smc-settings-panel{top:68px;right:16px;max-height:calc(100vh - 90px)}
       @media(max-width:700px){.smc-settings-panel{right:10px;top:65px}.smc-settings-row{grid-template-columns:1fr 42px 82px 52px}}
     `;
     document.head.appendChild(style);
   }
-
-  function smcApi() { return window.FlowSignalSMC || null; }
-  function smcEnabled() { return Boolean(smcApi()?.getState?.().enabled); }
 
   function syncMasterToggle() {
     const button = document.querySelector("#smcSettingsPanel [data-smc-master]");
@@ -104,6 +97,8 @@
     const api = smcApi();
     if (!api?.setEnabled) return false;
     api.setEnabled(Boolean(enabled));
+    if (!enabled) window.FlowSignalSmcRenderer?.clear?.();
+    else api.refresh?.();
     syncMasterToggle();
     return true;
   }
@@ -129,82 +124,6 @@
     }
   }
 
-  function isolatePanelEvents(panel) {
-    ["click", "dblclick", "contextmenu", "pointerdown", "pointerup", "mousedown", "mouseup", "touchstart", "touchend"].forEach((name) => {
-      panel.addEventListener(name, (event) => event.stopPropagation(), false);
-    });
-    panel.addEventListener("wheel", (event) => {
-      event.stopPropagation();
-      event.preventDefault();
-      panel.scrollTop += event.deltaY;
-      panel.scrollLeft += event.deltaX;
-    }, { passive: false });
-  }
-
-  function makeDraggable(panel) {
-    const head = panel.querySelector(".smc-settings-head");
-    if (!head) return;
-
-    let pointerId = null;
-    let startX = 0;
-    let startY = 0;
-    let startLeft = 0;
-    let startTop = 0;
-
-    function boundsForHost() {
-      const host = panelHost();
-      if (host === document.body) return { left: 0, top: 0, width: window.innerWidth, height: window.innerHeight };
-      return host.getBoundingClientRect();
-    }
-
-    head.addEventListener("pointerdown", (event) => {
-      if (event.button !== 0 || event.target.closest("button,input,select,label")) return;
-      const rect = panel.getBoundingClientRect();
-      pointerId = event.pointerId;
-      startX = event.clientX;
-      startY = event.clientY;
-      startLeft = rect.left;
-      startTop = rect.top;
-      panel.style.left = `${rect.left}px`;
-      panel.style.top = `${rect.top}px`;
-      panel.style.right = "auto";
-      head.classList.add("is-dragging");
-      try { head.setPointerCapture(pointerId); } catch (_) {}
-      event.preventDefault();
-      event.stopPropagation();
-    });
-
-    head.addEventListener("pointermove", (event) => {
-      if (pointerId === null || event.pointerId !== pointerId) return;
-      const bounds = boundsForHost();
-      const rect = panel.getBoundingClientRect();
-      const minLeft = bounds.left + 4;
-      const minTop = bounds.top + 4;
-      const maxLeft = Math.max(minLeft, bounds.left + bounds.width - rect.width - 4);
-      const maxTop = Math.max(minTop, bounds.top + bounds.height - rect.height - 4);
-      panel.style.left = `${Math.min(maxLeft, Math.max(minLeft, startLeft + event.clientX - startX))}px`;
-      panel.style.top = `${Math.min(maxTop, Math.max(minTop, startTop + event.clientY - startY))}px`;
-      event.preventDefault();
-      event.stopPropagation();
-    });
-
-    function endDrag(event) {
-      if (pointerId === null || (event?.pointerId != null && event.pointerId !== pointerId)) return;
-      try { head.releasePointerCapture(pointerId); } catch (_) {}
-      pointerId = null;
-      head.classList.remove("is-dragging");
-      event?.preventDefault?.();
-      event?.stopPropagation?.();
-    }
-
-    head.addEventListener("pointerup", endDrag);
-    head.addEventListener("pointercancel", endDrag);
-    head.addEventListener("lostpointercapture", () => {
-      pointerId = null;
-      head.classList.remove("is-dragging");
-    });
-  }
-
   function bindRows(panel) {
     panel.querySelectorAll(".smc-settings-row").forEach((rowEl) => {
       const path = rowEl.dataset.path;
@@ -223,17 +142,13 @@
   function open() {
     ensureCss();
     let panel = document.getElementById("smcSettingsPanel");
-    if (panel) {
-      syncHost();
-      syncMasterToggle();
-      return;
-    }
+    if (panel) { syncHost(); syncMasterToggle(); return; }
 
     panel = document.createElement("div");
     panel.id = "smcSettingsPanel";
     panel.className = "smc-settings-panel";
     panel.innerHTML = `
-      <div class="smc-settings-head">
+      <div class="smc-settings-head" data-drag-handle>
         <strong>SMC Settings</strong>
         <button type="button" data-close aria-label="Close SMC settings">✕</button>
       </div>
@@ -246,35 +161,9 @@
         ${Object.keys(state.fibs).map((key) => row(key, `fibs.${key}`, state.fibs[key])).join("")}
         <button type="button" data-reset>Reset appearance</button>
       </div>`;
-
     panelHost().appendChild(panel);
-    isolatePanelEvents(panel);
     bindRows(panel);
-    makeDraggable(panel);
     syncMasterToggle();
-
-    const close = panel.querySelector("[data-close]");
-    close.addEventListener("pointerdown", (event) => {
-      event.preventDefault();
-      event.stopPropagation();
-      closePanel();
-    });
-
-    const master = panel.querySelector("[data-smc-master]");
-    master.addEventListener("pointerdown", (event) => {
-      event.preventDefault();
-      event.stopPropagation();
-      setSmcEnabled(!smcEnabled());
-    });
-
-    panel.querySelector("[data-reset]").addEventListener("click", (event) => {
-      event.preventDefault();
-      event.stopPropagation();
-      state = clone(defaults);
-      persist();
-      closePanel();
-      open();
-    });
   }
 
   function attachButton() {
@@ -291,13 +180,113 @@
       button.textContent = "⚙";
       button.setAttribute("aria-label", "SMC settings");
       button.title = "SMC settings";
-      button.addEventListener("click", open);
-      controls.appendChild(button);
-    } else if (!button.parentNode) {
       controls.appendChild(button);
     }
     return true;
   }
+
+  // One delegated capture handler owns the panel actions. This runs before chart/dashboard listeners.
+  let drag = null;
+
+  document.addEventListener("pointerdown", (event) => {
+    const settingsButton = event.target.closest?.("#smcSettingsBtn");
+    if (settingsButton) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      open();
+      return;
+    }
+
+    const panel = event.target.closest?.("#smcSettingsPanel");
+    if (!panel) return;
+
+    const close = event.target.closest?.("[data-close]");
+    if (close) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      closePanel();
+      return;
+    }
+
+    const master = event.target.closest?.("[data-smc-master]");
+    if (master) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      setSmcEnabled(!smcEnabled());
+      return;
+    }
+
+    const reset = event.target.closest?.("[data-reset]");
+    if (reset) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      state = clone(defaults);
+      persist();
+      closePanel();
+      open();
+      return;
+    }
+
+    const handle = event.target.closest?.("[data-drag-handle]");
+    if (handle && !event.target.closest?.("button,input,select,label")) {
+      const rect = panel.getBoundingClientRect();
+      drag = {
+        pointerId: event.pointerId,
+        startX: event.clientX,
+        startY: event.clientY,
+        startLeft: rect.left,
+        startTop: rect.top,
+      };
+      panel.style.left = `${rect.left}px`;
+      panel.style.top = `${rect.top}px`;
+      panel.style.right = "auto";
+      handle.classList.add("is-dragging");
+      try { handle.setPointerCapture?.(event.pointerId); } catch (_) {}
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      return;
+    }
+
+    event.stopPropagation();
+  }, true);
+
+  document.addEventListener("pointermove", (event) => {
+    if (!drag || event.pointerId !== drag.pointerId) return;
+    const panel = document.getElementById("smcSettingsPanel");
+    if (!panel) { drag = null; return; }
+    const host = panelHost();
+    const bounds = host === document.body
+      ? { left: 0, top: 0, width: window.innerWidth, height: window.innerHeight }
+      : host.getBoundingClientRect();
+    const rect = panel.getBoundingClientRect();
+    const minLeft = bounds.left + 4;
+    const minTop = bounds.top + 4;
+    const maxLeft = Math.max(minLeft, bounds.left + bounds.width - rect.width - 4);
+    const maxTop = Math.max(minTop, bounds.top + bounds.height - rect.height - 4);
+    panel.style.left = `${Math.min(maxLeft, Math.max(minLeft, drag.startLeft + event.clientX - drag.startX))}px`;
+    panel.style.top = `${Math.min(maxTop, Math.max(minTop, drag.startTop + event.clientY - drag.startY))}px`;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+  }, true);
+
+  function endDrag(event) {
+    if (!drag || (event.pointerId != null && event.pointerId !== drag.pointerId)) return;
+    document.querySelector("#smcSettingsPanel [data-drag-handle]")?.classList.remove("is-dragging");
+    drag = null;
+    event.preventDefault?.();
+    event.stopImmediatePropagation?.();
+  }
+  document.addEventListener("pointerup", endDrag, true);
+  document.addEventListener("pointercancel", endDrag, true);
+
+  document.addEventListener("wheel", (event) => {
+    const panel = event.target.closest?.("#smcSettingsPanel");
+    if (!panel) return;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    panel.scrollTop += event.deltaY;
+    panel.scrollLeft += event.deltaX;
+  }, { capture: true, passive: false });
 
   window.FlowSignalSmcSettings = {
     get,
