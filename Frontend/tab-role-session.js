@@ -43,12 +43,44 @@
     return getTabRole() === "admin";
   };
 
+  function ensureUserAnalysisVisibility() {
+    if (getTabRole() !== "user") return;
+
+    const smcPlan = document.querySelector(".main-smc-panel");
+    if (smcPlan) {
+      smcPlan.classList.remove("hidden");
+      smcPlan.style.setProperty("display", "block", "important");
+      smcPlan.style.setProperty("visibility", "visible", "important");
+    }
+
+    const strategyChecks = document.querySelector(".entry-strategy-debug");
+    if (strategyChecks) {
+      strategyChecks.classList.remove("hidden");
+      strategyChecks.open = true;
+      strategyChecks.style.setProperty("display", "block", "important");
+      strategyChecks.style.setProperty("visibility", "visible", "important");
+    }
+
+    const mainTradePanel = document.querySelector(".main-trade-panel");
+    const mainTradeCard = document.querySelector(".main-trade-card");
+    [mainTradePanel, mainTradeCard].forEach((element) => {
+      if (!element) return;
+      element.classList.remove("hidden");
+      element.style.setProperty("display", "block", "important");
+      element.style.setProperty("visibility", "visible", "important");
+      element.style.setProperty("height", "auto", "important");
+      element.style.setProperty("max-height", "none", "important");
+      element.style.setProperty("overflow", "visible", "important");
+    });
+  }
+
   function refreshRoleUi() {
     const role = getTabRole();
     if (!role) return;
     document.body.dataset.userRole = role;
     try { window.applyRoleVisibility?.(); } catch (_error) {}
     try { window.updatePnlVisibility?.(); } catch (_error) {}
+    ensureUserAnalysisVisibility();
   }
 
   function adoptRequestedRole(requestedRole) {
@@ -84,6 +116,17 @@
     if (event.key !== SHARED_ROLE_KEY) return;
     refreshRoleUi();
   });
+
+  // Some legacy role/layout code runs after startup and can hide these panels
+  // again. Re-apply the user analysis visibility after the app is ready.
+  document.addEventListener("flowsignal:authenticated", () => {
+    window.setTimeout(refreshRoleUi, 0);
+    window.setTimeout(refreshRoleUi, 250);
+  });
+  window.addEventListener("load", () => {
+    window.setTimeout(refreshRoleUi, 0);
+    window.setTimeout(refreshRoleUi, 300);
+  }, { once: true });
 
   refreshRoleUi();
 
