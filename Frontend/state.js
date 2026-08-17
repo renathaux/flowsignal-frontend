@@ -27,6 +27,20 @@
     }));
   }
 
+  function loadTabRoleSession() {
+    if (window.FlowSignalTabRole || document.querySelector('script[data-flow-tab-role]')) return;
+    const script = document.createElement("script");
+    script.src = "tab-role-session.js?v=1";
+    script.dataset.flowTabRole = "true";
+    script.async = false;
+    document.body.appendChild(script);
+  }
+
+  // script.js owns the legacy login handlers and is parsed after this file.
+  // Load the per-tab role adapter only after the page has finished loading so
+  // it can replace the global role guard without racing initial definitions.
+  window.addEventListener("load", loadTabRoleSession, { once: true });
+
   window.FlowSignalState = {
     loadFeatureFlags,
     saveFeatureFlags,
