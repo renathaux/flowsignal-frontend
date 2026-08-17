@@ -15,6 +15,15 @@
     document.write('<script src="indicators/smc/smc-local-visual.js?v=6"><\/script>');
   }
 
+  function loadTabRoleSession() {
+    if (window.FlowSignalTabRole || document.querySelector('script[data-flow-tab-role-session]')) return;
+    const script = document.createElement("script");
+    script.src = "tab-role-session.js?v=1";
+    script.dataset.flowTabRoleSession = "true";
+    script.async = false;
+    document.body.appendChild(script);
+  }
+
   function shouldUseSeparatedMobileDashboard() {
     try {
       const params = new URLSearchParams(window.location.search);
@@ -215,6 +224,12 @@
   }));
   window.addEventListener("load", openRequestedDesktopPanel, { once: true });
   window.addEventListener("load", attachDesktopChartFullscreen, { once: true });
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", loadTabRoleSession, { once: true });
+  } else {
+    loadTabRoleSession();
+  }
 
   window.FlowSignalStartup = {
     startedAt,
