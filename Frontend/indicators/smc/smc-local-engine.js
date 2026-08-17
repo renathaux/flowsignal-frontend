@@ -13,8 +13,25 @@
       .sort((a, b) => a.time - b.time);
   }
 
-  function detectSwings(rows, leftBars = 2, rightBars = 2) {
-    const candles = normalizeCandles(rows);
+  function trueRange(candle, previous) {
+    if (!previous) return Math.max(0, candle.high - candle.low);
+    return Math.max(
+      candle.high - candle.low,
+      Math.abs(candle.high - previous.close),
+      Math.abs(candle.low - previous.close),
+    );
+  }
+
+  function atrSeries(candles, period = 14) {
+    const trs = candles.map((candle, index) => trueRange(candle, candles[index - 1]));
+    return trs.map((_, index) => {
+      const start = Math.max(0, index - period + 1);
+      const window = trs.slice(start, index + 1);
+      return window.reduce((sum, value) => sum + value, 0) / Math.max(1, window.length);
+    });
+  }
+
+  function detectRawSwings(candles, leftBars, rightBars) {
     const swings = [];
     if (candles.length < leftBars + rightBars + 1) return swings;
 
@@ -22,13 +39,12 @@
       const current = candles[i];
       const left = candles.slice(i - leftBars, i);
       const right = candles.slice(i + 1, i + 1 + rightBars);
-      const leftHigh = Math.max(...left.map((c) => c.high));
-      const rightHigh = Math.max(...right.map((c) => c.high));
-      const leftLow = Math.min(...left.map((c) => c.low));
-      const rightLow = Math.min(...right.map((c) => c.low));
       const confirmedIndex = i + rightBars;
 
-      if (current.high > leftHigh && current.high >= rightHigh) {
+      if (
+        current.high > Math.max(...left.map((c) => c.high))
+        && current.high >= Math.max(...right.map((c) => c.high))
+      ) {
         swings.push({
           swing_type: "HIGH",
           index: i,
@@ -38,7 +54,11 @@
           price: current.high,
         });
       }
-      if (current.low < leftLow && current.low <= rightLow) {
+
+      if (
+        current.low < Math.min(...left.map((c) => c.low))
+        && current.low <= Math.min(...right.map((c) => c.low))
+      ) {
         swings.push({
           swing_type: "LOW",
           index: i,
@@ -53,15 +73,63 @@
     return swings.sort((a, b) => a.confirmed_index - b.confirmed_index || a.index - b.index);
   }
 
+  function filterMajorSwings(rawSwings, candles, atr, options = {}) {
+    const minSwingAtr = Math.max(0.25, Number(options.minSwingAtr) || 0.8);
+    const minBarsBetween = Math.max(1, Number(options.minBarsBetween) || 3);
+    const accepted = [];
+
+    rawSwings.forEach((candidate) => {
+      if (!accepted.length) {
+        accepted.push(candidate);
+        return;
+      }
+
+      const last = accepted[accepted.length - 1];
+      if (candidate.swing_type === last.swing_type) {
+        const moreExtreme = candidate.swing_type === "HIGH"
+          ? candidate.price > last.price
+          : candidate.price < last.price;
+        if (moreExtreme) accepted[accepted.length - 1] = candidate;
+        return;
+      }
+
+      const barDistance = Math.abs(candidate.index - last.index);
+      const referenceAtr = Math.max(
+        Number(atr[candidate.index]) || 0,
+        Number(atr[last.index]) || 0,
+      );
+      const requiredMove = referenceAtr * minSwingAtr;
+      const actualMove = Math.abs(candidate.price - last.price);
+
+      if (barDistance >= minBarsBetween && actualMove >= requiredMove) {
+        accepted.push(candidate);
+      }
+    });
+
+    return accepted;
+  }
+
+  function detectSwings(rows, leftBars = 3, rightBars = 3, options = {}) {
+    const candles = normalizeCandles(rows);
+    const atr = atrSeries(candles, Math.max(5, Number(options.atrPeriod) || 14));
+    const raw = detectRawSwings(candles, leftBars, rightBars);
+    return filterMajorSwings(raw, candles, atr, options);
+  }
+
   function analyze(rows, options = {}) {
-    const leftBars = Math.max(1, Number(options.leftBars) || 2);
-    const rightBars = Math.max(1, Number(options.rightBars) || 2);
+    const leftBars = Math.max(2, Number(options.leftBars) || 3);
+    const rightBars = Math.max(2, Number(options.rightBars) || 3);
+    const atrPeriod = Math.max(5, Number(options.atrPeriod) || 14);
+    const minSwingAtr = Math.max(0.25, Number(options.minSwingAtr) || 0.8);
+    const breakBufferAtr = Math.max(0, Number(options.breakBufferAtr) || 0.10);
+    const minBarsBetween = Math.max(1, Number(options.minBarsBetween) || 3);
     const candles = normalizeCandles(rows);
 
-    // The chart history may contain the forming candle. Never use the newest
-    // candle for structure confirmation so the visual indicator cannot repaint.
+    // Never use the newest forming candle for structure confirmation.
     const closed = candles.length > 1 ? candles.slice(0, -1) : candles;
-    const swings = detectSwings(closed, leftBars, rightBars);
+    const atr = atrSeries(closed, atrPeriod);
+    const rawSwings = detectRawSwings(closed, leftBars, rightBars);
+    const swings = filterMajorSwings(rawSwings, closed, atr, { minSwingAtr, minBarsBetween });
 
     let latestHigh = null;
     let latestLow = null;
@@ -88,9 +156,17 @@
         }
       });
 
+      const currentAtr = Number(atr[index]) || 0;
+      const breakBuffer = currentAtr * breakBufferAtr;
+
       if (latestHigh) {
         const key = `${latestHigh.timestamp}:${latestHigh.price}`;
-        if (candle.close > latestHigh.price && brokenHighKey !== key) {
+        const directionalClose = candle.close > candle.open;
+        if (
+          directionalClose
+          && candle.close > latestHigh.price + breakBuffer
+          && brokenHighKey !== key
+        ) {
           const previousBias = bias;
           const eventType = bias === "BEARISH" ? "CHOCH" : "BOS";
           bias = "BULLISH";
@@ -103,6 +179,9 @@
             broken_level: latestHigh.price,
             previous_bias: previousBias,
             new_bias: bias,
+            atr: currentAtr,
+            break_buffer: breakBuffer,
+            structure_grade: "MAJOR",
           });
           brokenHighKey = key;
         }
@@ -110,7 +189,12 @@
 
       if (latestLow) {
         const key = `${latestLow.timestamp}:${latestLow.price}`;
-        if (candle.close < latestLow.price && brokenLowKey !== key) {
+        const directionalClose = candle.close < candle.open;
+        if (
+          directionalClose
+          && candle.close < latestLow.price - breakBuffer
+          && brokenLowKey !== key
+        ) {
           const previousBias = bias;
           const eventType = bias === "BULLISH" ? "CHOCH" : "BOS";
           bias = "BEARISH";
@@ -123,6 +207,9 @@
             broken_level: latestLow.price,
             previous_bias: previousBias,
             new_bias: bias,
+            atr: currentAtr,
+            break_buffer: breakBuffer,
+            structure_grade: "MAJOR",
           });
           brokenLowKey = key;
         }
@@ -136,12 +223,17 @@
       swings,
       events,
       closed_candle_count: closed.length,
-      source: "browser_closed_chart_candles",
+      source: "browser_closed_chart_candles_major_structure",
       observation_only: true,
       affects_strategy: false,
       config: {
         left_bars: leftBars,
         right_bars: rightBars,
+        atr_period: atrPeriod,
+        min_swing_atr: minSwingAtr,
+        break_buffer_atr: breakBufferAtr,
+        min_bars_between_swings: minBarsBetween,
+        structure_grade: "MAJOR",
         closed_candles_only: true,
         repainting: false,
       },
