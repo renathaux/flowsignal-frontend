@@ -132,106 +132,6 @@
     status.textContent = message;
   }
 
-  function installBinaryShadowStyles() {
-    if (document.getElementById("binaryShadowStyles")) return;
-    const style = document.createElement("style");
-    style.id = "binaryShadowStyles";
-    style.textContent = `
-      .binary-shadow-card{border:1px solid rgba(93,153,224,.46);border-radius:12px;background:linear-gradient(180deg,rgba(8,21,36,.96),rgba(5,14,25,.98));padding:12px;margin:0 0 14px;color:#dce9f8;box-sizing:border-box}
-      .binary-shadow-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:9px}
-      .binary-shadow-kicker{display:block;font-size:9px;font-weight:800;letter-spacing:.12em;color:#7eb7f4;margin-bottom:3px}
-      .binary-shadow-title{font-size:15px;font-weight:900;color:#f0f6ff}
-      .binary-shadow-badge{border:1px solid rgba(255,183,58,.5);border-radius:999px;padding:4px 7px;font-size:8px;font-weight:900;color:#ffc85f;background:rgba(112,69,0,.25);white-space:nowrap}
-      .binary-shadow-signal{display:flex;align-items:center;justify-content:space-between;border:1px solid rgba(255,170,30,.5);border-radius:9px;padding:8px 10px;margin-bottom:9px;background:rgba(76,47,0,.18)}
-      .binary-shadow-signal span{font-size:9px;font-weight:800;color:#90a7c1;text-transform:uppercase;letter-spacing:.08em}
-      .binary-shadow-signal strong{font-size:19px;color:#ffc14d}
-      .binary-shadow-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}
-      .binary-shadow-grid>div{border:1px solid rgba(75,118,166,.34);border-radius:8px;padding:7px;background:rgba(4,13,23,.52);min-width:0}
-      .binary-shadow-grid span{display:block;font-size:8px;font-weight:800;color:#839ab4;text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px}
-      .binary-shadow-grid strong{display:block;font-size:11px;color:#e5effa;overflow-wrap:anywhere}
-      .binary-shadow-foot{margin-top:8px;font-size:9px;color:#7890aa;line-height:1.35}
-      @media(max-width:700px){.binary-shadow-grid{grid-template-columns:1fr 1fr}.binary-shadow-card{margin-bottom:10px}}
-    `;
-    document.head.appendChild(style);
-  }
-
-  function createBinaryShadowCard() {
-    let card = document.getElementById("binaryShadowCenterCard");
-    if (card) return card;
-    installBinaryShadowStyles();
-    card = document.createElement("section");
-    card.id = "binaryShadowCenterCard";
-    card.className = "binary-shadow-card";
-    card.setAttribute("aria-label", "Binary shadow research");
-    card.innerHTML = `
-      <div class="binary-shadow-head">
-        <div>
-          <span class="binary-shadow-kicker">BINARY RESEARCH</span>
-          <div class="binary-shadow-title">BINARY SHADOW · <span id="binaryShadowSymbol">EURUSD</span></div>
-        </div>
-        <span class="binary-shadow-badge">NO ORDERS</span>
-      </div>
-      <div class="binary-shadow-signal">
-        <span>Current direction</span>
-        <strong id="binaryShadowDecision">WAIT</strong>
-      </div>
-      <div class="binary-shadow-grid">
-        <div><span>Expiry</span><strong id="binaryShadowExpiry">15m</strong></div>
-        <div><span>Confidence</span><strong id="binaryShadowConfidence">--%</strong></div>
-        <div><span>Status</span><strong id="binaryShadowStatus">NOT WIRED</strong></div>
-      </div>
-      <div class="binary-shadow-foot">Research/shadow only. This panel does not place binary orders. Signal logic will be wired separately.</div>
-    `;
-    return card;
-  }
-
-  function syncBinaryShadowSymbol() {
-    const symbolText = String(document.getElementById("main-symbol-title")?.textContent || "EURUSD").toUpperCase();
-    const symbol = symbolText.includes("XAUUSD") || symbolText.includes("GOLD") ? "XAUUSD" : "EURUSD";
-    const target = document.getElementById("binaryShadowSymbol");
-    if (target) target.textContent = symbol;
-  }
-
-  function arrangeCenterAnalysis() {
-    if (!window.matchMedia("(min-width: 701px)").matches) return false;
-    const card = document.querySelector(".main-trade-card");
-    const metrics = card?.querySelector(".main-metrics");
-    const biasNote = card?.querySelector(".bias-only-note");
-    const checks = card?.querySelector(".entry-strategy-debug");
-    const smcPlan = card?.querySelector(".main-smc-panel");
-    if (!card || !metrics || !checks || !smcPlan) return false;
-
-    const anchor = biasNote || metrics;
-    anchor.insertAdjacentElement("afterend", checks);
-    checks.open = true;
-
-    const binary = createBinaryShadowCard();
-    checks.insertAdjacentElement("afterend", binary);
-    binary.insertAdjacentElement("afterend", smcPlan);
-    syncBinaryShadowSymbol();
-
-    if (card.dataset.binaryLayoutObserver !== "true") {
-      card.dataset.binaryLayoutObserver = "true";
-      const observer = new MutationObserver(() => {
-        syncBinaryShadowSymbol();
-        if (!document.getElementById("binaryShadowCenterCard")) arrangeCenterAnalysis();
-      });
-      observer.observe(card, { childList: true, subtree: true, characterData: true });
-    }
-    record("center_analysis_reordered", { order: ["metrics", "strategy_checks", "binary_shadow", "smc_plan"] });
-    return true;
-  }
-
-  function attachCenterAnalysisLayout() {
-    let attempts = 0;
-    const tryArrange = () => {
-      attempts += 1;
-      if (arrangeCenterAnalysis() || attempts >= 40) return;
-      window.setTimeout(tryArrange, 100);
-    };
-    tryArrange();
-  }
-
   function attachDesktopChartFullscreen() {
     if (!window.matchMedia("(min-width: 701px)").matches) return false;
     const chartSection = document.querySelector(".chart-panel .chart-section");
@@ -324,14 +224,11 @@
   }));
   window.addEventListener("load", openRequestedDesktopPanel, { once: true });
   window.addEventListener("load", attachDesktopChartFullscreen, { once: true });
-  window.addEventListener("load", attachCenterAnalysisLayout, { once: true });
 
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", loadTabRoleSession, { once: true });
-    document.addEventListener("DOMContentLoaded", attachCenterAnalysisLayout, { once: true });
   } else {
     loadTabRoleSession();
-    attachCenterAnalysisLayout();
   }
 
   window.FlowSignalStartup = {
@@ -343,7 +240,6 @@
     isMenuOpen: () => menuOpen,
     setTransportStatus,
     attachDesktopChartFullscreen,
-    arrangeCenterAnalysis,
   };
 
   record("application_initialization_started");
