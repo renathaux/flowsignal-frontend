@@ -45,7 +45,7 @@
     timeframe: "5m",
     candle: null,
     endpoint: "",
-    pollMs: 500,
+    pollMs: 250,
     timer: null,
     requestInFlight: false,
     lastTickTimestamp: 0,
@@ -68,10 +68,16 @@
     if (state.requestInFlight) return schedulePoll();
     state.requestInFlight = true;
     try {
-      const response = await fetch(state.endpoint, { cache: "no-store" });
+      const response = await fetch(state.endpoint, { cache: "no-store", suppressErrorPanel: true });
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
-      const tick = normalizeTick(await response.json(), state.symbol);
-      if (tick) api.onTick(tick);
+      const payload = await response.json();
+      const staleSymbols = Array.isArray(payload?.live_price_stale_symbols)
+        ? payload.live_price_stale_symbols.map((value) => String(value).toUpperCase())
+        : [];
+      if (!staleSymbols.includes(state.symbol)) {
+        const tick = normalizeTick(payload, state.symbol);
+        if (tick) api.onTick(tick);
+      }
     } catch (error) {
       window.dispatchEvent(new CustomEvent("flowsignal:live-candle-error", {
         detail: { message: error?.message || String(error) },
