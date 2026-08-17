@@ -25,6 +25,62 @@
   if (chromeDesktop) document.body?.classList.add("flowsignal-chrome-desktop");
   if (safariDesktop) document.body?.classList.add("flowsignal-safari-desktop");
 
+  function installSafariSpeechNormalizer() {
+    if (!safariDesktop || !window.speechSynthesis || typeof SpeechSynthesisUtterance === "undefined") return;
+    if (window.speechSynthesis.__flowSignalSafariVoicePatched) return;
+
+    const synth = window.speechSynthesis;
+    const nativeSpeak = synth.speak.bind(synth);
+
+    function languagePrefix(lang) {
+      return String(lang || document.documentElement.lang || "en-US").toLowerCase().split("-")[0];
+    }
+
+    function preferredVoiceFor(lang) {
+      const voices = synth.getVoices?.() || [];
+      if (!voices.length) return null;
+
+      const prefix = languagePrefix(lang);
+      const preferredNames = prefix === "fr"
+        ? ["Amélie", "Audrey", "Thomas"]
+        : prefix === "es"
+          ? ["Mónica", "Monica", "Jorge", "Paulina"]
+          : ["Samantha", "Ava", "Allison", "Susan", "Alex"];
+
+      for (const name of preferredNames) {
+        const exact = voices.find((voice) => voice.name === name && languagePrefix(voice.lang) === prefix);
+        if (exact) return exact;
+      }
+
+      const localMatch = voices.find((voice) => languagePrefix(voice.lang) === prefix && voice.localService !== false);
+      if (localMatch) return localMatch;
+
+      return voices.find((voice) => languagePrefix(voice.lang) === prefix) || null;
+    }
+
+    synth.speak = function (utterance) {
+      if (utterance instanceof SpeechSynthesisUtterance) {
+        const voice = preferredVoiceFor(utterance.lang);
+        if (voice) {
+          utterance.voice = voice;
+          if (!utterance.lang) utterance.lang = voice.lang;
+        }
+
+        // Safari can sound raspy/strained when the same values used by Blink
+        // are rendered by WebKit/macOS speech. Keep Safari close to a natural
+        // speaking cadence without changing Chrome's existing voice path.
+        utterance.rate = 0.94;
+        utterance.pitch = 1.0;
+        utterance.volume = 1.0;
+      }
+      return nativeSpeak(utterance);
+    };
+
+    synth.__flowSignalSafariVoicePatched = true;
+  }
+
+  installSafariSpeechNormalizer();
+
   function getTabRole() { return normalizeRole(sessionStorage.getItem(TAB_ROLE_KEY)); }
   function setTabRole(role) {
     const normalized = normalizeRole(role);
