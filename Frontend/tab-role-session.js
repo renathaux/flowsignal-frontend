@@ -42,6 +42,20 @@
     if (element && element.textContent !== value) element.textContent = value;
   }
 
+  function currentWaitReason() {
+    const values = [
+      document.getElementById("main-blocked-reason")?.textContent,
+      document.getElementById("main-rr")?.textContent,
+      document.getElementById("v2-shadow-reason")?.textContent,
+    ].map((value) => String(value || "").trim()).filter(Boolean);
+
+    const explicitWait = values.find((value) => /^WAIT(?:_|$)/i.test(value));
+    if (explicitWait) return explicitWait;
+
+    const meaningful = values.find((value) => value !== "--" && value !== "WAIT");
+    return meaningful || "--";
+  }
+
   function forceVisible(element, display = "block") {
     if (!element) return;
     element.classList.remove("hidden", "admin-only-hidden");
@@ -73,9 +87,7 @@
       "strategy-debug-swing-sl",
     ].forEach((id) => setText(id, "NO"));
     setText("strategy-debug-decision", "WAIT");
-    // Do NOT overwrite strategy-debug-block-reason here. script.js already
-    // renders the live WAIT reason (for example WAIT_NO_15M_BREAK). Clearing
-    // it to -- made User mode lose the explanation while SMC still had it.
+    setText("strategy-debug-block-reason", currentWaitReason());
   }
 
   function syncCurrentStrategyPresentation() {
