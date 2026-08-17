@@ -2,16 +2,19 @@
   "use strict";
 
   let lastSeries = null;
+  let lastChart = null;
   let lastSymbol = null;
   let lastTimeframe = null;
   let lastMountAt = 0;
 
   function currentSeries() {
-    try {
-      return typeof candleSeries !== "undefined" ? candleSeries : null;
-    } catch (_) {
-      return null;
-    }
+    try { return typeof candleSeries !== "undefined" ? candleSeries : null; }
+    catch (_) { return null; }
+  }
+
+  function currentChart() {
+    try { return typeof chart !== "undefined" ? chart : null; }
+    catch (_) { return null; }
   }
 
   function currentSymbol() {
@@ -19,9 +22,7 @@
       return typeof currentChartSymbol !== "undefined" && currentChartSymbol
         ? String(currentChartSymbol).toUpperCase()
         : "EURUSD";
-    } catch (_) {
-      return "EURUSD";
-    }
+    } catch (_) { return "EURUSD"; }
   }
 
   function currentTimeframe() {
@@ -29,9 +30,7 @@
       return typeof currentChartTimeframe !== "undefined" && currentChartTimeframe
         ? String(currentChartTimeframe).toLowerCase()
         : "5m";
-    } catch (_) {
-      return "5m";
-    }
+    } catch (_) { return "5m"; }
   }
 
   function report(error) {
@@ -44,16 +43,18 @@
     try {
       const smc = window.FlowSignalSMC;
       const series = currentSeries();
-      if (!smc || !series) return false;
+      const chartInstance = currentChart();
+      if (!smc || !series || !chartInstance) return false;
 
       const symbol = currentSymbol();
       const timeframe = currentTimeframe();
-      const seriesChanged = series !== lastSeries;
+      const mountChanged = series !== lastSeries || chartInstance !== lastChart;
       const contextChanged = symbol !== lastSymbol || timeframe !== lastTimeframe;
 
-      if (seriesChanged) {
-        smc.mount({ candleSeries: series, symbol, timeframe });
+      if (mountChanged) {
+        smc.mount({ chart: chartInstance, candleSeries: series, symbol, timeframe });
         lastSeries = series;
+        lastChart = chartInstance;
         lastMountAt = Date.now();
       } else if (contextChanged) {
         smc.setContext({ symbol, timeframe });
@@ -62,7 +63,7 @@
       lastSymbol = symbol;
       lastTimeframe = timeframe;
 
-      if (smc.getState?.().enabled && (seriesChanged || contextChanged || Date.now() - lastMountAt < 1500)) {
+      if (smc.getState?.().enabled && (mountChanged || contextChanged || Date.now() - lastMountAt < 1500)) {
         smc.refresh?.();
       }
       return true;
@@ -72,9 +73,6 @@
     }
   }
 
-  // This is the explicit chart integration point. It reads FlowSignal's existing
-  // chart globals after script.js creates them, so the SMC overlay no longer
-  // depends on intercepting Lightweight Charts at exactly the right millisecond.
   window.addEventListener("load", () => {
     sync();
     window.setTimeout(sync, 250);
@@ -90,7 +88,7 @@
   window.FlowSignalSmcChartBridge = {
     sync,
     getState: () => ({
-      mounted: Boolean(lastSeries),
+      mounted: Boolean(lastSeries && lastChart),
       symbol: lastSymbol,
       timeframe: lastTimeframe,
       lastMountAt,
