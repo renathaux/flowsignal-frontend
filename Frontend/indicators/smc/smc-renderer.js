@@ -1,24 +1,32 @@
 (function () {
   "use strict";
 
-  function safeRemove(series, line) {
+  function epoch(value) {
+    if (typeof value === "number" && Number.isFinite(value)) {
+      return value > 10_000_000_000 ? Math.floor(value / 1000) : Math.floor(value);
+    }
+    const parsed = Date.parse(String(value || ""));
+    return Number.isFinite(parsed) ? Math.floor(parsed / 1000) : null;
+  }
+
+  function safeRemoveSeries(chart, series) {
     try {
-      if (series && line && typeof series.removePriceLine === "function") {
-        series.removePriceLine(line);
-      }
+      if (chart && series && typeof chart.removeSeries === "function") chart.removeSeries(series);
     } catch (_) {}
   }
 
   class SmcRenderer {
     constructor() {
-      this.series = null;
-      this.lines = [];
+      this.chart = null;
+      this.candleSeries = null;
+      this.structureSeries = [];
       this.enabled = false;
     }
 
-    mount({ candleSeries }) {
-      this.series = candleSeries || null;
-      return Boolean(this.series);
+    mount({ chart, candleSeries } = {}) {
+      if (chart) this.chart = chart;
+      if (candleSeries) this.candleSeries = candleSeries;
+      return Boolean(this.chart && this.candleSeries);
     }
 
     setEnabled(enabled) {
@@ -27,59 +35,59 @@
     }
 
     clear() {
-      this.lines.forEach((line) => safeRemove(this.series, line));
-      this.lines = [];
+      this.structureSeries.forEach((series) => safeRemoveSeries(this.chart, series));
+      this.structureSeries = [];
     }
 
-    addLine(options) {
-      if (!this.series || typeof this.series.createPriceLine !== "function") return;
-      const line = this.series.createPriceLine(options);
-      this.lines.push(line);
+    addSegment(event) {
+      if (!this.chart || typeof this.chart.addLineSeries !== "function") return;
+
+      const price = Number(event?.broken_level);
+      let start = epoch(event?.broken_swing_timestamp);
+      let end = epoch(event?.timestamp);
+      if (!Number.isFinite(price) || !Number.isFinite(start) || !Number.isFinite(end)) return;
+      if (end <= start) end = start + 1;
+
+      const isChoch = String(event?.event_type || "").toUpperCase() === "CHOCH";
+      const isBullish = String(event?.direction || "").toUpperCase() === "BULLISH";
+      const color = isChoch ? "#6d8cff" : (isBullish ? "#d9e3f0" : "#f0c9cf");
+      const lineWidth = isChoch ? 2 : 1;
+
+      const series = this.chart.addLineSeries({
+        color,
+        lineWidth,
+        lineStyle: 0,
+        lastValueVisible: false,
+        priceLineVisible: false,
+        crosshairMarkerVisible: false,
+        autoscaleInfoProvider: () => null,
+      });
+
+      series.setData([
+        { time: start, value: price },
+        { time: end, value: price },
+      ]);
+
+      if (typeof series.setMarkers === "function") {
+        series.setMarkers([{
+          time: end,
+          position: isBullish ? "aboveBar" : "belowBar",
+          shape: isBullish ? "arrowUp" : "arrowDown",
+          color,
+          text: isChoch ? "CHoCH" : "BOS",
+          size: 0.55,
+        }]);
+      }
+
+      this.structureSeries.push(series);
     }
 
     render(structure) {
       this.clear();
-      if (!this.enabled || !this.series || !structure) return;
+      if (!this.enabled || !this.chart || !this.candleSeries || !structure) return;
 
       const events = Array.isArray(structure.events) ? structure.events : [];
-      events.slice(-10).forEach((event) => {
-        const price = Number(event.broken_level);
-        if (!Number.isFinite(price)) return;
-        const isChoch = String(event.event_type || "").toUpperCase() === "CHOCH";
-        const isBullish = String(event.direction || "").toUpperCase() === "BULLISH";
-        this.addLine({
-          price,
-          lineWidth: isChoch ? 2 : 1,
-          lineStyle: isChoch ? 1 : 2,
-          axisLabelVisible: false,
-          title: `${isChoch ? "CHoCH" : "BOS"} ${isBullish ? "▲" : "▼"}`,
-          color: isChoch ? "#ffb020" : (isBullish ? "#20d67b" : "#ff5f6d"),
-        });
-      });
-
-      const swingHigh = Number(structure.last_swing_high?.price);
-      if (Number.isFinite(swingHigh)) {
-        this.addLine({
-          price: swingHigh,
-          lineWidth: 1,
-          lineStyle: 3,
-          axisLabelVisible: false,
-          title: "Swing High",
-          color: "#7aa2ff",
-        });
-      }
-
-      const swingLow = Number(structure.last_swing_low?.price);
-      if (Number.isFinite(swingLow)) {
-        this.addLine({
-          price: swingLow,
-          lineWidth: 1,
-          lineStyle: 3,
-          axisLabelVisible: false,
-          title: "Swing Low",
-          color: "#d68cff",
-        });
-      }
+      events.slice(-14).forEach((event) => this.addSegment(event));
     }
   }
 
