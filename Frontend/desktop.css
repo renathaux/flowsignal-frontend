@@ -69,6 +69,29 @@
   body.flowsignal-safari-desktop.fit-mode .chart-panel #fundamental-insight-card,
   body.flowsignal-safari-desktop.fit-mode .chart-panel #v2-shadow-card { display:block !important;visibility:visible !important;opacity:1 !important;position:relative !important;inset:auto !important;transform:none !important;width:100% !important;height:auto !important;max-height:none !important;overflow:visible !important;flex:0 0 auto !important; }
 
+  /* Safe visual ordering only: no DOM mutation. Strategy Checks now sit
+     directly below the signal percentages, with SMC Plan underneath. */
+  body.flowsignal-chrome-desktop.fit-mode .main-trade-card,
+  body.flowsignal-safari-desktop.fit-mode .main-trade-card { display:flex !important;flex-direction:column !important; }
+  body.flowsignal-chrome-desktop.fit-mode .main-trade-header,
+  body.flowsignal-safari-desktop.fit-mode .main-trade-header { order:10 !important; }
+  body.flowsignal-chrome-desktop.fit-mode .main-signal-box,
+  body.flowsignal-safari-desktop.fit-mode .main-signal-box { order:20 !important; }
+  body.flowsignal-chrome-desktop.fit-mode .main-signal-note,
+  body.flowsignal-safari-desktop.fit-mode .main-signal-note { order:21 !important; }
+  body.flowsignal-chrome-desktop.fit-mode .main-metrics,
+  body.flowsignal-safari-desktop.fit-mode .main-metrics { order:30 !important; }
+  body.flowsignal-chrome-desktop.fit-mode .bias-only-note,
+  body.flowsignal-safari-desktop.fit-mode .bias-only-note { order:31 !important; }
+  body.flowsignal-chrome-desktop.fit-mode .entry-strategy-debug,
+  body.flowsignal-safari-desktop.fit-mode .entry-strategy-debug { order:40 !important; }
+  body.flowsignal-chrome-desktop.fit-mode .main-smc-panel,
+  body.flowsignal-safari-desktop.fit-mode .main-smc-panel { order:50 !important; }
+  body.flowsignal-chrome-desktop.fit-mode .main-buttons-row,
+  body.flowsignal-safari-desktop.fit-mode .main-buttons-row { order:60 !important; }
+  body.flowsignal-chrome-desktop.fit-mode .main-bottom-row,
+  body.flowsignal-safari-desktop.fit-mode .main-bottom-row { order:70 !important; }
+
   /* Chrome-only readability: the large generic clamp made NEUTRAL collide
      with the strength columns at this dashboard width. */
   body.flowsignal-chrome-desktop.fit-mode .fundamental-bias { font-size:clamp(28px,3vw,40px) !important;letter-spacing:-.02em !important; }
