@@ -1,244 +1,228 @@
+/*
+ * FlowSignal SMC structure engine.
+ * Adapted from "SMC Structures and FVG" © LudoGH68, MPL-2.0.
+ * FVG logic intentionally excluded.
+ */
 (function () {
   "use strict";
+
+  const LOOKBACK = 10;
+  const FIB_LEVELS = [0.786, 0.705, 0.618, 0.5, 0.382];
 
   function normalizeCandles(rows) {
     if (!Array.isArray(rows)) return [];
     return rows.map((c) => ({
-      time: Number(c?.time),
-      open: Number(c?.open),
-      high: Number(c?.high),
-      low: Number(c?.low),
-      close: Number(c?.close),
+      time: Number(c?.time), open: Number(c?.open), high: Number(c?.high),
+      low: Number(c?.low), close: Number(c?.close),
     })).filter((c) => [c.time, c.open, c.high, c.low, c.close].every(Number.isFinite))
       .sort((a, b) => a.time - b.time);
   }
 
-  function trueRange(candle, previous) {
-    if (!previous) return Math.max(0, candle.high - candle.low);
-    return Math.max(
-      candle.high - candle.low,
-      Math.abs(candle.high - previous.close),
-      Math.abs(candle.low - previous.close),
-    );
+  function highestIndex(candles, endIndex, lookback = LOOKBACK) {
+    const start = Math.max(0, endIndex - lookback + 1);
+    let idx = start;
+    for (let i = start + 1; i <= endIndex; i += 1) {
+      if (candles[i].high >= candles[idx].high) idx = i;
+    }
+    return idx;
   }
 
-  function atrSeries(candles, period = 14) {
-    const trs = candles.map((candle, index) => trueRange(candle, candles[index - 1]));
-    return trs.map((_, index) => {
-      const start = Math.max(0, index - period + 1);
-      const window = trs.slice(start, index + 1);
-      return window.reduce((sum, value) => sum + value, 0) / Math.max(1, window.length);
-    });
+  function lowestIndex(candles, endIndex, lookback = LOOKBACK) {
+    const start = Math.max(0, endIndex - lookback + 1);
+    let idx = start;
+    for (let i = start + 1; i <= endIndex; i += 1) {
+      if (candles[i].low <= candles[idx].low) idx = i;
+    }
+    return idx;
   }
 
-  function detectRawSwings(candles, leftBars, rightBars) {
-    const swings = [];
-    if (candles.length < leftBars + rightBars + 1) return swings;
-
-    for (let i = leftBars; i < candles.length - rightBars; i += 1) {
-      const current = candles[i];
-      const left = candles.slice(i - leftBars, i);
-      const right = candles.slice(i + 1, i + 1 + rightBars);
-      const confirmedIndex = i + rightBars;
-
-      if (
-        current.high > Math.max(...left.map((c) => c.high))
-        && current.high >= Math.max(...right.map((c) => c.high))
-      ) {
-        swings.push({
-          swing_type: "HIGH",
-          index: i,
-          confirmed_index: confirmedIndex,
-          timestamp: current.time,
-          confirmed_timestamp: candles[confirmedIndex].time,
-          price: current.high,
-        });
-      }
-
-      if (
-        current.low < Math.min(...left.map((c) => c.low))
-        && current.low <= Math.min(...right.map((c) => c.low))
-      ) {
-        swings.push({
-          swing_type: "LOW",
-          index: i,
-          confirmed_index: confirmedIndex,
-          timestamp: current.time,
-          confirmed_timestamp: candles[confirmedIndex].time,
-          price: current.low,
-        });
+  // Pine's get_structure_highest_bar/get_structure_lowest_bar prefer a local
+  // turning point inside the 10-bar window, falling back to the absolute extreme.
+  function structureHighestIndex(candles, endIndex, lookback = LOOKBACK) {
+    const start = Math.max(0, endIndex - lookback + 1);
+    const maxIdx = highestIndex(candles, endIndex, lookback);
+    let chosen = null;
+    for (let i = endIndex - 1; i >= Math.max(start + 1, 1); i -= 1) {
+      if (i + 1 > endIndex) continue;
+      if (candles[i].high > candles[i - 1].high && candles[i + 1].high <= candles[i].high && i >= maxIdx) {
+        chosen = i;
       }
     }
-
-    return swings.sort((a, b) => a.confirmed_index - b.confirmed_index || a.index - b.index);
+    return chosen == null ? maxIdx : chosen;
   }
 
-  function filterMajorSwings(rawSwings, candles, atr, options = {}) {
-    const minSwingAtr = Math.max(0.25, Number(options.minSwingAtr) || 0.8);
-    const minBarsBetween = Math.max(1, Number(options.minBarsBetween) || 3);
-    const accepted = [];
-
-    rawSwings.forEach((candidate) => {
-      if (!accepted.length) {
-        accepted.push(candidate);
-        return;
+  function structureLowestIndex(candles, endIndex, lookback = LOOKBACK) {
+    const start = Math.max(0, endIndex - lookback + 1);
+    const minIdx = lowestIndex(candles, endIndex, lookback);
+    let chosen = null;
+    for (let i = endIndex - 1; i >= Math.max(start + 1, 1); i -= 1) {
+      if (i + 1 > endIndex) continue;
+      if (candles[i].low < candles[i - 1].low && candles[i + 1].low >= candles[i].low && i >= minIdx) {
+        chosen = i;
       }
+    }
+    return chosen == null ? minIdx : chosen;
+  }
 
-      const last = accepted[accepted.length - 1];
-      if (candidate.swing_type === last.swing_type) {
-        const moreExtreme = candidate.swing_type === "HIGH"
-          ? candidate.price > last.price
-          : candidate.price < last.price;
-        if (moreExtreme) accepted[accepted.length - 1] = candidate;
-        return;
-      }
-
-      const barDistance = Math.abs(candidate.index - last.index);
-      const referenceAtr = Math.max(
-        Number(atr[candidate.index]) || 0,
-        Number(atr[last.index]) || 0,
-      );
-      const requiredMove = referenceAtr * minSwingAtr;
-      const actualMove = Math.abs(candidate.price - last.price);
-
-      if (barDistance >= minBarsBetween && actualMove >= requiredMove) {
-        accepted.push(candidate);
-      }
+  function fibPayload(direction, structureHigh, structureLow, highStart, lowStart, candles) {
+    const range = Math.abs(structureHigh - structureLow);
+    if (!Number.isFinite(range) || range <= 0) return [];
+    return FIB_LEVELS.map((value) => {
+      const price = direction === 1
+        ? structureHigh - (range - range * value)
+        : structureLow + (range - range * value);
+      const startIndex = direction === 1 ? highStart : lowStart;
+      return {
+        value,
+        price,
+        start_index: startIndex,
+        start_timestamp: candles[startIndex]?.time ?? candles[candles.length - 1]?.time,
+      };
     });
-
-    return accepted;
-  }
-
-  function detectSwings(rows, leftBars = 3, rightBars = 3, options = {}) {
-    const candles = normalizeCandles(rows);
-    const atr = atrSeries(candles, Math.max(5, Number(options.atrPeriod) || 14));
-    const raw = detectRawSwings(candles, leftBars, rightBars);
-    return filterMajorSwings(raw, candles, atr, options);
   }
 
   function analyze(rows, options = {}) {
-    const leftBars = Math.max(2, Number(options.leftBars) || 3);
-    const rightBars = Math.max(2, Number(options.rightBars) || 3);
-    const atrPeriod = Math.max(5, Number(options.atrPeriod) || 14);
-    const minSwingAtr = Math.max(0.25, Number(options.minSwingAtr) || 0.8);
-    const breakBufferAtr = Math.max(0, Number(options.breakBufferAtr) || 0.10);
-    const minBarsBetween = Math.max(1, Number(options.minBarsBetween) || 3);
-    const candles = normalizeCandles(rows);
+    const candlesAll = normalizeCandles(rows);
+    // FlowSignal chart includes the forming candle. Pine evaluates bar closes;
+    // exclude the newest bar so the visual structure does not repaint intrabar.
+    const candles = options.includeForming ? candlesAll : (candlesAll.length > 1 ? candlesAll.slice(0, -1) : candlesAll);
+    if (!candles.length) {
+      return { bias: "NEUTRAL", events: [], current_structure: null, fib_levels: [], swings: [], closed_candle_count: 0 };
+    }
 
-    // Never use the newest forming candle for structure confirmation.
-    const closed = candles.length > 1 ? candles.slice(0, -1) : candles;
-    const atr = atrSeries(closed, atrPeriod);
-    const rawSwings = detectRawSwings(closed, leftBars, rightBars);
-    const swings = filterMajorSwings(rawSwings, closed, atr, { minSwingAtr, minBarsBetween });
-
-    let latestHigh = null;
-    let latestLow = null;
-    let brokenHighKey = null;
-    let brokenLowKey = null;
-    let bias = "NEUTRAL";
+    let structureHigh = candles[0].high;
+    let structureLow = candles[0].low;
+    let structureHighStartIndex = 0;
+    let structureLowStartIndex = 0;
+    // Pine mapping: 1=bearish, 2=bullish, 0=unset.
+    let structureDirection = 0;
     const events = [];
-    const byConfirmation = new Map();
 
-    swings.forEach((swing) => {
-      const bucket = byConfirmation.get(swing.confirmed_index) || [];
-      bucket.push(swing);
-      byConfirmation.set(swing.confirmed_index, bucket);
-    });
+    for (let i = 1; i < candles.length; i += 1) {
+      const candle = candles[i];
+      const highBreakPrice = candle.close; // Pine default: body/close break.
+      const lowBreakPrice = candle.close;
+      const prev1 = candles[i - 1];
+      const prev2 = candles[i - 2];
+      const prev3 = candles[i - 3];
 
-    closed.forEach((candle, index) => {
-      (byConfirmation.get(index) || []).forEach((swing) => {
-        if (swing.swing_type === "HIGH") {
-          latestHigh = swing;
-          brokenHighKey = null;
-        } else {
-          latestLow = swing;
-          brokenLowKey = null;
-        }
-      });
+      const enoughAfterLowStart = i - 1 > structureLowStartIndex
+        && i - 2 > structureLowStartIndex
+        && i - 3 > structureLowStartIndex;
+      const enoughAfterHighStart = i - 1 > structureHighStartIndex
+        && i - 2 > structureHighStartIndex
+        && i - 3 > structureHighStartIndex;
 
-      const currentAtr = Number(atr[index]) || 0;
-      const breakBuffer = currentAtr * breakBufferAtr;
+      const lowBroken = (
+        lowBreakPrice < structureLow
+        && prev1 && prev2 && prev3
+        && prev1.close >= structureLow && prev2.close >= structureLow && prev3.close >= structureLow
+        && enoughAfterLowStart
+      ) || (structureDirection === 2 && lowBreakPrice < structureLow);
 
-      if (latestHigh) {
-        const key = `${latestHigh.timestamp}:${latestHigh.price}`;
-        const directionalClose = candle.close > candle.open;
-        if (
-          directionalClose
-          && candle.close > latestHigh.price + breakBuffer
-          && brokenHighKey !== key
-        ) {
-          const previousBias = bias;
-          const eventType = bias === "BEARISH" ? "CHOCH" : "BOS";
-          bias = "BULLISH";
-          events.push({
-            event_type: eventType,
-            direction: "BULLISH",
-            timestamp: candle.time,
-            close: candle.close,
-            broken_swing_timestamp: latestHigh.timestamp,
-            broken_level: latestHigh.price,
-            previous_bias: previousBias,
-            new_bias: bias,
-            atr: currentAtr,
-            break_buffer: breakBuffer,
-            structure_grade: "MAJOR",
-          });
-          brokenHighKey = key;
+      const highBroken = (
+        highBreakPrice > structureHigh
+        && prev1 && prev2 && prev3
+        && prev1.close <= structureHigh && prev2.close <= structureHigh && prev3.close <= structureHigh
+        && enoughAfterHighStart
+      ) || (structureDirection === 1 && highBreakPrice > structureHigh);
+
+      if (lowBroken) {
+        const eventType = structureDirection === 1 ? "BOS" : "CHOCH";
+        events.push({
+          event_type: eventType,
+          direction: "BEARISH",
+          timestamp: candle.time,
+          close: candle.close,
+          broken_swing_timestamp: candles[structureLowStartIndex].time,
+          broken_level: structureLow,
+          structure_start_index: structureLowStartIndex,
+          break_index: i,
+          previous_direction: structureDirection,
+          new_direction: 1,
+        });
+
+        structureDirection = 1;
+        structureHighStartIndex = structureHighestIndex(candles, i, LOOKBACK);
+        structureLowStartIndex = i;
+        structureHigh = candles[structureHighStartIndex].high;
+        structureLow = candle.low;
+      } else if (highBroken) {
+        const eventType = structureDirection === 2 ? "BOS" : "CHOCH";
+        events.push({
+          event_type: eventType,
+          direction: "BULLISH",
+          timestamp: candle.time,
+          close: candle.close,
+          broken_swing_timestamp: candles[structureHighStartIndex].time,
+          broken_level: structureHigh,
+          structure_start_index: structureHighStartIndex,
+          break_index: i,
+          previous_direction: structureDirection,
+          new_direction: 2,
+        });
+
+        structureDirection = 2;
+        structureHighStartIndex = i;
+        structureLowStartIndex = structureLowestIndex(candles, i, LOOKBACK);
+        structureHigh = candle.high;
+        structureLow = candles[structureLowStartIndex].low;
+      } else {
+        if (candle.high > structureHigh && (structureDirection === 0 || structureDirection === 2)) {
+          // Mirrors the Pine body's anti-premature-break guard.
+          const canUpdate = !prev1 || !prev2 || !prev3 || !(
+            i - 1 > structureHighStartIndex && i - 2 > structureHighStartIndex && i - 3 > structureHighStartIndex
+          );
+          if (canUpdate) {
+            structureHigh = candle.high;
+            structureHighStartIndex = i;
+          }
+        } else if (candle.low < structureLow && (structureDirection === 0 || structureDirection === 1)) {
+          const canUpdate = !prev1 || !prev2 || !prev3 || !(
+            i - 1 > structureLowStartIndex && i - 2 > structureLowStartIndex && i - 3 > structureLowStartIndex
+          );
+          if (canUpdate) {
+            structureLow = candle.low;
+            structureLowStartIndex = i;
+          }
         }
       }
+    }
 
-      if (latestLow) {
-        const key = `${latestLow.timestamp}:${latestLow.price}`;
-        const directionalClose = candle.close < candle.open;
-        if (
-          directionalClose
-          && candle.close < latestLow.price - breakBuffer
-          && brokenLowKey !== key
-        ) {
-          const previousBias = bias;
-          const eventType = bias === "BULLISH" ? "CHOCH" : "BOS";
-          bias = "BEARISH";
-          events.push({
-            event_type: eventType,
-            direction: "BEARISH",
-            timestamp: candle.time,
-            close: candle.close,
-            broken_swing_timestamp: latestLow.timestamp,
-            broken_level: latestLow.price,
-            previous_bias: previousBias,
-            new_bias: bias,
-            atr: currentAtr,
-            break_buffer: breakBuffer,
-            structure_grade: "MAJOR",
-          });
-          brokenLowKey = key;
-        }
-      }
-    });
+    const bias = structureDirection === 2 ? "BULLISH" : structureDirection === 1 ? "BEARISH" : "NEUTRAL";
+    const currentStructure = {
+      direction: structureDirection,
+      bias,
+      high: structureHigh,
+      low: structureLow,
+      high_start_index: structureHighStartIndex,
+      low_start_index: structureLowStartIndex,
+      high_start_timestamp: candles[structureHighStartIndex].time,
+      low_start_timestamp: candles[structureLowStartIndex].time,
+      end_timestamp: candles[candles.length - 1].time,
+      range: Math.abs(structureHigh - structureLow),
+    };
 
     return {
       bias,
-      last_swing_high: latestHigh,
-      last_swing_low: latestLow,
-      swings,
       events,
-      closed_candle_count: closed.length,
-      source: "browser_closed_chart_candles_major_structure",
+      current_structure: currentStructure,
+      fib_levels: fibPayload(structureDirection, structureHigh, structureLow, structureHighStartIndex, structureLowStartIndex, candles),
+      swings: [],
+      closed_candle_count: candles.length,
+      source: "ludogh68_structure_port_no_fvg",
       observation_only: true,
       affects_strategy: false,
       config: {
-        left_bars: leftBars,
-        right_bars: rightBars,
-        atr_period: atrPeriod,
-        min_swing_atr: minSwingAtr,
-        break_buffer_atr: breakBufferAtr,
-        min_bars_between_swings: minBarsBetween,
-        structure_grade: "MAJOR",
+        lookback: LOOKBACK,
+        break_with_candle_body: true,
+        current_structure: true,
+        fib_values: FIB_LEVELS,
+        fvg: false,
         closed_candles_only: true,
-        repainting: false,
       },
     };
   }
 
-  window.FlowSignalSmcLocalEngine = { analyze, detectSwings };
+  window.FlowSignalSmcLocalEngine = { analyze, normalizeCandles };
 })();
