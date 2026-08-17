@@ -1,11 +1,12 @@
 (function () {
   if (document.readyState === "loading") {
     if (!window.FlowSignalLiveCandles) {
-      document.write('<script src="chart/live-candles/live-candle-controller.js?v=2"><\/script>');
+      document.write('<script src="chart/live-candles/live-candle-controller.js?v=3"><\/script>');
     }
-    document.write('<link rel="stylesheet" href="indicators/smc/smc.css?v=2">');
-    document.write('<script src="indicators/smc/smc-renderer.js?v=2"><\/script>');
-    document.write('<script src="indicators/smc/smc-indicator.js?v=2"><\/script>');
+    document.write('<link rel="stylesheet" href="indicators/smc/smc.css?v=3">');
+    document.write('<script src="indicators/smc/smc-renderer.js?v=3"><\/script>');
+    document.write('<script src="indicators/smc/smc-indicator.js?v=3"><\/script>');
+    document.write('<script src="indicators/smc/smc-chart-bridge.js?v=3"><\/script>');
   }
 
   function shouldUseSeparatedMobileDashboard() {
