@@ -12,7 +12,7 @@
     if(document.querySelector('link[data-flowsignal-binary-css]')) return;
     const link=document.createElement('link');
     link.rel='stylesheet';
-    link.href='binary/binary.css?v=1';
+    link.href='binary/binary.css?v=2';
     link.dataset.flowsignalBinaryCss='true';
     document.head.appendChild(link);
   }
@@ -28,11 +28,15 @@
       '</div>';
   }
 
-  function findMountAnchor(){
-    return document.querySelector('.main-trade-card .main-smc-panel');
+  function findMountAnchor(){ return document.querySelector('.main-trade-card .main-smc-panel'); }
+
+  function removeLegacyBinary(){
+    const legacy=document.getElementById('binary-shadow-placeholder');
+    if(legacy) legacy.remove();
   }
 
   function mount(){
+    removeLegacyBinary();
     if(document.getElementById(ROOT_ID)){mounted=true;return true;}
     const anchor=findMountAnchor();
     if(!anchor) return false;
@@ -46,6 +50,7 @@
     root.querySelector('#binaryDerivDisconnectBtn')?.addEventListener('click',onDisconnectClick);
     mounted=true;
     refreshStatus();
+    console.info('BINARY_APP_MOUNTED');
     return true;
   }
 
@@ -67,9 +72,7 @@
     return btoa(String.fromCharCode(...new Uint8Array(digest))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/g,'');
   }
 
-  function randomState(){
-    return Array.from(crypto.getRandomValues(new Uint8Array(16)),b=>b.toString(16).padStart(2,'0')).join('');
-  }
+  function randomState(){ return Array.from(crypto.getRandomValues(new Uint8Array(16)),b=>b.toString(16).padStart(2,'0')).join(''); }
 
   async function getConfig(){
     const response=await fetch(`${BACKEND}/deriv/config`,{cache:'no-store'});
@@ -84,6 +87,7 @@
     button.disabled=true;
     button.textContent='Connecting…';
     setStatus('PREPARING DERIV LOGIN…');
+    console.info('BINARY_CONNECT_CLICK');
     try{
       const cfg=await getConfig();
       if(!cfg?.configured||!cfg?.client_id||!cfg?.authorization_url) throw new Error('Deriv app configuration unavailable');
@@ -100,7 +104,7 @@
       url.searchParams.set('state',state);
       url.searchParams.set('code_challenge',challenge);
       url.searchParams.set('code_challenge_method','S256');
-      window.location.assign(url.toString());
+      window.location.href=url.toString();
     }catch(error){
       console.error('BINARY_DERIV_CONNECT_ERROR',error);
       setStatus(`CONNECT ERROR · ${error.message||'unknown error'}`,true);
@@ -113,10 +117,8 @@
     event.preventDefault();
     const id=localStorage.getItem(CONNECTION_KEY);
     try{
-      if(id){
-        await fetch(`${BACKEND}/deriv/disconnect`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({connection_id:id})});
-      }
-    }catch(error){console.warn('BINARY_DERIV_DISCONNECT_WARNING',error)}
+      if(id) await fetch(`${BACKEND}/deriv/disconnect`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({connection_id:id})});
+    }catch(error){ console.warn('BINARY_DERIV_DISCONNECT_WARNING',error); }
     localStorage.removeItem(CONNECTION_KEY);
     refreshStatus();
   }
@@ -149,9 +151,7 @@
       if(data.demo_account_verified){
         const balance=demo?.balance!=null?` · ${demo.balance} ${demo.currency||''}`:'';
         setStatus(`DERIV DEMO CONNECTED${balance}`);
-      }else{
-        setStatus('DERIV CONNECTED · DEMO VERIFICATION REQUIRED',true);
-      }
+      }else setStatus('DERIV CONNECTED · DEMO VERIFICATION REQUIRED',true);
     }catch(error){
       console.warn('BINARY_DERIV_STATUS_WARNING',error);
       setStatus('DERIV STATUS UNAVAILABLE',true);
@@ -159,6 +159,7 @@
   }
 
   function start(){
+    removeLegacyBinary();
     if(mount()) return;
     let tries=0;
     const timer=setInterval(()=>{
@@ -170,6 +171,5 @@
   document.addEventListener('flowsignal:authenticated',()=>setTimeout(start,0));
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',start,{once:true}); else start();
   window.addEventListener('focus',()=>{if(mounted) refreshStatus();});
-
   window.FlowSignalBinary={mount,refreshStatus};
 })();
