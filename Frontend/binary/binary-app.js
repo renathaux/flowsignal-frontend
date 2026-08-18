@@ -24,10 +24,10 @@
   }
 
   function cardHtml(){
-    return '<div class="binary-app-title">BINARY SHADOW</div>'+
+    return '<div class="binary-app-title">BINARY 5M</div>'+
       '<div class="binary-app-signal" id="binaryDerivSignal">WAIT</div>'+
-      `<div class="binary-app-meta" id="binaryDerivMeta">EURUSD · ${EXPIRY_MINUTES}m EXPIRY · $${DEMO_STAKE} DEMO STAKE · CONFIDENCE --</div>`+
-      '<div class="binary-app-status" id="binaryDerivStatus">DEMO ONLY · NOT CONNECTED</div>'+
+      `<div class="binary-app-meta" id="binaryDerivMeta">EURUSD · 5m CHART · ${EXPIRY_MINUTES}m EXPIRY · $${DEMO_STAKE} DEMO · CONFIDENCE --</div>`+
+      '<div class="binary-app-status" id="binaryDerivStatus">DERIV-NATIVE STRATEGY · NOT CONNECTED</div>'+
       '<div class="binary-app-actions">'+
         '<button type="button" id="binaryDerivConnectBtn">Connect Deriv Demo</button>'+
         '<button type="button" id="binaryDerivDisconnectBtn" class="hidden">Disconnect</button>'+
@@ -53,7 +53,7 @@
     mounted=true;
     refreshStatus();
     startPolling();
-    console.info('BINARY_APP_MOUNTED');
+    console.info('BINARY_NATIVE_5M_APP_MOUNTED');
     return true;
   }
 
@@ -67,11 +67,11 @@
   function setSignal(signal,confidence){
     const signalEl=document.getElementById('binaryDerivSignal');
     const metaEl=document.getElementById('binaryDerivMeta');
-    const normalized=['BUY','SELL'].includes(String(signal||'').toUpperCase())?String(signal).toUpperCase():'WAIT';
+    const normalized=['RISE','FALL'].includes(String(signal||'').toUpperCase())?String(signal).toUpperCase():'WAIT';
     if(signalEl) signalEl.textContent=normalized;
     if(metaEl){
       const confidenceText=Number.isFinite(Number(confidence))?`${Math.round(Number(confidence))}%`:'--';
-      metaEl.textContent=`EURUSD · ${EXPIRY_MINUTES}m EXPIRY · $${DEMO_STAKE} DEMO STAKE · CONFIDENCE ${confidenceText}`;
+      metaEl.textContent=`EURUSD · 5m CHART · ${EXPIRY_MINUTES}m EXPIRY · $${DEMO_STAKE} DEMO · CONFIDENCE ${confidenceText}`;
     }
   }
 
@@ -122,11 +122,11 @@
     const root=document.getElementById(ROOT_ID); if(!root) return false;
     const connect=root.querySelector('#binaryDerivConnectBtn'); const disconnect=root.querySelector('#binaryDerivDisconnectBtn');
     const id=localStorage.getItem(CONNECTION_KEY);
-    if(!id){ setStatus('DEMO ONLY · NOT CONNECTED'); connect?.classList.remove('hidden'); disconnect?.classList.add('hidden'); return false; }
+    if(!id){ setStatus('DERIV-NATIVE 5M · NOT CONNECTED'); connect?.classList.remove('hidden'); disconnect?.classList.add('hidden'); return false; }
     try{
       const response=await fetch(`${BACKEND}/deriv/status`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({connection_id:id}),cache:'no-store'});
       const data=await response.json().catch(()=>({}));
-      if(!response.ok||!data.connected){ localStorage.removeItem(CONNECTION_KEY); setStatus('DEMO ONLY · CONNECTION EXPIRED',true); connect?.classList.remove('hidden'); disconnect?.classList.add('hidden'); return false; }
+      if(!response.ok||!data.connected){ localStorage.removeItem(CONNECTION_KEY); setStatus('DEMO CONNECTION EXPIRED',true); connect?.classList.remove('hidden'); disconnect?.classList.add('hidden'); return false; }
       connect?.classList.add('hidden'); disconnect?.classList.remove('hidden');
       const demo=(data.demo_accounts||[])[0];
       if(data.demo_account_verified){ const balance=demo?.balance!=null?` · ${demo.balance} ${demo.currency||''}`:''; setStatus(`DERIV DEMO CONNECTED${balance}`); return true; }
@@ -134,47 +134,65 @@
     }catch(error){ console.warn('BINARY_DERIV_STATUS_WARNING',error); setStatus('DERIV STATUS UNAVAILABLE',true); return false; }
   }
 
-  function uniqueSignalId(plan,side){
-    const setup=plan?.signal_setup_id||plan?.setup_id||plan?.setup_identity?.id;
-    if(setup) return `EURUSD:${side}:${setup}`;
-    const timestamp=plan?.fifteen_m_break_close_time||plan?.fifteen_m_break_time||plan?.signal_timestamp||plan?.last_signal_time||plan?.decision_time;
-    return timestamp?`EURUSD:${side}:${timestamp}`:'';
-  }
-
-  async function executeIfActionable(plan){
+  async function executeNativeSignal(nativeSignal){
     if(executionBusy) return;
-    const side=String(plan?.strategy_decision||plan?.signal||'WAIT').toUpperCase();
-    const confidence=plan?.confidence??plan?.bias_strength??plan?.signal_confidence;
-    setSignal(side,confidence);
-    if(!['BUY','SELL'].includes(side)) return;
-    const connectionId=localStorage.getItem(CONNECTION_KEY); if(!connectionId) return;
-    const signalId=uniqueSignalId(plan,side);
-    if(!signalId){ setStatus('DEMO CONNECTED · WAITING FOR UNIQUE SETUP ID'); return; }
+    const direction=String(nativeSignal?.signal||'WAIT').toUpperCase();
+    const confidence=nativeSignal?.confidence;
+    setSignal(direction,confidence);
+    if(!['RISE','FALL'].includes(direction)) return;
+
+    const connectionId=localStorage.getItem(CONNECTION_KEY);
+    if(!connectionId) return;
+    const signalId=String(nativeSignal?.signal_id||'').trim();
+    if(!signalId){ setStatus('DEMO CONNECTED · WAITING FOR CLOSED 5M SIGNAL'); return; }
     if(signalId===lastLocalSignalId) return;
+
+    const executionSide=direction==='RISE'?'BUY':'SELL';
     executionBusy=true;
     try{
-      setStatus(`${side} SIGNAL · SENDING $${DEMO_STAKE} DEMO CONTRACT…`);
-      const response=await fetch(`${BACKEND}/deriv/demo/execute-signal`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({connection_id:connectionId,signal:side,signal_id:signalId})});
+      setStatus(`${direction} · SENDING $${DEMO_STAKE} / ${EXPIRY_MINUTES}m DEMO CONTRACT…`);
+      const response=await fetch(`${BACKEND}/deriv/demo/execute-signal`,{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({connection_id:connectionId,signal:executionSide,signal_id:signalId}),
+      });
       const data=await response.json().catch(()=>({}));
       if(!response.ok) throw new Error(data?.detail||`backend ${response.status}`);
       lastLocalSignalId=signalId;
       if(data.executed){
-        const direction=data.contract_type==='CALL'?'RISE':'FALL'; const contract=data.contract_id?` · #${data.contract_id}`:'';
+        const contract=data.contract_id?` · #${data.contract_id}`:'';
         setStatus(`DEMO ${direction} OPEN · $${data.stake??DEMO_STAKE} · ${data.duration_minutes??EXPIRY_MINUTES}m${contract}`);
-        console.info('BINARY_DERIV_DEMO_EXECUTED',data);
-      }else if(data.duplicate){ setStatus('DERIV DEMO CONNECTED · SIGNAL ALREADY EXECUTED'); }
-    }catch(error){ console.error('BINARY_DERIV_EXECUTION_ERROR',error); setStatus(`DEMO EXECUTION ERROR · ${error.message||'unknown error'}`,true); }
-    finally{ executionBusy=false; }
+        console.info('BINARY_NATIVE_5M_EXECUTED',data);
+      }else if(data.duplicate){ setStatus('DERIV DEMO CONNECTED · 5M SIGNAL ALREADY EXECUTED'); }
+    }catch(error){
+      console.error('BINARY_NATIVE_5M_EXECUTION_ERROR',error);
+      setStatus(`DEMO EXECUTION ERROR · ${error.message||'unknown error'}`,true);
+    }finally{ executionBusy=false; }
   }
 
   async function pollBinary(){
     if(!document.getElementById(ROOT_ID)) return;
     try{
-      const response=await fetch(`${BACKEND}/dashboard-feed`,{cache:'no-store'}); if(!response.ok) return;
-      const data=await response.json(); const plan=data?.EURUSD||{};
+      const response=await fetch(`${BACKEND}/deriv/binary/signal`,{cache:'no-store'});
+      if(!response.ok) throw new Error(`binary signal ${response.status}`);
+      const data=await response.json();
+      setSignal(data?.signal,data?.confidence);
+      if(!data?.ok){
+        setStatus(`BINARY DATA WAIT · ${data?.reason||'UNAVAILABLE'}`,true);
+        return;
+      }
       const connected=Boolean(localStorage.getItem(CONNECTION_KEY));
-      if(connected) await executeIfActionable(plan); else setSignal(plan?.strategy_decision||plan?.signal,plan?.confidence??plan?.bias_strength);
-    }catch(error){ console.warn('BINARY_SIGNAL_POLL_WARNING',error); }
+      if(connected){
+        if(['RISE','FALL'].includes(String(data?.signal||'').toUpperCase())) await executeNativeSignal(data);
+        else setStatus(`DERIV DEMO CONNECTED · WAIT · ${data?.reason||'NO 5M EDGE'}`);
+      }else{
+        setStatus(`DERIV-NATIVE 5M · ${data?.reason||'READY'}`);
+      }
+    }catch(error){
+      console.warn('BINARY_NATIVE_5M_POLL_WARNING',error);
+      setSignal('WAIT',0);
+      setStatus('BINARY 5M DATA UNAVAILABLE',true);
+    }
   }
 
   function startPolling(){ if(pollTimer) return; pollBinary(); pollTimer=setInterval(pollBinary,POLL_MS); }
