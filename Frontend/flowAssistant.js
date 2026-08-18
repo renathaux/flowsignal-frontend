@@ -1,6 +1,93 @@
 (function () {
+  'use strict';
+
   window.FlowSignalAssistant = {
     feature: "flowAssistant",
     status: "loaded",
   };
+
+  // Voice safety boundary:
+  // WIN / LOSS / closed-trade speech must come from a real broker-backed
+  // FlowSignal Forex trade. Binary 5m research/hypothetical results must never
+  // be interpreted as a real closed trade by the shared assistant.
+  //
+  // script.js is loaded after this module, so install the wrapper as soon as
+  // its global voice snapshot builder becomes available.
+  function hasBrokerIdentity(trade) {
+    if (!trade || typeof trade !== 'object') return false;
+    const source = String(trade.source || '').trim().toLowerCase();
+    if (source && !['broker', 'ctrader'].includes(source)) return false;
+
+    const id =
+      trade.broker_position_id ||
+      trade.position_id ||
+      trade.broker_order_id ||
+      trade.order_id ||
+      (String(trade.trade_id || '').startsWith('ctrader-') ? trade.trade_id : null);
+
+    return id !== null && id !== undefined && String(id).trim() !== '';
+  }
+
+  function installBrokerBackedVoiceGuard() {
+    const original = window.buildVoiceSnapshot;
+    if (typeof original !== 'function') return false;
+    if (original.__brokerBackedCloseGuard) return true;
+
+    function guardedBuildVoiceSnapshot(symbol, data, meta) {
+      const snapshot = original.apply(this, arguments);
+      if (!snapshot || typeof snapshot !== 'object') return snapshot;
+
+      const history = Array.isArray(meta?.live_trade_history)
+        ? meta.live_trade_history
+        : [];
+
+      const safeClosedTrades = history
+        .filter((trade) => {
+          if (!trade || String(trade.symbol || '').toUpperCase() !== String(symbol || '').toUpperCase()) {
+            return false;
+          }
+          if (!hasBrokerIdentity(trade)) return false;
+          if (typeof window.isLiveTradeActiveForDisplay === 'function' && window.isLiveTradeActiveForDisplay(trade)) {
+            return false;
+          }
+          return true;
+        })
+        .map((trade) => ({
+          key: typeof window.getVoiceTradeKey === 'function'
+            ? window.getVoiceTradeKey(trade, symbol)
+            : String(
+                trade.broker_position_id ||
+                trade.position_id ||
+                trade.broker_order_id ||
+                trade.order_id ||
+                trade.trade_id
+              ),
+          result: typeof window.getLiveTradeResult === 'function'
+            ? window.getLiveTradeResult(trade)
+            : String(trade.result || trade.status || '').toUpperCase(),
+          pnl: typeof window.getLiveTradePnl === 'function'
+            ? window.getLiveTradePnl(trade)
+            : Number(trade.pnl || trade.profit || 0),
+        }));
+
+      snapshot.closedTrades = safeClosedTrades;
+      return snapshot;
+    }
+
+    guardedBuildVoiceSnapshot.__brokerBackedCloseGuard = true;
+    guardedBuildVoiceSnapshot.__original = original;
+    window.buildVoiceSnapshot = guardedBuildVoiceSnapshot;
+    console.info('FLOWSIGNAL_VOICE_BROKER_CLOSE_GUARD_INSTALLED');
+    return true;
+  }
+
+  let attempts = 0;
+  const timer = window.setInterval(() => {
+    attempts += 1;
+    if (installBrokerBackedVoiceGuard() || attempts >= 200) {
+      window.clearInterval(timer);
+    }
+  }, 25);
+
+  window.addEventListener('load', installBrokerBackedVoiceGuard, { once: true });
 })();
