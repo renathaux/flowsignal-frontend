@@ -1,69 +1,276 @@
 (function () {
-  const TAB_ROLE_KEY = "flowsignal_tab_role";
-  const SHARED_ROLE_KEY = "flowsignal_role";
-  const DERIV_CONNECTION_KEY = "flowsignal_deriv_connection_id";
-  const DERIV_STATE_KEY = "flowsignal_deriv_oauth_state";
-  const DERIV_VERIFIER_KEY = "flowsignal_deriv_pkce_verifier";
-  const DERIV_BACKEND = (location.hostname === "localhost" || location.hostname === "127.0.0.1") ? "http://127.0.0.1:8001" : "https://flowsignal-backend-3.onrender.com";
+  'use strict';
+
+  const TAB_ROLE_KEY = 'flowsignal_tab_role';
+  const SHARED_ROLE_KEY = 'flowsignal_role';
 
   function normalizeRole(value) {
-    const role = String(value || "").toLowerCase();
-    return role === "admin" || role === "user" ? role : "";
+    const role = String(value || '').toLowerCase();
+    return role === 'admin' || role === 'user' ? role : '';
   }
-  function isChromeDesktop(){const ua=String(navigator.userAgent||"");return /Chrome\//.test(ua)&&!/(Edg|OPR|SamsungBrowser)\//.test(ua)&&window.matchMedia("(min-width: 701px)").matches}
-  function isSafariDesktop(){const ua=String(navigator.userAgent||"");return /Safari\//.test(ua)&&/Version\//.test(ua)&&!/(Chrome|Chromium|CriOS|Edg|OPR|Firefox|FxiOS)\//.test(ua)&&window.matchMedia("(min-width: 701px)").matches}
-  const chromeDesktop=isChromeDesktop(),safariDesktop=isSafariDesktop(),supportedDesktop=chromeDesktop||safariDesktop;
-  if(chromeDesktop)document.body?.classList.add("flowsignal-chrome-desktop");if(safariDesktop)document.body?.classList.add("flowsignal-safari-desktop");
 
-  function installSafariSpeechNormalizer(){if(!safariDesktop||!window.speechSynthesis||typeof SpeechSynthesisUtterance==="undefined"||window.speechSynthesis.__flowSignalSafariVoicePatched)return;const synth=window.speechSynthesis,nativeSpeak=synth.speak.bind(synth);const prefix=(lang)=>String(lang||document.documentElement.lang||"en-US").toLowerCase().split("-")[0];function voiceFor(lang){const voices=synth.getVoices?.()||[],p=prefix(lang),names=p==="fr"?["Amélie","Audrey","Thomas"]:p==="es"?["Mónica","Monica","Jorge","Paulina"]:["Samantha","Ava","Allison","Susan","Alex"];for(const name of names){const v=voices.find(x=>x.name===name&&prefix(x.lang)===p);if(v)return v}return voices.find(x=>prefix(x.lang)===p&&x.localService!==false)||voices.find(x=>prefix(x.lang)===p)||null}synth.speak=function(u){if(u instanceof SpeechSynthesisUtterance){const v=voiceFor(u.lang);if(v){u.voice=v;if(!u.lang)u.lang=v.lang}u.rate=.94;u.pitch=1;u.volume=1}return nativeSpeak(u)};synth.__flowSignalSafariVoicePatched=true}
+  function isChromeDesktop() {
+    const ua = String(navigator.userAgent || '');
+    return /Chrome\//.test(ua) && !/(Edg|OPR|SamsungBrowser)\//.test(ua) && window.matchMedia('(min-width: 701px)').matches;
+  }
+
+  function isSafariDesktop() {
+    const ua = String(navigator.userAgent || '');
+    return /Safari\//.test(ua) && /Version\//.test(ua) && !/(Chrome|Chromium|CriOS|Edg|OPR|Firefox|FxiOS)\//.test(ua) && window.matchMedia('(min-width: 701px)').matches;
+  }
+
+  const chromeDesktop = isChromeDesktop();
+  const safariDesktop = isSafariDesktop();
+  const supportedDesktop = chromeDesktop || safariDesktop;
+  if (chromeDesktop) document.body?.classList.add('flowsignal-chrome-desktop');
+  if (safariDesktop) document.body?.classList.add('flowsignal-safari-desktop');
+
+  function loadBinaryMiniApp() {
+    if (document.querySelector('script[data-flowsignal-binary-app]')) return;
+    const script = document.createElement('script');
+    script.src = 'binary/binary-app.js?v=1';
+    script.async = true;
+    script.dataset.flowsignalBinaryApp = 'true';
+    script.addEventListener('error', () => console.warn('BINARY_APP_LOAD_FAILED'));
+    document.body.appendChild(script);
+  }
+
+  function installSafariSpeechNormalizer() {
+    if (!safariDesktop || !window.speechSynthesis || typeof SpeechSynthesisUtterance === 'undefined') return;
+    if (window.speechSynthesis.__flowSignalSafariVoicePatched) return;
+    const synth = window.speechSynthesis;
+    const nativeSpeak = synth.speak.bind(synth);
+    const prefix = (lang) => String(lang || document.documentElement.lang || 'en-US').toLowerCase().split('-')[0];
+    function voiceFor(lang) {
+      const voices = synth.getVoices?.() || [];
+      const p = prefix(lang);
+      const names = p === 'fr' ? ['Amélie', 'Audrey', 'Thomas'] : p === 'es' ? ['Mónica', 'Monica', 'Jorge', 'Paulina'] : ['Samantha', 'Ava', 'Allison', 'Susan', 'Alex'];
+      for (const name of names) {
+        const voice = voices.find((item) => item.name === name && prefix(item.lang) === p);
+        if (voice) return voice;
+      }
+      return voices.find((item) => prefix(item.lang) === p && item.localService !== false) || voices.find((item) => prefix(item.lang) === p) || null;
+    }
+    synth.speak = function (utterance) {
+      if (utterance instanceof SpeechSynthesisUtterance) {
+        const voice = voiceFor(utterance.lang);
+        if (voice) {
+          utterance.voice = voice;
+          if (!utterance.lang) utterance.lang = voice.lang;
+        }
+        utterance.rate = 0.94;
+        utterance.pitch = 1;
+        utterance.volume = 1;
+      }
+      return nativeSpeak(utterance);
+    };
+    synth.__flowSignalSafariVoicePatched = true;
+  }
   installSafariSpeechNormalizer();
 
-  function getTabRole(){return normalizeRole(sessionStorage.getItem(TAB_ROLE_KEY))}function setTabRole(role){const n=normalizeRole(role);if(!n)return false;sessionStorage.setItem(TAB_ROLE_KEY,n);document.body.dataset.userRole=n;return true}if(!getTabRole()){const inherited=normalizeRole(localStorage.getItem(SHARED_ROLE_KEY));if(inherited)setTabRole(inherited)}window.isAdminAccount=function(){return getTabRole()==="admin"};
-  function currentStrategyHasFreshSignal(){const s=String(document.getElementById("main-signal")?.textContent||"").trim().toUpperCase();return s==="BUY"||s==="SELL"}function setText(id,value){const e=document.getElementById(id);if(e&&e.textContent!==value)e.textContent=value}function currentWaitReason(){const values=[document.getElementById("main-blocked-reason")?.textContent,document.getElementById("main-rr")?.textContent,document.getElementById("v2-shadow-reason")?.textContent].map(v=>String(v||"").trim()).filter(Boolean);return values.find(v=>/^WAIT(?:_|$)/i.test(v))||values.find(v=>v!=="--"&&v!=="WAIT")||"--"}
-  function forceVisible(e,display="block"){if(!e)return;e.classList.remove("hidden","admin-only-hidden");e.removeAttribute("hidden");e.setAttribute("aria-hidden","false");e.style.setProperty("display",display,"important");e.style.setProperty("visibility","visible","important");e.style.setProperty("opacity","1","important")}
-  function applyChromeReadability(){if(!chromeDesktop)return;const b=document.getElementById("fundamental-bias");if(b){b.style.setProperty("font-size","30px","important");b.style.setProperty("line-height","1","important");b.style.setProperty("white-space","nowrap","important")}}
-  function ensureSafariInsightVisibility(){if(!safariDesktop)return;forceVisible(document.querySelector(".news-impact-panel"));forceVisible(document.getElementById("fundamental-insight-card"));forceVisible(document.getElementById("v2-shadow-card"))}
-  function keepAnalysisCardsVisible(){const smc=document.querySelector(".main-smc-panel"),intel=document.getElementById("main-smc-plan-intel"),checks=document.querySelector(".entry-strategy-debug");forceVisible(smc);forceVisible(intel);forceVisible(checks);if(checks)checks.open=true}
+  function getTabRole() { return normalizeRole(sessionStorage.getItem(TAB_ROLE_KEY)); }
+  function setTabRole(role) {
+    const normalized = normalizeRole(role);
+    if (!normalized) return false;
+    sessionStorage.setItem(TAB_ROLE_KEY, normalized);
+    document.body.dataset.userRole = normalized;
+    return true;
+  }
 
-  function binaryMarkup(){return '<div class="binary-shadow-title">BINARY SHADOW</div><div class="binary-shadow-signal" id="binaryDerivSignal">WAIT</div><div class="binary-shadow-meta" id="binaryDerivMeta">15m EXPIRY &nbsp; • &nbsp; CONFIDENCE --</div><div class="binary-shadow-note" id="binaryDerivStatus">DEMO ONLY · NOT CONNECTED</div><div class="binary-deriv-actions"><button type="button" id="binaryDerivConnectBtn" style="cursor:pointer;pointer-events:auto">Connect Deriv Demo</button><button type="button" id="binaryDerivDisconnectBtn" class="hidden" style="cursor:pointer;pointer-events:auto">Disconnect</button></div>'}
-  function ensureDesktopAnalysisLayout(){if(!supportedDesktop)return;const left=document.querySelector(".left-panel")||document.querySelector(".left-column")||document.getElementById("eurusd-card")?.parentElement,main=document.querySelector(".main-trade-card"),checks=document.querySelector(".entry-strategy-debug"),gold=document.getElementById("gold-card");if(left&&checks&&gold&&(checks.parentElement!==left||gold.nextElementSibling!==checks))gold.insertAdjacentElement("afterend",checks);let binary=document.getElementById("binary-shadow-placeholder");if(!binary){binary=document.createElement("section");binary.id="binary-shadow-placeholder";binary.className="binary-shadow-placeholder";binary.innerHTML=binaryMarkup()}if(main){const smc=main.querySelector(".main-smc-panel");if(smc&&smc.nextElementSibling!==binary)smc.insertAdjacentElement("afterend",binary)}refreshDerivCard()}
+  if (!getTabRole()) {
+    const inherited = normalizeRole(localStorage.getItem(SHARED_ROLE_KEY));
+    if (inherited) setTabRole(inherited);
+  }
 
-  function randomVerifier(){const alphabet="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~",bytes=crypto.getRandomValues(new Uint8Array(64));return Array.from(bytes,b=>alphabet[b%alphabet.length]).join("")}
-  async function challengeFor(verifier){const hash=await crypto.subtle.digest("SHA-256",new TextEncoder().encode(verifier));return btoa(String.fromCharCode(...new Uint8Array(hash))).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/g,"")}
-  function randomState(){return Array.from(crypto.getRandomValues(new Uint8Array(16)),b=>b.toString(16).padStart(2,"0")).join("")}
-  async function derivConfig(){const r=await fetch(`${DERIV_BACKEND}/deriv/config`,{suppressErrorPanel:true});if(!r.ok)throw new Error(`Deriv configuration unavailable (${r.status})`);return r.json()}
-  async function connectDeriv(){
-    const button=document.getElementById("binaryDerivConnectBtn");
-    if(button){button.disabled=true;button.textContent="Connecting…"}
-    try{
-      const cfg=await derivConfig();
-      if(!cfg.configured)throw new Error("Deriv App ID is not configured on the FlowSignal backend yet.");
-      const verifier=randomVerifier(),state=randomState(),challenge=await challengeFor(verifier);
-      sessionStorage.setItem(DERIV_VERIFIER_KEY,verifier);sessionStorage.setItem(DERIV_STATE_KEY,state);
-      const url=new URL(cfg.authorization_url);url.searchParams.set("response_type","code");url.searchParams.set("client_id",cfg.client_id);url.searchParams.set("redirect_uri",cfg.redirect_uri);url.searchParams.set("scope",cfg.scope||"trade");url.searchParams.set("state",state);url.searchParams.set("code_challenge",challenge);url.searchParams.set("code_challenge_method","S256");
-      window.location.assign(url.toString());
-    }catch(error){
-      console.error("DERIV_CONNECT_ERROR",error);
-      const status=document.getElementById("binaryDerivStatus");if(status)status.textContent=`CONNECT ERROR · ${error.message||"UNKNOWN"}`;
-      if(button){button.disabled=false;button.textContent="Connect Deriv Demo"}
+  window.isAdminAccount = function () { return getTabRole() === 'admin'; };
+
+  function currentStrategyHasFreshSignal() {
+    const signal = String(document.getElementById('main-signal')?.textContent || '').trim().toUpperCase();
+    return signal === 'BUY' || signal === 'SELL';
+  }
+
+  function setText(id, value) {
+    const element = document.getElementById(id);
+    if (element && element.textContent !== value) element.textContent = value;
+  }
+
+  function currentWaitReason() {
+    const values = [
+      document.getElementById('main-blocked-reason')?.textContent,
+      document.getElementById('main-rr')?.textContent,
+      document.getElementById('v2-shadow-reason')?.textContent,
+    ].map((value) => String(value || '').trim()).filter(Boolean);
+    return values.find((value) => /^WAIT(?:_|$)/i.test(value)) || values.find((value) => value !== '--' && value !== 'WAIT') || '--';
+  }
+
+  function forceVisible(element, display = 'block') {
+    if (!element) return;
+    element.classList.remove('hidden', 'admin-only-hidden');
+    element.removeAttribute('hidden');
+    element.setAttribute('aria-hidden', 'false');
+    element.style.setProperty('display', display, 'important');
+    element.style.setProperty('visibility', 'visible', 'important');
+    element.style.setProperty('opacity', '1', 'important');
+  }
+
+  function applyChromeReadability() {
+    if (!chromeDesktop) return;
+    const bias = document.getElementById('fundamental-bias');
+    if (bias) {
+      bias.style.setProperty('font-size', '30px', 'important');
+      bias.style.setProperty('line-height', '1', 'important');
+      bias.style.setProperty('white-space', 'nowrap', 'important');
     }
   }
-  async function refreshDerivCard(){const id=localStorage.getItem(DERIV_CONNECTION_KEY),status=document.getElementById("binaryDerivStatus"),connect=document.getElementById("binaryDerivConnectBtn"),disconnectBtn=document.getElementById("binaryDerivDisconnectBtn");if(!status||!connect)return;if(!id){status.textContent="DEMO ONLY · NOT CONNECTED";connect.disabled=false;connect.textContent="Connect Deriv Demo";connect.classList.remove("hidden");disconnectBtn?.classList.add("hidden");return}try{const r=await fetch(`${DERIV_BACKEND}/deriv/status`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({connection_id:id}),suppressErrorPanel:true});const data=await r.json();if(!data.connected){localStorage.removeItem(DERIV_CONNECTION_KEY);status.textContent="DEMO ONLY · CONNECTION EXPIRED";connect.classList.remove("hidden");disconnectBtn?.classList.add("hidden");return}connect.classList.add("hidden");disconnectBtn?.classList.remove("hidden");const demo=(data.demo_accounts||[])[0];status.textContent=data.demo_account_verified?`DERIV DEMO CONNECTED${demo?.balance!=null?` · ${demo.balance} ${demo.currency||""}`:""}`:"DERIV CONNECTED · DEMO VERIFICATION REQUIRED"}catch(_){status.textContent="DERIV STATUS UNAVAILABLE"}}
-  async function disconnectDeriv(){const id=localStorage.getItem(DERIV_CONNECTION_KEY);if(id)try{await fetch(`${DERIV_BACKEND}/deriv/disconnect`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({connection_id:id}),suppressErrorPanel:true})}catch(_){}localStorage.removeItem(DERIV_CONNECTION_KEY);refreshDerivCard()}
 
-  // Delegated handlers survive dashboard refreshes/reparenting of the Binary card.
-  document.addEventListener("click",function(event){
-    const connect=event.target?.closest?.("#binaryDerivConnectBtn");
-    if(connect){event.preventDefault();event.stopPropagation();connectDeriv();return}
-    const disconnect=event.target?.closest?.("#binaryDerivDisconnectBtn");
-    if(disconnect){event.preventDefault();event.stopPropagation();disconnectDeriv()}
-  },true);
+  function ensureSafariInsightVisibility() {
+    if (!safariDesktop) return;
+    forceVisible(document.querySelector('.news-impact-panel'));
+    forceVisible(document.getElementById('fundamental-insight-card'));
+    forceVisible(document.getElementById('v2-shadow-card'));
+  }
 
-  function clearExpiredEntryChecks(){if(!supportedDesktop||currentStrategyHasFreshSignal())return;keepAnalysisCardsVisible();["strategy-debug-smc","strategy-debug-swing-break","strategy-debug-15m-close","strategy-debug-5m-confirm","strategy-debug-swing-sl"].forEach(id=>setText(id,"NO"));setText("strategy-debug-decision","WAIT");setText("strategy-debug-block-reason",currentWaitReason())}
-  function syncCurrentStrategyPresentation(){if(!supportedDesktop)return;keepAnalysisCardsVisible();ensureDesktopAnalysisLayout();applyChromeReadability();if(!currentStrategyHasFreshSignal())clearExpiredEntryChecks()}
-  function ensureUserAnalysisVisibility(){if(!supportedDesktop||getTabRole()!=="user"){if(supportedDesktop)syncCurrentStrategyPresentation();return}const panel=document.querySelector(".main-trade-panel"),card=document.querySelector(".main-trade-card");forceVisible(panel);forceVisible(card);[panel,card].forEach(e=>{if(!e)return;e.style.setProperty("height","auto","important");e.style.setProperty("max-height","none","important");e.style.setProperty("overflow","visible","important")});keepAnalysisCardsVisible();syncCurrentStrategyPresentation()}
-  function attachDashboardObserver(){if(!supportedDesktop)return;const d=document.querySelector(".dashboard-grid")||document.getElementById("mainApp");if(!d||d.dataset.flowSignalUserAnalysisObserver==="true")return;d.dataset.flowSignalUserAnalysisObserver="true";let scheduled=false;new MutationObserver(()=>{if(scheduled)return;scheduled=true;requestAnimationFrame(()=>{scheduled=false;applyChromeReadability();ensureSafariInsightVisibility();ensureDesktopAnalysisLayout();if(getTabRole()==="user")ensureUserAnalysisVisibility()})}).observe(d,{childList:true,subtree:true,attributes:true,attributeFilter:["class","style","hidden","aria-hidden"]})}
-  function refreshRoleUi(){const role=getTabRole();if(!role)return;document.body.dataset.userRole=role;try{window.applyRoleVisibility?.()}catch(_){}try{window.updatePnlVisibility?.()}catch(_){}applyChromeReadability();ensureSafariInsightVisibility();ensureDesktopAnalysisLayout();if(supportedDesktop)ensureUserAnalysisVisibility();attachDashboardObserver()}
-  function adoptRequestedRole(requestedRole){const wanted=normalizeRole(requestedRole);if(!wanted)return;let tries=0;const timer=setInterval(()=>{tries++;const shared=normalizeRole(localStorage.getItem(SHARED_ROLE_KEY));if(shared===wanted){clearInterval(timer);setTabRole(wanted);refreshRoleUi();return}if(tries>=60)clearInterval(timer)},100)}
-  document.addEventListener("click",e=>{const t=e.target?.closest?.("#adminLoginBtn, #accessBtn");if(!t)return;if(t.id==="adminLoginBtn")adoptRequestedRole("admin");if(t.id==="accessBtn")adoptRequestedRole("user")},true);window.addEventListener("storage",e=>{if(e.key===SHARED_ROLE_KEY)refreshRoleUi()});document.addEventListener("flowsignal:authenticated",()=>{setTimeout(refreshRoleUi,0);setTimeout(refreshRoleUi,250)});window.addEventListener("load",()=>{setTimeout(refreshRoleUi,0);setTimeout(refreshRoleUi,300)}, {once:true});if(supportedDesktop)setInterval(()=>{applyChromeReadability();ensureSafariInsightVisibility();ensureDesktopAnalysisLayout();refreshDerivCard();if(getTabRole()==="user")ensureUserAnalysisVisibility()},3000);refreshRoleUi();window.FlowSignalTabRole={get:getTabRole,set(role){if(!setTabRole(role))return false;refreshRoleUi();return true}};
+  function keepAnalysisCardsVisible() {
+    const smc = document.querySelector('.main-smc-panel');
+    const intel = document.getElementById('main-smc-plan-intel');
+    const checks = document.querySelector('.entry-strategy-debug');
+    forceVisible(smc);
+    forceVisible(intel);
+    forceVisible(checks);
+    if (checks) checks.open = true;
+  }
+
+  function ensureDesktopAnalysisLayout() {
+    if (!supportedDesktop) return;
+    const left = document.querySelector('.left-panel') || document.querySelector('.left-column') || document.getElementById('eurusd-card')?.parentElement;
+    const checks = document.querySelector('.entry-strategy-debug');
+    const gold = document.getElementById('gold-card');
+    if (left && checks && gold && (checks.parentElement !== left || gold.nextElementSibling !== checks)) {
+      gold.insertAdjacentElement('afterend', checks);
+    }
+  }
+
+  function clearExpiredEntryChecks() {
+    if (!supportedDesktop || currentStrategyHasFreshSignal()) return;
+    keepAnalysisCardsVisible();
+    ['strategy-debug-smc', 'strategy-debug-swing-break', 'strategy-debug-15m-close', 'strategy-debug-5m-confirm', 'strategy-debug-swing-sl'].forEach((id) => setText(id, 'NO'));
+    setText('strategy-debug-decision', 'WAIT');
+    setText('strategy-debug-block-reason', currentWaitReason());
+  }
+
+  function syncCurrentStrategyPresentation() {
+    if (!supportedDesktop) return;
+    keepAnalysisCardsVisible();
+    ensureDesktopAnalysisLayout();
+    applyChromeReadability();
+    if (!currentStrategyHasFreshSignal()) clearExpiredEntryChecks();
+  }
+
+  function ensureUserAnalysisVisibility() {
+    if (!supportedDesktop || getTabRole() !== 'user') {
+      if (supportedDesktop) syncCurrentStrategyPresentation();
+      return;
+    }
+    const panel = document.querySelector('.main-trade-panel');
+    const card = document.querySelector('.main-trade-card');
+    forceVisible(panel);
+    forceVisible(card);
+    [panel, card].forEach((element) => {
+      if (!element) return;
+      element.style.setProperty('height', 'auto', 'important');
+      element.style.setProperty('max-height', 'none', 'important');
+      element.style.setProperty('overflow', 'visible', 'important');
+    });
+    keepAnalysisCardsVisible();
+    syncCurrentStrategyPresentation();
+  }
+
+  function attachDashboardObserver() {
+    if (!supportedDesktop) return;
+    const dashboard = document.querySelector('.dashboard-grid') || document.getElementById('mainApp');
+    if (!dashboard || dashboard.dataset.flowSignalUserAnalysisObserver === 'true') return;
+    dashboard.dataset.flowSignalUserAnalysisObserver = 'true';
+    let scheduled = false;
+    new MutationObserver(() => {
+      if (scheduled) return;
+      scheduled = true;
+      requestAnimationFrame(() => {
+        scheduled = false;
+        applyChromeReadability();
+        ensureSafariInsightVisibility();
+        ensureDesktopAnalysisLayout();
+        if (getTabRole() === 'user') ensureUserAnalysisVisibility();
+      });
+    }).observe(dashboard, { childList: true, subtree: true, attributes: true, attributeFilter: ['class', 'style', 'hidden', 'aria-hidden'] });
+  }
+
+  function refreshRoleUi() {
+    const role = getTabRole();
+    if (!role) return;
+    document.body.dataset.userRole = role;
+    try { window.applyRoleVisibility?.(); } catch (_error) {}
+    try { window.updatePnlVisibility?.(); } catch (_error) {}
+    applyChromeReadability();
+    ensureSafariInsightVisibility();
+    ensureDesktopAnalysisLayout();
+    if (supportedDesktop) ensureUserAnalysisVisibility();
+    attachDashboardObserver();
+  }
+
+  function adoptRequestedRole(requestedRole) {
+    const wanted = normalizeRole(requestedRole);
+    if (!wanted) return;
+    let tries = 0;
+    const timer = setInterval(() => {
+      tries += 1;
+      const shared = normalizeRole(localStorage.getItem(SHARED_ROLE_KEY));
+      if (shared === wanted) {
+        clearInterval(timer);
+        setTabRole(wanted);
+        refreshRoleUi();
+        return;
+      }
+      if (tries >= 60) clearInterval(timer);
+    }, 100);
+  }
+
+  document.addEventListener('click', (event) => {
+    const target = event.target?.closest?.('#adminLoginBtn, #accessBtn');
+    if (!target) return;
+    if (target.id === 'adminLoginBtn') adoptRequestedRole('admin');
+    if (target.id === 'accessBtn') adoptRequestedRole('user');
+  }, true);
+
+  window.addEventListener('storage', (event) => {
+    if (event.key === SHARED_ROLE_KEY) refreshRoleUi();
+  });
+  document.addEventListener('flowsignal:authenticated', () => {
+    setTimeout(refreshRoleUi, 0);
+    setTimeout(refreshRoleUi, 250);
+  });
+  window.addEventListener('load', () => {
+    setTimeout(refreshRoleUi, 0);
+    setTimeout(refreshRoleUi, 300);
+  }, { once: true });
+
+  if (supportedDesktop) {
+    setInterval(() => {
+      applyChromeReadability();
+      ensureSafariInsightVisibility();
+      ensureDesktopAnalysisLayout();
+      if (getTabRole() === 'user') ensureUserAnalysisVisibility();
+    }, 3000);
+  }
+
+  refreshRoleUi();
+  loadBinaryMiniApp();
+
+  window.FlowSignalTabRole = {
+    get: getTabRole,
+    set(role) {
+      if (!setTabRole(role)) return false;
+      refreshRoleUi();
+      return true;
+    },
+  };
 })();
