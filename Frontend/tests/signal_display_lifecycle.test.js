@@ -27,18 +27,21 @@ vm.runInNewContext(source, context);
 const api = context.window.FlowSignalSignalDisplayState;
 assert.ok(api, 'lifecycle display API is exported');
 
+// A setup that changed before execution is no longer a fresh SELL: visible state must be WAIT.
 let state = api.canonicalize('EURUSD', {
   strategy_decision: 'SELL',
+  fresh_entry_available: false,
   execution_allowed: false,
   execution_status: 'BLOCKED',
   execution_block_reason: 'WAIT_SETUP_SWING_CHANGED_BEFORE_EXECUTION',
 });
-assert.equal(state.executionState, 'BLOCKED');
-assert.equal(api.displayLabel(state), 'SELL · BLOCKED');
-assert.match(api.displayNote(state), /No order sent/);
+assert.equal(state.signal, 'WAIT');
+assert.equal(api.displayLabel(state), 'WAIT');
 
+// A running broker position must not force BUY/SELL into the strategy signal display.
 state = api.canonicalize('XAUUSD', {
   strategy_decision: 'SELL',
+  fresh_entry_available: false,
   execution_allowed: false,
   execution_status: 'BLOCKED',
   execution_block_reason: 'ACTIVE_TRADE_ALREADY_RUNNING',
@@ -46,36 +49,37 @@ state = api.canonicalize('XAUUSD', {
   active_trade_id: '57804337',
   active_trade_status: 'RUNNING',
 });
-assert.equal(state.executionState, 'RUNNING');
-assert.equal(api.displayLabel(state), 'SELL · RUNNING');
-assert.match(api.displayNote(state), /57804337/);
+assert.equal(state.running, true);
+assert.equal(state.signal, 'WAIT');
+assert.equal(api.displayLabel(state), 'WAIT');
 
+// BUY/SELL is visible only for a genuinely fresh setup.
 state = api.canonicalize('EURUSD', {
   strategy_decision: 'BUY',
+  fresh_entry_available: true,
   execution_allowed: true,
   execution_status: 'PENDING',
 });
-assert.equal(state.executionState, 'SIGNAL');
-assert.equal(api.displayLabel(state), 'BUY · SIGNAL');
+assert.equal(state.signal, 'BUY');
+assert.equal(api.displayLabel(state), 'BUY');
 
 state = api.canonicalize('EURUSD', {
   strategy_decision: 'WAIT',
+  fresh_entry_available: false,
   execution_allowed: false,
   execution_status: 'NOT_APPLICABLE',
 });
-assert.equal(state.executionState, 'WAIT');
+assert.equal(state.signal, 'WAIT');
+assert.equal(api.displayLabel(state), 'WAIT');
 
-// Nested diagnostics must not overwrite authoritative top-level broker state.
+// A later final safety result can invalidate what was initially a fresh signal.
 api.ingest({
   EURUSD: {
     strategy_decision: 'SELL',
+    fresh_entry_available: true,
     execution_status: 'PENDING',
-    strategy_debug: {
-      strategy_decision: 'SELL',
-      execution_status: 'PENDING',
-    },
   },
-  XAUUSD: { strategy_decision: 'WAIT' },
+  XAUUSD: { strategy_decision: 'WAIT', fresh_entry_available: false },
   live_auto_status_by_symbol: {
     EURUSD: {
       symbol: 'EURUSD',
@@ -85,24 +89,8 @@ api.ingest({
     },
   },
 });
-assert.equal(api.state.EURUSD.executionState, 'BLOCKED');
-assert.equal(api.state.EURUSD.blockReason, 'WAIT_SETUP_SWING_CHANGED_BEFORE_EXECUTION');
-assert.equal(api.displayLabel(api.state.EURUSD), 'SELL · BLOCKED');
+assert.equal(api.state.EURUSD.signal, 'WAIT');
+assert.equal(api.state.EURUSD.fresh, false);
+assert.equal(api.displayLabel(api.state.EURUSD), 'WAIT');
 
-// A running broker position always outranks a generic auto-execution block.
-api.ingest({
-  EURUSD: { strategy_decision: 'WAIT' },
-  XAUUSD: {
-    strategy_decision: 'SELL',
-    active_trade_direction: 'SELL',
-    active_trade_id: '57804337',
-    active_trade_status: 'RUNNING',
-  },
-  live_auto_status_by_symbol: {
-    XAUUSD: { symbol: 'XAUUSD', signal: 'SELL', status: 'BLOCKED', reason: 'ACTIVE_TRADE_ALREADY_RUNNING' },
-  },
-});
-assert.equal(api.state.XAUUSD.executionState, 'RUNNING');
-assert.equal(api.displayLabel(api.state.XAUUSD), 'SELL · RUNNING');
-
-console.log('signal display lifecycle tests passed');
+console.log('fresh signal lifecycle display tests passed');
