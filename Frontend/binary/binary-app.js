@@ -5,6 +5,8 @@
   const CONNECTION_KEY='flowsignal_deriv_connection_id';
   const STATE_KEY='flowsignal_deriv_oauth_state';
   const VERIFIER_KEY='flowsignal_deriv_pkce_verifier';
+  const FOREX_ALERT_PREF_KEY='soundEnabled';
+  const FOREX_ALERT_GUARD_KEY='flowsignal_binary_oauth_forex_alert_guard';
   const BACKEND=(location.hostname==='localhost'||location.hostname==='127.0.0.1')?'http://127.0.0.1:8001':'https://flowsignal-backend-3.onrender.com';
   const POLL_MS=6000;
   const DEMO_STAKE=10;
@@ -13,6 +15,41 @@
   let pollTimer=null;
   let executionBusy=false;
   let lastLocalSignalId='';
+
+  // Deriv OAuth leaves FlowSignal and returns with a full-page reload. The
+  // Forex alert module keeps its lastSignals only in JS memory, so a reload can
+  // make an already-running BUY/SELL look "new" and replay an alert. During a
+  // Binary OAuth round-trip only, temporarily mute Forex alerts while the first
+  // dashboard snapshot establishes its baseline, then restore the exact prior
+  // user preference. This does not touch Forex strategy/execution state.
+  function beginForexAlertIsolationGuard(){
+    const previous=localStorage.getItem(FOREX_ALERT_PREF_KEY);
+    sessionStorage.setItem(FOREX_ALERT_GUARD_KEY,JSON.stringify({previous,startedAt:Date.now()}));
+    localStorage.setItem(FOREX_ALERT_PREF_KEY,'false');
+  }
+
+  function restoreForexAlertIsolationGuard(){
+    const raw=sessionStorage.getItem(FOREX_ALERT_GUARD_KEY);
+    if(!raw) return;
+    let state=null;
+    try{ state=JSON.parse(raw); }catch(_error){}
+    // Keep alerts muted long enough for at least two normal panel refreshes to
+    // record the existing EURUSD/XAUUSD state as baseline after OAuth return.
+    window.setTimeout(()=>{
+      const prior=state?.previous;
+      if(prior===null||prior===undefined) localStorage.removeItem(FOREX_ALERT_PREF_KEY);
+      else localStorage.setItem(FOREX_ALERT_PREF_KEY,String(prior));
+      sessionStorage.removeItem(FOREX_ALERT_GUARD_KEY);
+      console.info('BINARY_OAUTH_FOREX_ALERT_GUARD_RESTORED');
+    },15000);
+  }
+
+  // Run immediately on script evaluation, before normal dashboard polling has a
+  // chance to replay an already-active Forex signal after the Deriv redirect.
+  if(sessionStorage.getItem(FOREX_ALERT_GUARD_KEY)){
+    localStorage.setItem(FOREX_ALERT_PREF_KEY,'false');
+    restoreForexAlertIsolationGuard();
+  }
 
   function injectCss(){
     if(document.querySelector('link[data-flowsignal-binary-css]')) return;
@@ -104,6 +141,7 @@
       url.searchParams.set('response_type','code'); url.searchParams.set('client_id',cfg.client_id);
       url.searchParams.set('redirect_uri',cfg.redirect_uri); url.searchParams.set('scope',cfg.scope||'trade');
       url.searchParams.set('state',state); url.searchParams.set('code_challenge',challenge); url.searchParams.set('code_challenge_method','S256');
+      beginForexAlertIsolationGuard();
       window.location.href=url.toString();
     }catch(error){
       console.error('BINARY_DERIV_CONNECT_ERROR',error); setStatus(`CONNECT ERROR · ${error.message||'unknown error'}`,true);
