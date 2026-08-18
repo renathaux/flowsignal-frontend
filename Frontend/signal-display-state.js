@@ -5,16 +5,9 @@
   window.__flowSignalSignalDisplayStateInstalled = true;
 
   const EMPTY = () => ({
-    signal: 'WAIT',
-    rawSignal: 'WAIT',
-    fresh: false,
-    executionState: 'WAIT',
-    executionStatus: 'NOT_APPLICABLE',
-    executionAllowed: false,
-    blockReason: '',
-    running: false,
-    direction: '',
-    positionId: '',
+    signal: 'WAIT', rawSignal: 'WAIT', fresh: false,
+    executionState: 'WAIT', executionStatus: 'NOT_APPLICABLE', executionAllowed: false,
+    blockReason: '', running: false, direction: '', positionId: '', setupId: '', consumedSetupId: '',
   });
 
   const state = { EURUSD: EMPTY(), XAUUSD: EMPTY() };
@@ -33,17 +26,8 @@
     return 'WAIT';
   }
 
-  function textValue(value) {
-    return value === null || value === undefined ? '' : String(value).trim();
-  }
-
-  function firstValue() {
-    for (const value of arguments) {
-      const text = textValue(value);
-      if (text) return text;
-    }
-    return '';
-  }
+  function textValue(value) { return value === null || value === undefined ? '' : String(value).trim(); }
+  function firstValue() { for (const value of arguments) { const text = textValue(value); if (text) return text; } return ''; }
 
   function executionDebug(obj) {
     if (!obj || typeof obj !== 'object') return {};
@@ -64,78 +48,80 @@
   function reasonInvalidatesFreshSignal(reason) {
     const value = String(reason || '').trim().toUpperCase();
     if (!value) return false;
-    return (
-      value.includes('SWING_CHANGED') ||
-      value.includes('SETUP_CHANGED') ||
-      value.includes('SETUP_INVALID') ||
-      value.includes('SETUP_EXPIRED') ||
-      value.includes('SETUP_STALE') ||
-      value.includes('FRESH_SETUP_REQUIRED') ||
-      value.includes('CONSUMED_TRADE_SETUP') ||
-      value.includes('NO_LONGER_VALID')
+    return value.includes('SWING_CHANGED') || value.includes('SETUP_CHANGED') || value.includes('SETUP_INVALID') ||
+      value.includes('SETUP_EXPIRED') || value.includes('SETUP_STALE') || value.includes('FRESH_SETUP_REQUIRED') ||
+      value.includes('CONSUMED_TRADE_SETUP') || value.includes('NO_LONGER_VALID') || value.includes('FINGERPRINT_CHANGED');
+  }
+
+  function setupIdFrom(obj) {
+    if (!obj || typeof obj !== 'object') return '';
+    return firstValue(
+      obj.signal_setup_id,
+      obj.setup_id,
+      obj.setup_identity?.signal_setup_id,
+      obj.setup_identity?.setup_id,
+      obj.setup_identity?.id,
     );
+  }
+
+  function setupFingerprint(obj) {
+    if (!obj || typeof obj !== 'object') return '';
+    const identity = obj.setup_identity && typeof obj.setup_identity === 'object' ? obj.setup_identity : obj;
+    const parts = [
+      identity.symbol || obj.symbol,
+      identity.direction || identity.side || obj.strategy_decision || obj.signal,
+      identity.swing_type,
+      identity.swing_timestamp,
+      identity.swing_price,
+      identity.bos_candle_timestamp || obj.fifteen_m_break_time,
+      identity.bos_level,
+      identity.confirmation_timestamp || obj.five_m_closed_candle_time,
+    ].map(textValue);
+    return parts.filter(Boolean).length >= 4 ? parts.join('|') : '';
   }
 
   function canonicalize(symbol, obj) {
     if (!symbol || !obj || typeof obj !== 'object') return EMPTY();
 
     const debug = executionDebug(obj);
-    const rawSignal = normalizeSignal(
-      obj.strategy_decision || obj.display_signal || obj.signal_display_state || obj.final_signal || obj.signal
-    );
+    const rawSignal = normalizeSignal(obj.strategy_decision || obj.display_signal || obj.signal_display_state || obj.final_signal || obj.signal);
     const snapshot = activeSnapshot(obj);
     const direction = normalizeSignal(snapshot?.direction || snapshot?.side || obj.active_trade_direction || obj.active_trade_side);
     const positionId = firstValue(snapshot?.broker_position_id, snapshot?.position_id, obj.active_trade_id, obj.broker_position_id, obj.position_id);
     const activeStatus = firstValue(obj.active_trade_status, obj.smc_status, snapshot?.status).toUpperCase();
     const running = Boolean(snapshot || (direction !== 'WAIT' && positionId && !activeStatus.includes('CLOSED') && !activeStatus.includes('EXIT')));
 
-    const executionStatus = firstValue(
-      obj.execution_status,
-      debug.execution_status,
-      rawSignal === 'WAIT' ? 'NOT_APPLICABLE' : 'PENDING'
-    ).toUpperCase();
-    const blockReason = firstValue(
-      obj.execution_block_reason,
-      debug.execution_block_reason,
-      obj.blocked_reason,
-      obj.block_reason,
-      debug.blocked_reason,
-      debug.block_reason,
-    );
+    const executionStatus = firstValue(obj.execution_status, debug.execution_status, rawSignal === 'WAIT' ? 'NOT_APPLICABLE' : 'PENDING').toUpperCase();
+    const blockReason = firstValue(obj.execution_block_reason, debug.execution_block_reason, obj.blocked_reason, obj.block_reason, debug.blocked_reason, debug.block_reason);
     const explicitAllowed = obj.execution_allowed ?? debug.execution_allowed;
     const executionAllowed = explicitAllowed === true;
     const explicitFresh = obj.fresh_entry_available ?? debug.fresh_entry_available;
 
-    // BUY/SELL is a strategy signal, not a position-state label. It may remain
-    // visible only while the setup is still fresh. A running position does not
-    // create or preserve a signal. Stale/changed/consumed setups immediately
-    // return the visible strategy state to WAIT.
+    const setupId = setupIdFrom(obj);
+    const consumedSetupId = setupIdFrom(snapshot);
+    const setupFingerprintCurrent = setupFingerprint(obj);
+    const setupFingerprintConsumed = setupFingerprint(snapshot);
+    const sameConsumedSetup = Boolean(
+      running && rawSignal !== 'WAIT' && (
+        (setupId && consumedSetupId && setupId === consumedSetupId) ||
+        (setupFingerprintCurrent && setupFingerprintConsumed && setupFingerprintCurrent === setupFingerprintConsumed)
+      )
+    );
+
     let fresh = rawSignal === 'BUY' || rawSignal === 'SELL';
     if (explicitFresh === false) fresh = false;
     if (reasonInvalidatesFreshSignal(blockReason)) fresh = false;
+    if (sameConsumedSetup) fresh = false;
 
     const signal = fresh ? rawSignal : 'WAIT';
     let executionState = signal === 'WAIT' ? 'WAIT' : 'SIGNAL';
-    if (signal !== 'WAIT' && (
-      executionStatus.includes('EXECUT') ||
-      executionStatus.includes('SUBMIT') ||
-      executionStatus.includes('ACCEPT') ||
-      executionStatus.includes('ORDER_SENT')
-    )) {
+    if (signal !== 'WAIT' && (executionStatus.includes('EXECUT') || executionStatus.includes('SUBMIT') || executionStatus.includes('ACCEPT') || executionStatus.includes('ORDER_SENT'))) {
       executionState = 'EXECUTING';
     }
 
     return {
-      signal,
-      rawSignal,
-      fresh,
-      executionState,
-      executionStatus,
-      executionAllowed,
-      blockReason,
-      running,
-      direction: direction !== 'WAIT' ? direction : '',
-      positionId,
+      signal, rawSignal, fresh, executionState, executionStatus, executionAllowed, blockReason,
+      running, direction: direction !== 'WAIT' ? direction : '', positionId, setupId, consumedSetupId,
     };
   }
 
@@ -149,34 +135,20 @@
     const current = state[symbol];
     const status = firstValue(statusObj.status).toUpperCase();
     const reason = firstValue(statusObj.reason, statusObj.details?.reason, statusObj.details?.block_reason);
-
     current.executionStatus = status || current.executionStatus;
     if (reason) current.blockReason = reason;
 
-    // A final safety result saying the setup changed/staled/was consumed means
-    // there is no longer a fresh BUY/SELL. Return to WAIT immediately.
     if (reasonInvalidatesFreshSignal(reason)) {
-      current.signal = 'WAIT';
-      current.fresh = false;
-      current.executionState = 'WAIT';
-      current.executionAllowed = false;
-      return;
+      current.signal = 'WAIT'; current.fresh = false; current.executionState = 'WAIT'; current.executionAllowed = false; return;
     }
-
-    if (current.signal === 'WAIT') {
-      current.executionState = 'WAIT';
-      return;
-    }
-
+    if (current.signal === 'WAIT') { current.executionState = 'WAIT'; return; }
     if (status === 'EXECUTED' || status === 'ORDER_SENT' || status === 'SUBMITTED' || status === 'ACCEPTED') {
-      current.executionState = 'EXECUTING';
-      current.executionAllowed = true;
+      current.executionState = 'EXECUTING'; current.executionAllowed = true;
     }
   }
 
   function ingest(payload) {
     if (!payload || typeof payload !== 'object') return;
-
     if (payload.EURUSD && typeof payload.EURUSD === 'object') remember('EURUSD', payload.EURUSD);
     if (payload.XAUUSD && typeof payload.XAUUSD === 'object') remember('XAUUSD', payload.XAUUSD);
 
@@ -187,16 +159,12 @@
     }
 
     if (!payload.EURUSD || !payload.XAUUSD) {
-      const queue = [payload];
-      const seen = new Set();
+      const queue = [payload]; const seen = new Set();
       while (queue.length) {
         const value = queue.shift();
         if (!value || typeof value !== 'object' || seen.has(value)) continue;
         seen.add(value);
-        if (Array.isArray(value)) {
-          queue.push(...value);
-          continue;
-        }
+        if (Array.isArray(value)) { queue.push(...value); continue; }
         const symbol = normalizeSymbol(value.symbol || value.instrument || value.pair);
         if (symbol && ('strategy_decision' in value || 'signal' in value)) remember(symbol, value);
         Object.values(value).forEach((child) => { if (child && typeof child === 'object') queue.push(child); });
@@ -204,23 +172,17 @@
     }
   }
 
-  function displayLabel(entry) {
-    return entry && (entry.signal === 'BUY' || entry.signal === 'SELL') ? entry.signal : 'WAIT';
-  }
-
+  function displayLabel(entry) { return entry && (entry.signal === 'BUY' || entry.signal === 'SELL') ? entry.signal : 'WAIT'; }
   function displayNote(entry) {
     if (!entry || entry.signal === 'WAIT') return '';
     if (entry.executionState === 'EXECUTING') return 'Fresh signal · order submitted';
-    return entry.executionAllowed
-      ? 'Fresh strategy signal · execution eligible'
-      : 'Fresh strategy signal';
+    return entry.executionAllowed ? 'Fresh strategy signal · execution eligible' : 'Fresh strategy signal';
   }
 
   function applySignalElement(signalEl, noteEl, entry) {
     if (!signalEl || !entry) return;
     signalEl.textContent = displayLabel(entry);
     signalEl.dataset.executionState = entry.signal === 'WAIT' ? 'wait' : 'signal';
-
     if (noteEl) {
       const note = displayNote(entry);
       noteEl.textContent = note;
@@ -229,14 +191,9 @@
   }
 
   function decorateSymbol(symbol) {
-    const entry = state[symbol];
-    if (!entry) return;
+    const entry = state[symbol]; if (!entry) return;
     const prefix = symbol === 'XAUUSD' ? 'gold' : 'eurusd';
-    applySignalElement(
-      document.getElementById(`${prefix}-signal`),
-      document.getElementById(`${prefix}-signal-note`),
-      entry,
-    );
+    applySignalElement(document.getElementById(`${prefix}-signal`), document.getElementById(`${prefix}-signal-note`), entry);
   }
 
   function decorateMain() {
@@ -245,16 +202,11 @@
     const noteEl = document.getElementById('main-signal-note');
     if (!title || !signalEl) return;
     const symbol = normalizeSymbol(title.textContent);
-    const entry = state[symbol];
-    if (!entry) return;
+    const entry = state[symbol]; if (!entry) return;
     applySignalElement(signalEl, noteEl, entry);
   }
 
-  function render() {
-    decorateSymbol('EURUSD');
-    decorateSymbol('XAUUSD');
-    decorateMain();
-  }
+  function render() { decorateSymbol('EURUSD'); decorateSymbol('XAUUSD'); decorateMain(); }
 
   const nativeFetch = window.fetch.bind(window);
   window.fetch = async function (input, init) {
@@ -266,9 +218,7 @@
         const nativeJson = response.json.bind(response);
         response.json = async function () {
           const payload = await nativeJson();
-          ingest(payload);
-          window.requestAnimationFrame(render);
-          return payload;
+          ingest(payload); window.requestAnimationFrame(render); return payload;
         };
       }
     } catch (_error) {}
@@ -289,23 +239,12 @@
   }
 
   const observer = new MutationObserver(() => window.requestAnimationFrame(render));
-  const start = () => {
-    observer.observe(document.body, { subtree: true, childList: true, characterData: true });
-    installAlertGuard();
-    render();
-  };
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start, { once: true });
-  else start();
+  const start = () => { observer.observe(document.body, { subtree: true, childList: true, characterData: true }); installAlertGuard(); render(); };
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start, { once: true }); else start();
   window.addEventListener('load', installAlertGuard, { once: true });
 
   window.FlowSignalSignalDisplayState = {
-    state,
-    ingest,
-    canonicalize,
-    mergeAutoExecutionStatus,
-    reasonInvalidatesFreshSignal,
-    displayLabel,
-    displayNote,
-    render,
+    state, ingest, canonicalize, mergeAutoExecutionStatus, reasonInvalidatesFreshSignal,
+    setupIdFrom, setupFingerprint, displayLabel, displayNote, render,
   };
 })();
