@@ -42,7 +42,7 @@
     document.write('<script src="indicators/smc/smc-chart-bridge.js?v=6"><\/script>');
     document.write('<script src="indicators/smc/smc-local-engine.js?v=4"><\/script>');
     document.write('<script src="indicators/smc/smc-local-visual.js?v=6"><\/script>');
-    document.write('<script src="signal-display-state.js?v=1"><\/script>');
+    document.write('<script src="signal-display-state.js?v=2"><\/script>');
   }
 
   function loadTabRoleSession() {
