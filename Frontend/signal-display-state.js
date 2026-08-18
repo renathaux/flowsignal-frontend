@@ -115,7 +115,6 @@
     const sameConsumedSetup = Boolean(running && rawSignal !== 'WAIT' && setupId && consumedSetupId && setupId === consumedSetupId);
     const sameInvalidatedSetup = Boolean(setupId && invalidated[symbol] && setupId === invalidated[symbol]);
 
-    // When a genuinely different setup appears, release the old invalidation.
     if (setupId && invalidated[symbol] && setupId !== invalidated[symbol]) {
       invalidated[symbol] = '';
       saveInvalidated();
@@ -208,6 +207,56 @@
     }
   }
 
+  function precedingSymbol(element) {
+    if (!element || typeof Node === 'undefined') return '';
+    const candidates = [
+      ['EURUSD', document.getElementById('eurusd-title')],
+      ['XAUUSD', document.getElementById('gold-title')],
+    ].filter(([, node]) => node && (node === element || Boolean(node.compareDocumentPosition(element) & Node.DOCUMENT_POSITION_FOLLOWING)));
+    return candidates.length ? candidates[candidates.length - 1][0] : '';
+  }
+
+  function findLeaf(root, labels) {
+    const wanted = labels.map((v) => v.toUpperCase());
+    return Array.from(root?.querySelectorAll?.('*') || []).find((el) => {
+      if (el.children.length) return false;
+      return wanted.includes(String(el.textContent || '').trim().toUpperCase());
+    }) || null;
+  }
+
+  function resetCheckRow(card, labels, value) {
+    const label = findLeaf(card, labels);
+    if (!label) return;
+    const row = label.parentElement;
+    if (!row) return;
+    const leaves = Array.from(row.querySelectorAll('*')).filter((el) => el.children.length === 0 && el !== label);
+    const status = leaves[leaves.length - 1] || row.lastElementChild;
+    if (status) status.textContent = value;
+  }
+
+  function resetEntryStrategyChecksForWaitSignals() {
+    const headers = Array.from(document.querySelectorAll('*')).filter((el) => {
+      if (el.children.length) return false;
+      const text = String(el.textContent || '').trim().toUpperCase();
+      return text === 'ENTRY STRATEGY CHECKS' || text.includes('STRATÉGIE D’ENTRÉE') || text.includes('ESTRATEGIA DE ENTRADA');
+    });
+
+    headers.forEach((header) => {
+      const symbol = precedingSymbol(header);
+      if (!symbol || state[symbol]?.signal !== 'WAIT') return;
+      const card = header.closest('.entry-strategy-checks, .strategy-checks, .strategy-check-card, .card') || header.parentElement?.parentElement || header.parentElement;
+      if (!card) return;
+
+      resetCheckRow(card, ['15m BOS/CHOCH'], 'FAILED');
+      resetCheckRow(card, ['Swing break', 'Cassure du swing', 'Ruptura del swing'], 'FAILED');
+      resetCheckRow(card, ['15m close', 'Clôture 15 min', 'Cierre de 15 min'], 'NOT EVALUATED');
+      resetCheckRow(card, ['5m confirm', 'Confirmation 5 min', 'Confirmación de 5 min'], 'NOT EVALUATED');
+      resetCheckRow(card, ['Swing SL', 'SL du swing', 'SL del swing'], 'NOT CALCULATED YET');
+      resetCheckRow(card, ['Signal'], 'WAIT');
+      resetCheckRow(card, ['Reason', 'Raison', 'Motivo'], 'WAIT_NO_FRESH_15M_SMC_BREAK');
+    });
+  }
+
   function decorateSymbol(symbol) {
     const entry = state[symbol]; if (!entry) return;
     const prefix = symbol === 'XAUUSD' ? 'gold' : 'eurusd';
@@ -224,7 +273,12 @@
     applySignalElement(signalEl, noteEl, entry);
   }
 
-  function render() { decorateSymbol('EURUSD'); decorateSymbol('XAUUSD'); decorateMain(); }
+  function render() {
+    decorateSymbol('EURUSD');
+    decorateSymbol('XAUUSD');
+    decorateMain();
+    resetEntryStrategyChecksForWaitSignals();
+  }
 
   const nativeFetch = window.fetch.bind(window);
   window.fetch = async function (input, init) {
@@ -263,6 +317,7 @@
 
   window.FlowSignalSignalDisplayState = {
     state, invalidated, ingest, canonicalize, mergeAutoExecutionStatus, reasonInvalidatesFreshSignal,
-    setupIdFrom, setupFingerprint, effectiveSetupId, displayLabel, displayNote, render,
+    setupIdFrom, setupFingerprint, effectiveSetupId, displayLabel, displayNote,
+    resetEntryStrategyChecksForWaitSignals, render,
   };
 })();
