@@ -69,15 +69,40 @@ assert.equal(state.executionState, 'WAIT');
 api.ingest({
   EURUSD: {
     strategy_decision: 'SELL',
-    execution_status: 'BLOCKED',
-    execution_block_reason: 'WAIT_SETUP_SWING_CHANGED_BEFORE_EXECUTION',
+    execution_status: 'PENDING',
     strategy_debug: {
       strategy_decision: 'SELL',
       execution_status: 'PENDING',
     },
   },
+  XAUUSD: { strategy_decision: 'WAIT' },
+  live_auto_status_by_symbol: {
+    EURUSD: {
+      symbol: 'EURUSD',
+      signal: 'SELL',
+      status: 'BLOCKED',
+      reason: 'WAIT_SETUP_SWING_CHANGED_BEFORE_EXECUTION',
+    },
+  },
 });
 assert.equal(api.state.EURUSD.executionState, 'BLOCKED');
 assert.equal(api.state.EURUSD.blockReason, 'WAIT_SETUP_SWING_CHANGED_BEFORE_EXECUTION');
+assert.equal(api.displayLabel(api.state.EURUSD), 'SELL · BLOCKED');
+
+// A running broker position always outranks a generic auto-execution block.
+api.ingest({
+  EURUSD: { strategy_decision: 'WAIT' },
+  XAUUSD: {
+    strategy_decision: 'SELL',
+    active_trade_direction: 'SELL',
+    active_trade_id: '57804337',
+    active_trade_status: 'RUNNING',
+  },
+  live_auto_status_by_symbol: {
+    XAUUSD: { symbol: 'XAUUSD', signal: 'SELL', status: 'BLOCKED', reason: 'ACTIVE_TRADE_ALREADY_RUNNING' },
+  },
+});
+assert.equal(api.state.XAUUSD.executionState, 'RUNNING');
+assert.equal(api.displayLabel(api.state.XAUUSD), 'SELL · RUNNING');
 
 console.log('signal display lifecycle tests passed');
