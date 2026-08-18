@@ -5,16 +5,25 @@
   const CONNECTION_KEY='flowsignal_deriv_connection_id';
   const STATE_KEY='flowsignal_deriv_oauth_state';
   const VERIFIER_KEY='flowsignal_deriv_pkce_verifier';
+  const USER_KEY='flowsignal_binary_user_id';
+  const ACCOUNT_KEY='flowsignal_deriv_account_id';
   const FOREX_ALERT_PREF_KEY='soundEnabled';
   const FOREX_ALERT_GUARD_KEY='flowsignal_binary_oauth_forex_alert_guard';
   const BACKEND=(location.hostname==='localhost'||location.hostname==='127.0.0.1')?'http://127.0.0.1:8001':'https://flowsignal-backend-3.onrender.com';
   const POLL_MS=6000;
-  const DEMO_STAKE=10;
+  const DEFAULT_STAKE=1;
   const EXPIRY_MINUTES=5;
   let mounted=false;
   let pollTimer=null;
   let executionBusy=false;
   let lastLocalSignalId='';
+  let selectedAccount=null;
+
+  function binaryUserId(){
+    let value=localStorage.getItem(USER_KEY);
+    if(!value){ value=crypto.randomUUID(); localStorage.setItem(USER_KEY,value); }
+    return value;
+  }
 
   // Deriv OAuth leaves FlowSignal and returns with a full-page reload. The
   // Forex alert module keeps its lastSignals only in JS memory, so a reload can
@@ -63,10 +72,12 @@
   function cardHtml(){
     return '<div class="binary-app-title">BINARY 5M</div>'+
       '<div class="binary-app-signal" id="binaryDerivSignal">WAIT</div>'+
-      `<div class="binary-app-meta" id="binaryDerivMeta">EURUSD · 5m CHART · ${EXPIRY_MINUTES}m EXPIRY · $${DEMO_STAKE} DEMO · CONFIDENCE --</div>`+
+      `<div class="binary-app-meta" id="binaryDerivMeta">EURUSD · ${EXPIRY_MINUTES}m · AUTHORITATIVE V5 RELAY</div>`+
+      '<div class="binary-app-account" id="binaryDerivAccount">ACCOUNT · NOT CONNECTED</div>'+
       '<div class="binary-app-status" id="binaryDerivStatus">DERIV-NATIVE STRATEGY · NOT CONNECTED</div>'+
+      '<div class="binary-app-settings"><select id="binaryDerivAccountSelect" aria-label="Deriv account"></select><label><input id="binaryAutoToggle" type="checkbox"> Binary Auto</label><label>Stake <input id="binaryStake" type="number" min="0.01" step="0.01" value="1"></label><button type="button" id="binarySaveSettings">Save</button></div>'+
       '<div class="binary-app-actions">'+
-        '<button type="button" id="binaryDerivConnectBtn">Connect Deriv Demo</button>'+
+        '<button type="button" id="binaryDerivConnectBtn">Connect Deriv</button>'+
         '<button type="button" id="binaryDerivDisconnectBtn" class="hidden">Disconnect</button>'+
       '</div>';
   }
@@ -87,6 +98,8 @@
     anchor.insertAdjacentElement('afterend',root);
     root.querySelector('#binaryDerivConnectBtn')?.addEventListener('click',onConnectClick);
     root.querySelector('#binaryDerivDisconnectBtn')?.addEventListener('click',onDisconnectClick);
+    root.querySelector('#binaryDerivAccountSelect')?.addEventListener('change',onAccountSelect);
+    root.querySelector('#binarySaveSettings')?.addEventListener('click',saveBinarySettings);
     mounted=true;
     refreshStatus();
     startPolling();
@@ -108,7 +121,7 @@
     if(signalEl) signalEl.textContent=normalized;
     if(metaEl){
       const confidenceText=Number.isFinite(Number(confidence))?`${Math.round(Number(confidence))}%`:'--';
-      metaEl.textContent=`EURUSD · 5m CHART · ${EXPIRY_MINUTES}m EXPIRY · $${DEMO_STAKE} DEMO · CONFIDENCE ${confidenceText}`;
+      metaEl.textContent=`EURUSD · ${EXPIRY_MINUTES}m · AUTHORITATIVE V5 · CONFIDENCE ${confidenceText}`;
     }
   }
 
@@ -145,7 +158,7 @@
       window.location.href=url.toString();
     }catch(error){
       console.error('BINARY_DERIV_CONNECT_ERROR',error); setStatus(`CONNECT ERROR · ${error.message||'unknown error'}`,true);
-      button.disabled=false; button.textContent='Connect Deriv Demo';
+      button.disabled=false; button.textContent='Connect Deriv';
     }
   }
 
@@ -153,7 +166,31 @@
     event.preventDefault(); const id=localStorage.getItem(CONNECTION_KEY);
     try{ if(id) await fetch(`${BACKEND}/deriv/disconnect`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({connection_id:id})}); }
     catch(error){ console.warn('BINARY_DERIV_DISCONNECT_WARNING',error); }
-    localStorage.removeItem(CONNECTION_KEY); lastLocalSignalId=''; refreshStatus();
+    localStorage.removeItem(CONNECTION_KEY); localStorage.removeItem(ACCOUNT_KEY); selectedAccount=null; lastLocalSignalId=''; refreshStatus();
+  }
+
+  async function loadBinarySettings(){
+    if(!selectedAccount) return;
+    const response=await fetch(`${BACKEND}/deriv/binary/account-settings/${encodeURIComponent(binaryUserId())}/${encodeURIComponent(selectedAccount.account_id||selectedAccount.id||selectedAccount.loginid)}`,{cache:'no-store'});
+    if(!response.ok) return;
+    const data=await response.json();
+    document.getElementById('binaryAutoToggle').checked=Boolean(data.binary_auto_enabled);
+    document.getElementById('binaryStake').value=String(data.binary_stake??DEFAULT_STAKE);
+  }
+
+  async function saveBinarySettings(){
+    if(!selectedAccount) return setStatus('SELECT A DERIV ACCOUNT',true);
+    const accountId=selectedAccount.account_id||selectedAccount.id||selectedAccount.loginid;
+    const response=await fetch(`${BACKEND}/deriv/binary/account-settings`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({user_id:binaryUserId(),deriv_account_id:accountId,enabled:document.getElementById('binaryAutoToggle').checked,stake:Number(document.getElementById('binaryStake').value)})});
+    const data=await response.json().catch(()=>({})); if(!response.ok) return setStatus(data.detail||'BINARY SETTINGS ERROR',true);
+    await loadBinarySettings(); setStatus(`${data.account_type} ${data.deriv_account_id} · BINARY AUTO ${data.binary_auto_enabled?'ON':'OFF'}`);
+  }
+
+  async function onAccountSelect(event){
+    const connectionId=localStorage.getItem(CONNECTION_KEY); const accountId=event.target.value;
+    const response=await fetch(`${BACKEND}/deriv/account/select`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({connection_id:connectionId,user_id:binaryUserId(),deriv_account_id:accountId})});
+    const data=await response.json().catch(()=>({})); if(!response.ok) return setStatus(data.detail||'ACCOUNT SELECTION BLOCKED',true);
+    localStorage.setItem(ACCOUNT_KEY,accountId); await refreshStatus();
   }
 
   async function refreshStatus(){
@@ -166,9 +203,13 @@
       const data=await response.json().catch(()=>({}));
       if(!response.ok||!data.connected){ localStorage.removeItem(CONNECTION_KEY); setStatus('DEMO CONNECTION EXPIRED',true); connect?.classList.remove('hidden'); disconnect?.classList.add('hidden'); return false; }
       connect?.classList.add('hidden'); disconnect?.classList.remove('hidden');
-      const demo=(data.demo_accounts||[])[0];
-      if(data.demo_account_verified){ const balance=demo?.balance!=null?` · ${demo.balance} ${demo.currency||''}`:''; setStatus(`DERIV DEMO CONNECTED${balance}`); return true; }
-      setStatus('DERIV CONNECTED · DEMO VERIFICATION REQUIRED',true); return false;
+      const select=document.getElementById('binaryDerivAccountSelect'); const wanted=data.selected_account_id||localStorage.getItem(ACCOUNT_KEY)||'';
+      select.innerHTML=(data.accounts||[]).map(a=>{const id=a.account_id||a.id||a.loginid; const type=a.account_type_normalized||'UNKNOWN'; return `<option value="${id}" ${id===wanted?'selected':''}>${type} · ${id}</option>`;}).join('');
+      selectedAccount=(data.accounts||[]).find(a=>(a.account_id||a.id||a.loginid)===wanted)||null;
+      if(!selectedAccount){ setStatus('DERIV CONNECTED · SELECT AN ACCOUNT',true); return false; }
+      const id=selectedAccount.account_id||selectedAccount.id||selectedAccount.loginid; const type=selectedAccount.account_type_normalized||'UNKNOWN';
+      localStorage.setItem(ACCOUNT_KEY,id); document.getElementById('binaryDerivAccount').textContent=`${type} · ${id} · ${selectedAccount.balance??'--'} ${selectedAccount.currency||''}`;
+      await loadBinarySettings(); setStatus(`DERIV ${type} CONNECTED`); return type!=='UNKNOWN';
     }catch(error){ console.warn('BINARY_DERIV_STATUS_WARNING',error); setStatus('DERIV STATUS UNAVAILABLE',true); return false; }
   }
 
@@ -188,18 +229,19 @@
     const executionSide=direction==='RISE'?'BUY':'SELL';
     executionBusy=true;
     try{
-      setStatus(`${direction} · SENDING $${DEMO_STAKE} / ${EXPIRY_MINUTES}m DEMO CONTRACT…`);
-      const response=await fetch(`${BACKEND}/deriv/demo/execute-signal`,{
+      const accountType=selectedAccount?.account_type_normalized||'UNKNOWN'; const stake=document.getElementById('binaryStake').value;
+      setStatus(`${direction} · ${accountType} · $${stake} / ${EXPIRY_MINUTES}m…`);
+      const response=await fetch(`${BACKEND}/deriv/binary/v5/execute`,{
         method:'POST',
         headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({connection_id:connectionId,signal:executionSide,signal_id:signalId}),
+        body:JSON.stringify({connection_id:connectionId,user_id:binaryUserId(),signal_id:signalId}),
       });
       const data=await response.json().catch(()=>({}));
       if(!response.ok) throw new Error(data?.detail||`backend ${response.status}`);
       lastLocalSignalId=signalId;
       if(data.executed){
         const contract=data.contract_id?` · #${data.contract_id}`:'';
-        setStatus(`DEMO ${direction} OPEN · $${data.stake??DEMO_STAKE} · ${data.duration_minutes??EXPIRY_MINUTES}m${contract}`);
+        setStatus(`${data.account_type} ${direction} · ${data.outcome||'OPEN'}${contract}`);
         console.info('BINARY_NATIVE_5M_EXECUTED',data);
       }else if(data.duplicate){ setStatus('DERIV DEMO CONNECTED · 5M SIGNAL ALREADY EXECUTED'); }
     }catch(error){
@@ -211,7 +253,7 @@
   async function pollBinary(){
     if(!document.getElementById(ROOT_ID)) return;
     try{
-      const response=await fetch(`${BACKEND}/deriv/binary/signal`,{cache:'no-store'});
+      const response=await fetch(`${BACKEND}/deriv/binary/v5/signal`,{cache:'no-store'});
       if(!response.ok) throw new Error(`binary signal ${response.status}`);
       const data=await response.json();
       setSignal(data?.signal,data?.confidence);
@@ -222,7 +264,7 @@
       const connected=Boolean(localStorage.getItem(CONNECTION_KEY));
       if(connected){
         if(['RISE','FALL'].includes(String(data?.signal||'').toUpperCase())) await executeNativeSignal(data);
-        else setStatus(`DERIV DEMO CONNECTED · WAIT · ${data?.reason||'NO 5M EDGE'}`);
+        else setStatus(`DERIV ${selectedAccount?.account_type_normalized||''} CONNECTED · WAIT · ${data?.reason||'NO RELAYED V5 SIGNAL'}`);
       }else{
         setStatus(`DERIV-NATIVE 5M · ${data?.reason||'READY'}`);
       }
