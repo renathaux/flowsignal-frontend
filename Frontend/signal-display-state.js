@@ -4,6 +4,7 @@
   if (window.__flowSignalSignalDisplayStateInstalled) return;
   window.__flowSignalSignalDisplayStateInstalled = true;
 
+  const INVALIDATED_KEY = 'flowsignal_invalidated_setup_ids_v1';
   const EMPTY = () => ({
     signal: 'WAIT', rawSignal: 'WAIT', fresh: false,
     executionState: 'WAIT', executionStatus: 'NOT_APPLICABLE', executionAllowed: false,
@@ -11,6 +12,14 @@
   });
 
   const state = { EURUSD: EMPTY(), XAUUSD: EMPTY() };
+  let invalidated = { EURUSD: '', XAUUSD: '' };
+  try {
+    invalidated = { ...invalidated, ...(JSON.parse(localStorage.getItem(INVALIDATED_KEY) || '{}') || {}) };
+  } catch (_error) {}
+
+  function saveInvalidated() {
+    try { localStorage.setItem(INVALIDATED_KEY, JSON.stringify(invalidated)); } catch (_error) {}
+  }
 
   function normalizeSymbol(value) {
     const text = String(value || '').toUpperCase();
@@ -80,6 +89,10 @@
     return parts.filter(Boolean).length >= 4 ? parts.join('|') : '';
   }
 
+  function effectiveSetupId(obj) {
+    return setupIdFrom(obj) || setupFingerprint(obj);
+  }
+
   function canonicalize(symbol, obj) {
     if (!symbol || !obj || typeof obj !== 'object') return EMPTY();
 
@@ -97,21 +110,22 @@
     const executionAllowed = explicitAllowed === true;
     const explicitFresh = obj.fresh_entry_available ?? debug.fresh_entry_available;
 
-    const setupId = setupIdFrom(obj);
-    const consumedSetupId = setupIdFrom(snapshot);
-    const setupFingerprintCurrent = setupFingerprint(obj);
-    const setupFingerprintConsumed = setupFingerprint(snapshot);
-    const sameConsumedSetup = Boolean(
-      running && rawSignal !== 'WAIT' && (
-        (setupId && consumedSetupId && setupId === consumedSetupId) ||
-        (setupFingerprintCurrent && setupFingerprintConsumed && setupFingerprintCurrent === setupFingerprintConsumed)
-      )
-    );
+    const setupId = effectiveSetupId(obj);
+    const consumedSetupId = effectiveSetupId(snapshot);
+    const sameConsumedSetup = Boolean(running && rawSignal !== 'WAIT' && setupId && consumedSetupId && setupId === consumedSetupId);
+    const sameInvalidatedSetup = Boolean(setupId && invalidated[symbol] && setupId === invalidated[symbol]);
+
+    // When a genuinely different setup appears, release the old invalidation.
+    if (setupId && invalidated[symbol] && setupId !== invalidated[symbol]) {
+      invalidated[symbol] = '';
+      saveInvalidated();
+    }
 
     let fresh = rawSignal === 'BUY' || rawSignal === 'SELL';
     if (explicitFresh === false) fresh = false;
     if (reasonInvalidatesFreshSignal(blockReason)) fresh = false;
     if (sameConsumedSetup) fresh = false;
+    if (sameInvalidatedSetup) fresh = false;
 
     const signal = fresh ? rawSignal : 'WAIT';
     let executionState = signal === 'WAIT' ? 'WAIT' : 'SIGNAL';
@@ -139,6 +153,10 @@
     if (reason) current.blockReason = reason;
 
     if (reasonInvalidatesFreshSignal(reason)) {
+      if (current.setupId) {
+        invalidated[symbol] = current.setupId;
+        saveInvalidated();
+      }
       current.signal = 'WAIT'; current.fresh = false; current.executionState = 'WAIT'; current.executionAllowed = false; return;
     }
     if (current.signal === 'WAIT') { current.executionState = 'WAIT'; return; }
@@ -244,7 +262,7 @@
   window.addEventListener('load', installAlertGuard, { once: true });
 
   window.FlowSignalSignalDisplayState = {
-    state, ingest, canonicalize, mergeAutoExecutionStatus, reasonInvalidatesFreshSignal,
-    setupIdFrom, setupFingerprint, displayLabel, displayNote, render,
+    state, invalidated, ingest, canonicalize, mergeAutoExecutionStatus, reasonInvalidatesFreshSignal,
+    setupIdFrom, setupFingerprint, effectiveSetupId, displayLabel, displayNote, render,
   };
 })();
