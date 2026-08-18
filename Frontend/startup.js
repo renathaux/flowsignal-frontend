@@ -1,4 +1,33 @@
 (function () {
+  // Keep browser dashboard reads isolated from the heavyweight /panel-data
+  // trading/diagnostic endpoint. This is installed before script.js loads.
+  if (!window.__flowSignalDashboardFetchPatched) {
+    const nativeFetch = window.fetch.bind(window);
+    window.fetch = function (input, init) {
+      try {
+        const method = String(init?.method || (input instanceof Request ? input.method : 'GET') || 'GET').toUpperCase();
+        const raw = typeof input === 'string' || input instanceof URL
+          ? String(input)
+          : input instanceof Request
+            ? input.url
+            : '';
+        if (method === 'GET' && raw) {
+          const url = new URL(raw, window.location.href);
+          if (url.pathname === '/panel-data') {
+            url.pathname = '/dashboard-feed';
+            if (input instanceof Request) {
+              input = new Request(url.toString(), input);
+            } else {
+              input = url.toString();
+            }
+          }
+        }
+      } catch (_error) {}
+      return nativeFetch(input, init);
+    };
+    window.__flowSignalDashboardFetchPatched = true;
+  }
+
   if (document.readyState === "loading") {
     if (window.matchMedia("(min-width: 701px)").matches) {
       document.write('<link rel="stylesheet" href="desktop.css?v=2" media="(min-width: 701px)">');
@@ -243,6 +272,7 @@
   };
 
   record("application_initialization_started");
+  record("dashboard_transport_ready", { transport: "isolated_cache_feed", path: "/dashboard-feed" });
   record("live_chart_tick_transport_ready", { transport: "ctrader_tick_snapshot", pollMs: 250 });
   record("smc_overlay_module_ready", { observationOnly: true, affectsStrategy: false, singleInstance: true });
   attachMenu();
