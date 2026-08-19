@@ -59,7 +59,6 @@
   <script>
     (function(){
       'use strict';
-      // This is a public-only document. Clear obsolete overlay state from the old combined page.
       sessionStorage.removeItem('flowsignal_public_home_mode');
       if(window.speechSynthesis) window.speechSynthesis.cancel();
       document.getElementById('loginBtn').onclick=()=>location.href='/account.html?mode=login';
@@ -68,7 +67,7 @@
       document.getElementById('ownerBtn').onclick=()=>{
         sessionStorage.removeItem('flowsignal_tab_signed_out');
         sessionStorage.removeItem('flowsignal_public_home_mode');
-        location.href='/app?owner=1';
+        location.href='/owner.html';
       };
     })();
   </script>
