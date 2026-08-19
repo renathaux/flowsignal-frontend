@@ -1,9 +1,92 @@
 (function () {
   const earlyParams = new URLSearchParams(window.location.search);
+  const isPublicRoot = /^\/$/.test(window.location.pathname);
   const isAppRoute = /^\/app\/?$/i.test(window.location.pathname);
   const customerSessionToken = String(sessionStorage.getItem('flowsignal_user_session_token') || '').trim();
   const ownerRequested = earlyParams.get('owner') === '1';
   const legacyRole = String(sessionStorage.getItem('flowsignal_tab_role') || localStorage.getItem('flowsignal_role') || '').toLowerCase();
+
+  // HARD PUBLIC HOME LOCK.
+  // Production has a dedicated home.html route, but if Vercel/custom-domain routing
+  // serves the legacy combined index at `/`, do not let any dashboard runtime boot.
+  // startup.js is intentionally the last script allowed to execute on the public root.
+  if (isPublicRoot) {
+    try {
+      window.speechSynthesis?.cancel?.();
+      if (window.speechSynthesis) {
+        try { window.speechSynthesis.speak = function () {}; } catch (_error) {}
+      }
+    } catch (_error) {}
+
+    document.body?.classList.add('flowsignal-public-hard-lock');
+    if (!document.getElementById('flowsignalPublicHardLockStyle')) {
+      const style = document.createElement('style');
+      style.id = 'flowsignalPublicHardLockStyle';
+      style.textContent = `
+        body.flowsignal-public-hard-lock #mainApp,
+        body.flowsignal-public-hard-lock #smartExplain,
+        body.flowsignal-public-hard-lock #assistantModal,
+        body.flowsignal-public-hard-lock #tradeModal,
+        body.flowsignal-public-hard-lock #adminModal,
+        body.flowsignal-public-hard-lock #feedbackModal,
+        body.flowsignal-public-hard-lock #feedbackToast,
+        body.flowsignal-public-hard-lock #statsModal,
+        body.flowsignal-public-hard-lock #settingsModal,
+        body.flowsignal-public-hard-lock #newsModeConfirmModal,
+        body.flowsignal-public-hard-lock #brokerAccountsModal,
+        body.flowsignal-public-hard-lock #paperModal,
+        body.flowsignal-public-hard-lock #tradeLevelConfirmModal,
+        body.flowsignal-public-hard-lock #flowsignalTradingModeSelector,
+        body.flowsignal-public-hard-lock .trade-modal,
+        body.flowsignal-public-hard-lock .smart-explain,
+        body.flowsignal-public-hard-lock .feedback-toast {
+          display: none !important;
+          visibility: hidden !important;
+          opacity: 0 !important;
+          pointer-events: none !important;
+        }
+      `;
+      document.head.appendChild(style);
+    }
+
+    const wirePublicButtons = () => {
+      const login = document.getElementById('openAdminLoginBtn') || document.getElementById('loginBtn');
+      const signup = document.getElementById('openAccessBtn') || document.getElementById('signupBtn');
+      const hero = document.getElementById('openAccessBtnHero') || document.getElementById('heroSignupBtn');
+      if (login) {
+        login.removeAttribute('onclick');
+        login.textContent = 'Login';
+        login.onclick = (event) => { event?.preventDefault?.(); window.location.href = '/account.html?mode=login'; };
+      }
+      if (signup) {
+        signup.removeAttribute('onclick');
+        signup.removeAttribute('data-open-access');
+        signup.textContent = 'Get Started';
+        signup.onclick = (event) => { event?.preventDefault?.(); window.location.href = '/account.html?mode=signup'; };
+      }
+      if (hero) {
+        hero.removeAttribute('onclick');
+        hero.removeAttribute('data-open-access');
+        hero.textContent = 'Start Trading Now →';
+        hero.onclick = (event) => { event?.preventDefault?.(); window.location.href = '/account.html?mode=signup'; };
+      }
+      const nav = document.querySelector('.landing-nav-actions');
+      if (nav && !document.getElementById('landingOwnerBtn') && !document.getElementById('ownerBtn')) {
+        const owner = document.createElement('button');
+        owner.id = 'landingOwnerBtn';
+        owner.className = 'landing-login-btn';
+        owner.type = 'button';
+        owner.textContent = 'Owner';
+        owner.onclick = () => { window.location.href = '/app?owner=1'; };
+        nav.appendChild(owner);
+      }
+    };
+
+    wirePublicButtons();
+    try { window.stop(); } catch (_error) {}
+    window.__FLOWSIGNAL_PUBLIC_HARD_LOCK = true;
+    return;
+  }
 
   // /app is never a public landing page. If this tab has no customer session and
   // is not intentionally entering Owner/Admin mode, leave before dashboard code boots.
