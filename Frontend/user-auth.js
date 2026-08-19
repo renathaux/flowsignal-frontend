@@ -96,7 +96,7 @@
     const raw=typeof input==='string'?input:input.url;
     const token=userSessionToken();
     const customerRequest=isCustomerRequest(raw);
-    if((tabSignedOut()||!token)&&customerRequest&&logicalBackendPath(raw)!=='/auth/session'){
+    if((tabSignedOut()||!token)&&customerRequest&&logicalBackendPath(raw)!=='/auth/session'&&!legacyOwner()){
       return new Response(JSON.stringify({detail:'TAB_SIGNED_OUT'}),{status:401,headers:{'Content-Type':'application/json'}});
     }
     const url=customerUrl(raw);
@@ -136,17 +136,7 @@
   }
   function openOwnerAccess(event){
     event?.preventDefault?.();
-    sessionStorage.removeItem(USER_SESSION_KEY);
-    sessionStorage.removeItem(TAB_SIGNED_OUT_KEY);
-    sessionStorage.removeItem(LEGACY_BINARY_USER_KEY);
-    setPublicHome(false);
-    const landing=document.getElementById('landingPage');
-    if(landing){landing.classList.remove('hidden');landing.style.removeProperty('display');}
-    if(typeof window.openFlowSignalAdminLogin==='function')window.openFlowSignalAdminLogin(event);
-    else{
-      document.getElementById('adminLoginBox')?.classList.remove('hidden');
-      setTimeout(()=>document.getElementById('adminEmailInput')?.focus(),50);
-    }
+    location.href='/owner.html';
   }
   function enterFullUserDashboard(user){
     if(!user||String(user.role||'user').toLowerCase()!=='user')return;
@@ -180,12 +170,22 @@
     enterFullUserDashboard(user);
   }
   async function session(){
+    if(legacyOwner()){
+      sessionUser=null;
+      csrfToken='';
+      sessionStorage.removeItem(CSRF_KEY);
+      sessionStorage.removeItem(PUBLIC_HOME_KEY);
+      sessionStorage.removeItem(TAB_SIGNED_OUT_KEY);
+      showApp();
+      return null;
+    }
     const token=userSessionToken();
     if(publicHome()||tabSignedOut()||!token){
       sessionUser=null;
       csrfToken='';
       sessionStorage.removeItem(CSRF_KEY);
-      showLanding();
+      if(location.pathname.startsWith('/app')) location.replace('/');
+      else showLanding();
       return null;
     }
     try{
@@ -195,7 +195,10 @@
     }catch(_error){}
     sessionStorage.removeItem(USER_SESSION_KEY);
     sessionStorage.removeItem(LEGACY_BINARY_USER_KEY);
-    sessionUser=null;csrfToken='';sessionStorage.removeItem(CSRF_KEY);showLanding();return null;
+    sessionUser=null;csrfToken='';sessionStorage.removeItem(CSRF_KEY);
+    if(location.pathname.startsWith('/app')) location.replace('/');
+    else showLanding();
+    return null;
   }
   async function logout(){
     const token=userSessionToken();
@@ -215,7 +218,7 @@
     csrfToken='';
     sessionStorage.removeItem(CSRF_KEY);
     sessionStorage.removeItem('flowsignal_tab_role');
-    showLanding();
+    location.replace('/');
   }
 
   function wireLanding(){
@@ -242,8 +245,16 @@
     logout();
   },true);
 
+  window.FlowSignalAuth={get user(){return sessionUser;},get csrf(){return csrfToken;},get sessionToken(){return userSessionToken();},currentUserId(){return sessionUser?.id||'';},session,logout,open(mode='login'){openAccount(mode);},openOwner:openOwnerAccess,backend:BACKEND};
+
+  if(legacyOwner()){
+    sessionStorage.removeItem(PUBLIC_HOME_KEY);
+    sessionStorage.removeItem(TAB_SIGNED_OUT_KEY);
+    showApp();
+    return;
+  }
+
   installPublicHomeStyle();
   wireLanding();
-  window.FlowSignalAuth={get user(){return sessionUser;},get csrf(){return csrfToken;},get sessionToken(){return userSessionToken();},currentUserId(){return sessionUser?.id||'';},session,logout,open(mode='login'){openAccount(mode);},openOwner:openOwnerAccess,backend:BACKEND};
   session();
 })();
