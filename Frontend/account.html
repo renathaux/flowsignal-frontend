@@ -48,7 +48,13 @@
         error.textContent='';
       }
       switchBtn.addEventListener('click',()=>{signup=!signup;history.replaceState(null,'',`/account.html?mode=${signup?'signup':'login'}`);render();});
-      home.addEventListener('click',()=>location.replace('/'));
+      home.addEventListener('click',()=>{
+        sessionStorage.setItem('flowsignal_force_public_home','1');
+        sessionStorage.removeItem('flowsignal_tab_role');
+        localStorage.removeItem('flowsignal_access');
+        if(String(localStorage.getItem('flowsignal_role')||'').toLowerCase()==='user')localStorage.removeItem('flowsignal_role');
+        location.replace('/?home=1');
+      });
       form.addEventListener('submit',async(event)=>{
         event.preventDefault();
         if(signup&&password.value!==confirm.value){error.textContent='Passwords do not match.';return;}
@@ -57,6 +63,7 @@
           const response=await fetch(`${BACKEND}/auth/${signup?'signup':'login'}`,{method:'POST',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:email.value.trim(),password:password.value})});
           const data=await response.json().catch(()=>({}));
           if(!response.ok) throw new Error(data.detail||'Authentication failed');
+          sessionStorage.removeItem('flowsignal_force_public_home');
           sessionStorage.setItem('flowsignal_user_portal_intent','1');
           if(data.csrf_token) sessionStorage.setItem('flowsignal_csrf_token',String(data.csrf_token));
           location.replace('/?user=1');
