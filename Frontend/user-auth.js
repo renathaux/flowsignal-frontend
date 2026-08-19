@@ -10,20 +10,32 @@
   const LEGACY_BINARY_USER_KEY='flowsignal_binary_user_id';
   const LEGACY_SESSION_TOKEN_KEY='flowsignal_session_token';
   const TRADING_MODE_KEY='flowsignal_trading_mode';
-  const FORCE_PUBLIC_HOME_KEY='flowsignal_force_public_home';
+  const PUBLIC_HOME_KEY='flowsignal_public_home_mode';
   const params=new URLSearchParams(location.search);
-  const forcePublicHome=params.get('home')==='1'||sessionStorage.getItem(FORCE_PUBLIC_HOME_KEY)==='1';
-  if(forcePublicHome){
-    sessionStorage.removeItem(FORCE_PUBLIC_HOME_KEY);
-    if(params.has('home')){
-      params.delete('home');
-      const clean=`${location.pathname}${params.toString()?`?${params.toString()}`:''}${location.hash||''}`;
-      history.replaceState(null,'',clean||'/');
-    }
+  if(params.get('home')==='1') localStorage.setItem(PUBLIC_HOME_KEY,'1');
+  if(params.get('user')==='1') localStorage.removeItem(PUBLIC_HOME_KEY);
+  if(params.has('home')||params.has('user')){
+    params.delete('home');
+    params.delete('user');
+    const clean=`${location.pathname}${params.toString()?`?${params.toString()}`:''}${location.hash||''}`;
+    history.replaceState(null,'',clean||'/');
   }
   let sessionUser=null;
   let csrfToken=sessionStorage.getItem(CSRF_KEY)||'';
   const nativeFetch=window.fetch.bind(window);
+
+  function publicHome(){return localStorage.getItem(PUBLIC_HOME_KEY)==='1';}
+  function installPublicHomeStyle(){
+    if(document.getElementById('flowsignalPublicHomeStyle'))return;
+    const style=document.createElement('style');
+    style.id='flowsignalPublicHomeStyle';
+    style.textContent='body.flowsignal-public-home #mainApp,body.flowsignal-public-home #smartExplain,body.flowsignal-public-home #assistantModal,body.flowsignal-public-home #tradeModal,body.flowsignal-public-home #adminModal,body.flowsignal-public-home #feedbackModal,body.flowsignal-public-home #statsModal,body.flowsignal-public-home #settingsModal,body.flowsignal-public-home #newsModeConfirmModal,body.flowsignal-public-home #brokerAccountsModal,body.flowsignal-public-home #paperModal,body.flowsignal-public-home #flowsignalTradingModeSelector{display:none!important;visibility:hidden!important;pointer-events:none!important}';
+    document.head.appendChild(style);
+  }
+  function setPublicHome(enabled){
+    if(enabled){localStorage.setItem(PUBLIC_HOME_KEY,'1');document.body.classList.add('flowsignal-public-home');}
+    else{localStorage.removeItem(PUBLIC_HOME_KEY);document.body.classList.remove('flowsignal-public-home');}
+  }
 
   function legacyOwner(){
     return String(sessionStorage.getItem('flowsignal_tab_role')||localStorage.getItem('flowsignal_role')||'').toLowerCase()==='admin';
@@ -44,9 +56,7 @@
     const parsed=new URL(raw,location.href);
     if(!sessionUser?.id)return parsed.toString();
     let logicalPath=parsed.pathname;
-    if(!IS_LOCAL&&parsed.origin===location.origin&&logicalPath.startsWith('/api/proxy')){
-      logicalPath=logicalPath.slice('/api/proxy'.length)||'/';
-    }
+    if(!IS_LOCAL&&parsed.origin===location.origin&&logicalPath.startsWith('/api/proxy')) logicalPath=logicalPath.slice('/api/proxy'.length)||'/';
     if(parsed.origin===new URL(DIRECT_BACKEND).origin||(!IS_LOCAL&&parsed.origin===location.origin)){
       let match=logicalPath.match(/^\/deriv\/binary\/account-settings\/[^/]+\/([^/]+)$/);
       if(match)logicalPath=`/deriv/binary/account-settings/${match[1]}`;
@@ -61,11 +71,7 @@
 
   function cleanBody(body){
     if(!sessionUser?.id||!body||typeof body!=='string')return body;
-    try{
-      const payload=JSON.parse(body);
-      if(payload&&typeof payload==='object')delete payload.user_id;
-      return JSON.stringify(payload);
-    }catch(_error){return body;}
+    try{const payload=JSON.parse(body);if(payload&&typeof payload==='object')delete payload.user_id;return JSON.stringify(payload);}catch(_error){return body;}
   }
 
   window.fetch=async function(input,init={}){
@@ -75,9 +81,7 @@
     const options={...init,credentials:'include'};
     options.headers=new Headers(init.headers||{});
     const method=String(options.method||'GET').toUpperCase();
-    if(sessionUser?.id&&!['GET','HEAD','OPTIONS'].includes(method)&&csrfToken){
-      options.headers.set('X-FlowSignal-CSRF',csrfToken);
-    }
+    if(sessionUser?.id&&!['GET','HEAD','OPTIONS'].includes(method)&&csrfToken)options.headers.set('X-FlowSignal-CSRF',csrfToken);
     if(!sessionUser?.id&&legacyOwner()&&!options.headers.has('Authorization')){
       const ownerToken=localStorage.getItem(LEGACY_SESSION_TOKEN_KEY);
       if(ownerToken)options.headers.set('Authorization',`Bearer ${ownerToken}`);
@@ -88,13 +92,17 @@
   };
 
   function showLanding(){
+    installPublicHomeStyle();
+    setPublicHome(true);
     const landing=document.getElementById('landingPage');
     const app=document.getElementById('mainApp');
     if(landing){landing.classList.remove('hidden');landing.style.removeProperty('display');}
     if(app){app.classList.add('hidden');app.classList.add('locked');app.style.removeProperty('display');}
+    document.getElementById('smartExplain')?.classList.add('hidden');
   }
 
   function showApp(){
+    setPublicHome(false);
     const landing=document.getElementById('landingPage');
     const app=document.getElementById('mainApp');
     if(landing){landing.classList.add('hidden');landing.style.display='none';}
@@ -102,12 +110,15 @@
   }
 
   function openAccount(mode){
+    setPublicHome(false);
     location.href=`/account.html?mode=${mode==='signup'?'signup':'login'}`;
   }
 
   function openOwnerAccess(event){
     event?.preventDefault?.();
-    showLanding();
+    setPublicHome(false);
+    const landing=document.getElementById('landingPage');
+    if(landing){landing.classList.remove('hidden');landing.style.removeProperty('display');}
     if(typeof window.openFlowSignalAdminLogin==='function')window.openFlowSignalAdminLogin(event);
     else{
       document.getElementById('adminLoginBox')?.classList.remove('hidden');
@@ -125,13 +136,7 @@
       const selector=document.getElementById('flowsignalTradingModeSelector');
       const forex=document.getElementById('flowsignalForexMode');
       const binary=document.getElementById('flowsignalBinaryMode');
-      if(selector){
-        selector.hidden=false;
-        selector.removeAttribute('hidden');
-        selector.setAttribute('aria-hidden','false');
-        selector.style.removeProperty('display');
-        selector.style.removeProperty('visibility');
-      }
+      if(selector){selector.hidden=false;selector.removeAttribute('hidden');selector.setAttribute('aria-hidden','false');selector.style.removeProperty('display');selector.style.removeProperty('visibility');}
       if(selector&&forex&&binary){
         const mode=String(localStorage.getItem(TRADING_MODE_KEY)||'forex').toLowerCase()==='binary'?'binary':'forex';
         selector.querySelector(`[data-trading-mode="${mode}"]`)?.click();
@@ -155,7 +160,7 @@
   }
 
   async function session(){
-    if(forcePublicHome){
+    if(publicHome()){
       sessionUser=null;
       csrfToken='';
       sessionStorage.removeItem(CSRF_KEY);
@@ -166,85 +171,33 @@
     try{
       const response=await nativeFetch(`${BACKEND}/auth/session`,{credentials:'include',cache:'no-store'});
       const data=await response.json().catch(()=>({}));
-      if(data?.authenticated&&data?.user){
-        csrfToken=String(data.csrf_token||'');
-        sessionStorage.setItem(CSRF_KEY,csrfToken);
-        applyUser(data.user);
-        return data.user;
-      }
+      if(data?.authenticated&&data?.user){csrfToken=String(data.csrf_token||'');sessionStorage.setItem(CSRF_KEY,csrfToken);applyUser(data.user);return data.user;}
     }catch(_error){}
-    sessionUser=null;
-    csrfToken='';
-    sessionStorage.removeItem(CSRF_KEY);
-    showLanding();
-    return null;
+    sessionUser=null;csrfToken='';sessionStorage.removeItem(CSRF_KEY);showLanding();return null;
   }
 
   async function logout(){
     try{await window.fetch(`${BACKEND}/auth/logout`,{method:'POST'});}catch(_error){}
-    sessionUser=null;
-    csrfToken='';
-    sessionStorage.removeItem(CSRF_KEY);
-    localStorage.removeItem(LEGACY_BINARY_USER_KEY);
-    localStorage.removeItem('flowsignal_deriv_connection_id');
-    localStorage.removeItem('flowsignal_deriv_account_id');
-    if(String(localStorage.getItem('flowsignal_role')||'').toLowerCase()==='user')localStorage.removeItem('flowsignal_role');
-    sessionStorage.removeItem('flowsignal_tab_role');
-    showLanding();
+    sessionUser=null;csrfToken='';sessionStorage.removeItem(CSRF_KEY);localStorage.removeItem(LEGACY_BINARY_USER_KEY);localStorage.removeItem('flowsignal_deriv_connection_id');localStorage.removeItem('flowsignal_deriv_account_id');if(String(localStorage.getItem('flowsignal_role')||'').toLowerCase()==='user')localStorage.removeItem('flowsignal_role');sessionStorage.removeItem('flowsignal_tab_role');showLanding();
   }
 
   function wireLanding(){
     const login=document.getElementById('openAdminLoginBtn');
-    if(login){
-      login.removeAttribute('onclick');
-      login.textContent='Login';
-      login.addEventListener('click',event=>{event.preventDefault();openAccount('login');});
-    }
+    if(login){login.removeAttribute('onclick');login.textContent='Login';login.addEventListener('click',event=>{event.preventDefault();openAccount('login');});}
     const started=document.getElementById('openAccessBtn');
-    if(started){
-      started.removeAttribute('onclick');
-      started.removeAttribute('data-open-access');
-      started.textContent='Get Started';
-      started.addEventListener('click',event=>{event.preventDefault();openAccount('signup');});
-    }
+    if(started){started.removeAttribute('onclick');started.removeAttribute('data-open-access');started.textContent='Get Started';started.addEventListener('click',event=>{event.preventDefault();openAccount('signup');});}
     const hero=document.getElementById('openAccessBtnHero');
-    if(hero){
-      hero.removeAttribute('onclick');
-      hero.removeAttribute('data-open-access');
-      hero.textContent='Create Account →';
-      hero.addEventListener('click',event=>{event.preventDefault();openAccount('signup');});
-    }
+    if(hero){hero.removeAttribute('onclick');hero.removeAttribute('data-open-access');hero.textContent='Create Account →';hero.addEventListener('click',event=>{event.preventDefault();openAccount('signup');});}
     const nav=document.querySelector('.landing-nav-actions');
     if(nav&&!document.getElementById('landingOwnerBtn')){
-      const owner=document.createElement('button');
-      owner.id='landingOwnerBtn';
-      owner.className='landing-login-btn';
-      owner.type='button';
-      owner.textContent='Owner';
-      owner.title='Owner / Admin access';
-      owner.addEventListener('click',openOwnerAccess);
-      nav.appendChild(owner);
+      const owner=document.createElement('button');owner.id='landingOwnerBtn';owner.className='landing-login-btn';owner.type='button';owner.textContent='Owner';owner.title='Owner / Admin access';owner.addEventListener('click',openOwnerAccess);nav.appendChild(owner);
     }
   }
 
-  document.addEventListener('click',event=>{
-    if(event.target?.closest?.('#logoutBtn,#binaryLogoutBtn')){
-      event.preventDefault();
-      logout();
-    }
-  },true);
+  document.addEventListener('click',event=>{if(event.target?.closest?.('#logoutBtn,#binaryLogoutBtn')){event.preventDefault();logout();}},true);
 
+  installPublicHomeStyle();
   wireLanding();
-  if(forcePublicHome)showLanding();
-  window.FlowSignalAuth={
-    get user(){return sessionUser;},
-    get csrf(){return csrfToken;},
-    currentUserId(){return sessionUser?.id||'';},
-    session,
-    logout,
-    open(mode='login'){openAccount(mode);},
-    openOwner:openOwnerAccess,
-    backend:BACKEND
-  };
+  window.FlowSignalAuth={get user(){return sessionUser;},get csrf(){return csrfToken;},currentUserId(){return sessionUser?.id||'';},session,logout,open(mode='login'){openAccount(mode);},openOwner:openOwnerAccess,backend:BACKEND};
   session();
 })();
