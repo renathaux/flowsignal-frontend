@@ -11,9 +11,13 @@
   const LEGACY_SESSION_TOKEN_KEY='flowsignal_session_token';
   const TRADING_MODE_KEY='flowsignal_trading_mode';
   const PUBLIC_HOME_KEY='flowsignal_public_home_mode';
+  const TAB_SIGNED_OUT_KEY='flowsignal_tab_signed_out';
   const params=new URLSearchParams(location.search);
-  if(params.get('home')==='1') localStorage.setItem(PUBLIC_HOME_KEY,'1');
-  if(params.get('user')==='1') localStorage.removeItem(PUBLIC_HOME_KEY);
+  if(params.get('home')==='1')sessionStorage.setItem(PUBLIC_HOME_KEY,'1');
+  if(params.get('user')==='1'){
+    sessionStorage.removeItem(PUBLIC_HOME_KEY);
+    sessionStorage.removeItem(TAB_SIGNED_OUT_KEY);
+  }
   if(params.has('home')||params.has('user')){
     params.delete('home');
     params.delete('user');
@@ -24,7 +28,8 @@
   let csrfToken=sessionStorage.getItem(CSRF_KEY)||'';
   const nativeFetch=window.fetch.bind(window);
 
-  function publicHome(){return localStorage.getItem(PUBLIC_HOME_KEY)==='1';}
+  function publicHome(){return sessionStorage.getItem(PUBLIC_HOME_KEY)==='1';}
+  function tabSignedOut(){return sessionStorage.getItem(TAB_SIGNED_OUT_KEY)==='1';}
   function installPublicHomeStyle(){
     if(document.getElementById('flowsignalPublicHomeStyle'))return;
     const style=document.createElement('style');
@@ -33,14 +38,11 @@
     document.head.appendChild(style);
   }
   function setPublicHome(enabled){
-    if(enabled){localStorage.setItem(PUBLIC_HOME_KEY,'1');document.body.classList.add('flowsignal-public-home');}
-    else{localStorage.removeItem(PUBLIC_HOME_KEY);document.body.classList.remove('flowsignal-public-home');}
+    if(enabled){sessionStorage.setItem(PUBLIC_HOME_KEY,'1');document.body.classList.add('flowsignal-public-home');}
+    else{sessionStorage.removeItem(PUBLIC_HOME_KEY);document.body.classList.remove('flowsignal-public-home');}
   }
 
-  function legacyOwner(){
-    return String(sessionStorage.getItem('flowsignal_tab_role')||localStorage.getItem('flowsignal_role')||'').toLowerCase()==='admin';
-  }
-
+  function legacyOwner(){return String(sessionStorage.getItem('flowsignal_tab_role')||localStorage.getItem('flowsignal_role')||'').toLowerCase()==='admin';}
   function isBackend(input){
     try{
       const raw=typeof input==='string'?input:input?.url;
@@ -51,12 +53,19 @@
       return parsed.origin===location.origin&&parsed.pathname.startsWith('/api/proxy/');
     }catch(_error){return false;}
   }
-
+  function isCustomerProtectedRequest(raw){
+    try{
+      const parsed=new URL(raw,location.href);
+      let path=parsed.pathname;
+      if(path.startsWith('/api/proxy'))path=path.slice('/api/proxy'.length)||'/';
+      return path.startsWith('/user/')||path.startsWith('/deriv/');
+    }catch(_error){return false;}
+  }
   function customerUrl(raw){
     const parsed=new URL(raw,location.href);
     if(!sessionUser?.id)return parsed.toString();
     let logicalPath=parsed.pathname;
-    if(!IS_LOCAL&&parsed.origin===location.origin&&logicalPath.startsWith('/api/proxy')) logicalPath=logicalPath.slice('/api/proxy'.length)||'/';
+    if(!IS_LOCAL&&parsed.origin===location.origin&&logicalPath.startsWith('/api/proxy'))logicalPath=logicalPath.slice('/api/proxy'.length)||'/';
     if(parsed.origin===new URL(DIRECT_BACKEND).origin||(!IS_LOCAL&&parsed.origin===location.origin)){
       let match=logicalPath.match(/^\/deriv\/binary\/account-settings\/[^/]+\/([^/]+)$/);
       if(match)logicalPath=`/deriv/binary/account-settings/${match[1]}`;
@@ -68,7 +77,6 @@
     }
     return parsed.toString();
   }
-
   function cleanBody(body){
     if(!sessionUser?.id||!body||typeof body!=='string')return body;
     try{const payload=JSON.parse(body);if(payload&&typeof payload==='object')delete payload.user_id;return JSON.stringify(payload);}catch(_error){return body;}
@@ -77,6 +85,9 @@
   window.fetch=async function(input,init={}){
     if(!isBackend(input))return nativeFetch(input,init);
     const raw=typeof input==='string'?input:input.url;
+    if(tabSignedOut()&&isCustomerProtectedRequest(raw)){
+      return new Response(JSON.stringify({detail:'TAB_SIGNED_OUT'}),{status:401,headers:{'Content-Type':'application/json'}});
+    }
     const url=customerUrl(raw);
     const options={...init,credentials:'include'};
     options.headers=new Headers(init.headers||{});
@@ -100,7 +111,6 @@
     if(app){app.classList.add('hidden');app.classList.add('locked');app.style.removeProperty('display');}
     document.getElementById('smartExplain')?.classList.add('hidden');
   }
-
   function showApp(){
     setPublicHome(false);
     const landing=document.getElementById('landingPage');
@@ -108,14 +118,13 @@
     if(landing){landing.classList.add('hidden');landing.style.display='none';}
     if(app){app.classList.remove('hidden');app.classList.remove('locked');app.style.display='flex';}
   }
-
   function openAccount(mode){
     setPublicHome(false);
     location.href=`/account.html?mode=${mode==='signup'?'signup':'login'}`;
   }
-
   function openOwnerAccess(event){
     event?.preventDefault?.();
+    sessionStorage.removeItem(TAB_SIGNED_OUT_KEY);
     setPublicHome(false);
     const landing=document.getElementById('landingPage');
     if(landing){landing.classList.remove('hidden');landing.style.removeProperty('display');}
@@ -125,7 +134,6 @@
       setTimeout(()=>document.getElementById('adminEmailInput')?.focus(),50);
     }
   }
-
   function enterFullUserDashboard(user){
     if(!user||String(user.role||'user').toLowerCase()!=='user')return;
     showApp();
@@ -147,10 +155,10 @@
     };
     reveal();
   }
-
   function applyUser(user){
     sessionUser=user||null;
     if(!user)return;
+    sessionStorage.removeItem(TAB_SIGNED_OUT_KEY);
     localStorage.setItem(LEGACY_BINARY_USER_KEY,user.id);
     localStorage.setItem('flowsignal_role',user.role||'user');
     sessionStorage.setItem('flowsignal_tab_role',user.role||'user');
@@ -158,9 +166,8 @@
     document.dispatchEvent(new CustomEvent('flowsignal:authenticated',{detail:{user}}));
     enterFullUserDashboard(user);
   }
-
   async function session(){
-    if(publicHome()){
+    if(publicHome()||tabSignedOut()){
       sessionUser=null;
       csrfToken='';
       sessionStorage.removeItem(CSRF_KEY);
@@ -175,10 +182,15 @@
     }catch(_error){}
     sessionUser=null;csrfToken='';sessionStorage.removeItem(CSRF_KEY);showLanding();return null;
   }
-
   async function logout(){
-    try{await window.fetch(`${BACKEND}/auth/logout`,{method:'POST'});}catch(_error){}
-    sessionUser=null;csrfToken='';sessionStorage.removeItem(CSRF_KEY);localStorage.removeItem(LEGACY_BINARY_USER_KEY);localStorage.removeItem('flowsignal_deriv_connection_id');localStorage.removeItem('flowsignal_deriv_account_id');if(String(localStorage.getItem('flowsignal_role')||'').toLowerCase()==='user')localStorage.removeItem('flowsignal_role');sessionStorage.removeItem('flowsignal_tab_role');showLanding();
+    sessionStorage.setItem(TAB_SIGNED_OUT_KEY,'1');
+    sessionUser=null;
+    csrfToken='';
+    sessionStorage.removeItem(CSRF_KEY);
+    sessionStorage.removeItem('flowsignal_tab_role');
+    localStorage.removeItem('flowsignal_deriv_connection_id');
+    localStorage.removeItem('flowsignal_deriv_account_id');
+    showLanding();
   }
 
   function wireLanding(){
