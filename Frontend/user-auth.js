@@ -2,7 +2,8 @@
   'use strict';
   const LOCAL_BACKEND='http://127.0.0.1:8001';
   const DIRECT_BACKEND='https://flowsignal-backend-3.onrender.com';
-  const BACKEND=(location.hostname==='localhost'||location.hostname==='127.0.0.1')?LOCAL_BACKEND:`${location.origin}/api`;
+  const IS_LOCAL=location.hostname==='localhost'||location.hostname==='127.0.0.1';
+  const BACKEND=IS_LOCAL?LOCAL_BACKEND:`${location.origin}/api/proxy`;
   const CSRF_KEY='flowsignal_csrf_token';
   const OAUTH_USER_KEY='flowsignal_deriv_oauth_user_id';
   const LEGACY_BINARY_USER_KEY='flowsignal_binary_user_id';
@@ -13,23 +14,30 @@
   const nativeFetch=window.fetch.bind(window);
 
   function legacyOwner(){return String(sessionStorage.getItem('flowsignal_tab_role')||localStorage.getItem('flowsignal_role')||'').toLowerCase()==='admin';}
-  function isBackend(input){try{const raw=typeof input==='string'?input:input?.url;if(!raw)return false;const origin=new URL(raw,location.href).origin;return origin===new URL(BACKEND,location.href).origin||origin===new URL(DIRECT_BACKEND).origin;}catch(_error){return false;}}
+  function isBackend(input){
+    try{
+      const raw=typeof input==='string'?input:input?.url;
+      if(!raw)return false;
+      const parsed=new URL(raw,location.href);
+      if(parsed.origin===new URL(DIRECT_BACKEND).origin)return true;
+      if(IS_LOCAL)return parsed.origin===new URL(LOCAL_BACKEND).origin;
+      return parsed.origin===location.origin&&parsed.pathname.startsWith('/api/proxy/');
+    }catch(_error){return false;}
+  }
   function rewriteDerivUrl(url){
     const parsed=new URL(url,location.href);
     if(!sessionUser?.id) return parsed.toString();
-    if(parsed.origin===new URL(DIRECT_BACKEND).origin&&location.hostname!=='localhost'&&location.hostname!=='127.0.0.1'){
-      parsed.protocol=location.protocol;
-      parsed.host=location.host;
-      parsed.pathname=`/api${parsed.pathname}`;
+    let logicalPath=parsed.pathname;
+    if(!IS_LOCAL&&parsed.origin===location.origin&&logicalPath.startsWith('/api/proxy')) logicalPath=logicalPath.slice('/api/proxy'.length)||'/';
+    if(parsed.origin===new URL(DIRECT_BACKEND).origin||(!IS_LOCAL&&parsed.origin===location.origin)){
+      let match=logicalPath.match(/^\/deriv\/binary\/account-settings\/[^/]+\/([^/]+)$/);
+      if(match) logicalPath=`/deriv/binary/account-settings/${match[1]}`;
+      match=logicalPath.match(/^\/deriv\/binary\/execution-status\/[^/]+\/([^/]+)$/);
+      if(match) logicalPath=`/deriv/binary/execution-status/${match[1]}`;
+      if(logicalPath.startsWith('/deriv/')) logicalPath=`/user${logicalPath}`;
+      if(!IS_LOCAL) return `${location.origin}/api/proxy${logicalPath}${parsed.search}`;
+      parsed.pathname=logicalPath;
     }
-    const apiPrefix=parsed.pathname.startsWith('/api/')?'/api':'';
-    let logicalPath=apiPrefix?parsed.pathname.slice(4):parsed.pathname;
-    let match=logicalPath.match(/^\/deriv\/binary\/account-settings\/[^/]+\/([^/]+)$/);
-    if(match) logicalPath=`/deriv/binary/account-settings/${match[1]}`;
-    match=logicalPath.match(/^\/deriv\/binary\/execution-status\/[^/]+\/([^/]+)$/);
-    if(match) logicalPath=`/deriv/binary/execution-status/${match[1]}`;
-    if(logicalPath.startsWith('/deriv/')) logicalPath=`/user${logicalPath}`;
-    parsed.pathname=`${apiPrefix}${logicalPath}`;
     return parsed.toString();
   }
   function rewriteBody(body){
