@@ -10,6 +10,17 @@
   const LEGACY_BINARY_USER_KEY='flowsignal_binary_user_id';
   const LEGACY_SESSION_TOKEN_KEY='flowsignal_session_token';
   const TRADING_MODE_KEY='flowsignal_trading_mode';
+  const FORCE_PUBLIC_HOME_KEY='flowsignal_force_public_home';
+  const params=new URLSearchParams(location.search);
+  const forcePublicHome=params.get('home')==='1'||sessionStorage.getItem(FORCE_PUBLIC_HOME_KEY)==='1';
+  if(forcePublicHome){
+    sessionStorage.removeItem(FORCE_PUBLIC_HOME_KEY);
+    if(params.has('home')){
+      params.delete('home');
+      const clean=`${location.pathname}${params.toString()?`?${params.toString()}`:''}${location.hash||''}`;
+      history.replaceState(null,'',clean||'/');
+    }
+  }
   let sessionUser=null;
   let csrfToken=sessionStorage.getItem(CSRF_KEY)||'';
   const nativeFetch=window.fetch.bind(window);
@@ -144,6 +155,13 @@
   }
 
   async function session(){
+    if(forcePublicHome){
+      sessionUser=null;
+      csrfToken='';
+      sessionStorage.removeItem(CSRF_KEY);
+      showLanding();
+      return null;
+    }
     if(legacyOwner())return null;
     try{
       const response=await nativeFetch(`${BACKEND}/auth/session`,{credentials:'include',cache:'no-store'});
@@ -217,6 +235,7 @@
   },true);
 
   wireLanding();
+  if(forcePublicHome)showLanding();
   window.FlowSignalAuth={
     get user(){return sessionUser;},
     get csrf(){return csrfToken;},
