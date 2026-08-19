@@ -5,6 +5,7 @@
   const OAUTH_USER_KEY='flowsignal_deriv_oauth_user_id';
   const LEGACY_BINARY_USER_KEY='flowsignal_binary_user_id';
   const LEGACY_SESSION_TOKEN_KEY='flowsignal_session_token';
+  const TRADING_MODE_KEY='flowsignal_trading_mode';
   let sessionUser=null;
   let csrfToken=sessionStorage.getItem(CSRF_KEY)||'';
   const nativeFetch=window.fetch.bind(window);
@@ -48,7 +49,29 @@
   function setSignupMode(value){signupMode=Boolean(value); const root=authRoot(); root.querySelector('#fsAuthTitle').textContent=signupMode?'Create account':'Log in'; root.querySelector('#fsAuthSubmit').textContent=signupMode?'Create account':'Log in'; root.querySelector('#fsAuthSwitch').textContent=signupMode?'Already have an account? Log in':'Create account'; root.querySelector('#fsAuthConfirmWrap').classList.toggle('hidden',!signupMode); root.querySelector('#fsAuthPassword').autocomplete=signupMode?'new-password':'current-password'; root.querySelector('#fsAuthError').textContent='';}
   function showAuth(){style(); const root=authRoot(); root.classList.add('visible'); document.body.classList.add('flowsignal-user-auth-required');}
   function hideAuth(){document.getElementById('flowsignalUserAuth')?.classList.remove('visible'); document.body.classList.remove('flowsignal-user-auth-required');}
-  function applyUser(user){sessionUser=user||null; if(!user) return; localStorage.setItem(LEGACY_BINARY_USER_KEY,user.id); localStorage.setItem('flowsignal_role',user.role||'user'); sessionStorage.setItem('flowsignal_tab_role',user.role||'user'); document.body.dataset.userRole=user.role||'user'; hideAuth(); document.dispatchEvent(new CustomEvent('flowsignal:authenticated',{detail:{user}}));}
+
+  function enterFullUserDashboard(user){
+    if(!user||String(user.role||'user').toLowerCase()!=='user') return;
+    if(!localStorage.getItem(TRADING_MODE_KEY)) localStorage.setItem(TRADING_MODE_KEY,'forex');
+    let attempts=0;
+    const reveal=()=>{
+      attempts+=1;
+      const selector=document.getElementById('flowsignalTradingModeSelector');
+      const forex=document.getElementById('flowsignalForexMode');
+      const binary=document.getElementById('flowsignalBinaryMode');
+      if(selector){selector.hidden=false; selector.removeAttribute('hidden'); selector.setAttribute('aria-hidden','false'); selector.style.removeProperty('display'); selector.style.removeProperty('visibility');}
+      if(selector&&forex&&binary){
+        const mode=String(localStorage.getItem(TRADING_MODE_KEY)||'forex').toLowerCase()==='binary'?'binary':'forex';
+        selector.querySelector(`[data-trading-mode="${mode}"]`)?.click();
+        document.dispatchEvent(new CustomEvent('flowsignal:user-dashboard-ready',{detail:{user,mode}}));
+        return;
+      }
+      if(attempts<50) setTimeout(reveal,100);
+    };
+    reveal();
+  }
+
+  function applyUser(user){sessionUser=user||null; if(!user) return; localStorage.setItem(LEGACY_BINARY_USER_KEY,user.id); localStorage.setItem('flowsignal_role',user.role||'user'); sessionStorage.setItem('flowsignal_tab_role',user.role||'user'); document.body.dataset.userRole=user.role||'user'; hideAuth(); document.dispatchEvent(new CustomEvent('flowsignal:authenticated',{detail:{user}})); enterFullUserDashboard(user);}
   async function session(){const response=await nativeFetch(`${BACKEND}/auth/session`,{credentials:'include',cache:'no-store'}); const data=await response.json().catch(()=>({})); if(data?.authenticated&&data?.user){csrfToken=String(data.csrf_token||''); sessionStorage.setItem(CSRF_KEY,csrfToken); applyUser(data.user); return data.user;} sessionUser=null; csrfToken=''; sessionStorage.removeItem(CSRF_KEY); if(!legacyOwner()) showAuth(); return null;}
   async function submit(event){event.preventDefault(); const root=authRoot(), email=root.querySelector('#fsAuthEmail').value.trim(), password=root.querySelector('#fsAuthPassword').value, confirm=root.querySelector('#fsAuthConfirm').value, error=root.querySelector('#fsAuthError'), button=root.querySelector('#fsAuthSubmit'); if(signupMode&&password!==confirm){error.textContent='Passwords do not match.'; return;} button.disabled=true; error.textContent=''; try{const response=await nativeFetch(`${BACKEND}/auth/${signupMode?'signup':'login'}`,{method:'POST',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify({email,password})}); const data=await response.json().catch(()=>({})); if(!response.ok) throw new Error(data.detail||'Authentication failed'); csrfToken=String(data.csrf_token||''); sessionStorage.setItem(CSRF_KEY,csrfToken); applyUser(data.user);}catch(err){error.textContent=String(err.message||'Authentication failed').replaceAll('_',' ');}finally{button.disabled=false;}}
   async function logout(){try{await window.fetch(`${BACKEND}/auth/logout`,{method:'POST'});}catch(_error){} sessionUser=null; csrfToken=''; sessionStorage.removeItem(CSRF_KEY); localStorage.removeItem(LEGACY_BINARY_USER_KEY); localStorage.removeItem('flowsignal_deriv_connection_id'); localStorage.removeItem('flowsignal_deriv_account_id'); if(!legacyOwner()) showAuth();}
