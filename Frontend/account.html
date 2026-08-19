@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>FlowSignal Account</title>
+  <style>
+    :root{color-scheme:dark}*{box-sizing:border-box}body{margin:0;min-height:100vh;display:grid;place-items:center;background:#020812;color:#eaf3ff;font-family:Inter,Arial,sans-serif}.wrap{width:min(430px,calc(100vw - 32px));padding:30px;border:1px solid #1c4f7f;border-radius:20px;background:linear-gradient(180deg,#081624 0%,#05101c 100%);box-shadow:0 24px 80px rgba(0,0,0,.45)}.brand{font-size:22px;font-weight:800}.brand span{margin-left:8px;padding:4px 8px;border:1px solid #1688ff;border-radius:999px;color:#79baff;font-size:10px;letter-spacing:.16em}h1{margin:28px 0 8px;font-size:30px}.copy{margin:0 0 24px;color:#93a9c1}.form{display:grid;gap:16px}.field{display:grid;gap:7px;color:#a9bbce;font-size:12px;font-weight:700;letter-spacing:.05em;text-transform:uppercase}.field input{width:100%;padding:13px 14px;border:1px solid #244866;border-radius:10px;background:#07111e;color:#eef6ff;outline:none;font:inherit}.field input:focus{border-color:#1688ff;box-shadow:0 0 0 3px rgba(22,136,255,.13)}button{font:inherit}.submit{margin-top:4px;padding:13px;border:0;border-radius:10px;background:#087df2;color:#fff;font-weight:800;cursor:pointer}.submit:disabled{opacity:.55;cursor:wait}.link{width:100%;margin-top:14px;border:0;background:transparent;color:#69adff;cursor:pointer}.error{min-height:20px;margin:12px 0 0;color:#ff7474;font-size:12px}.hidden{display:none!important}@media(max-width:600px){.wrap{padding:24px}h1{font-size:26px}}
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <div class="brand">FlowSignal <span>USER</span></div>
+    <h1 id="title">Log in</h1>
+    <p class="copy">Access Forex signals and your own Binary account.</p>
+    <form id="form" class="form">
+      <label class="field">Email<input id="email" type="email" autocomplete="email" required></label>
+      <label class="field">Password<input id="password" type="password" minlength="10" autocomplete="current-password" required></label>
+      <label id="confirmWrap" class="field hidden">Confirm password<input id="confirm" type="password" minlength="10" autocomplete="new-password"></label>
+      <button id="submit" class="submit" type="submit">Log in</button>
+    </form>
+    <button id="switch" class="link" type="button">Create account</button>
+    <button id="home" class="link" type="button">Back to home</button>
+    <p id="error" class="error"></p>
+  </main>
+  <script>
+    (function(){
+      'use strict';
+      const BACKEND='/api/proxy';
+      const params=new URLSearchParams(location.search);
+      let signup=params.get('mode')==='signup';
+      const title=document.getElementById('title');
+      const form=document.getElementById('form');
+      const email=document.getElementById('email');
+      const password=document.getElementById('password');
+      const confirm=document.getElementById('confirm');
+      const confirmWrap=document.getElementById('confirmWrap');
+      const submit=document.getElementById('submit');
+      const switchBtn=document.getElementById('switch');
+      const home=document.getElementById('home');
+      const error=document.getElementById('error');
+      function render(){
+        title.textContent=signup?'Create account':'Log in';
+        submit.textContent=signup?'Create account':'Log in';
+        switchBtn.textContent=signup?'Already have an account? Log in':'Create account';
+        confirmWrap.classList.toggle('hidden',!signup);
+        password.autocomplete=signup?'new-password':'current-password';
+        error.textContent='';
+      }
+      switchBtn.addEventListener('click',()=>{signup=!signup;history.replaceState(null,'',`/account.html?mode=${signup?'signup':'login'}`);render();});
+      home.addEventListener('click',()=>location.replace('/'));
+      form.addEventListener('submit',async(event)=>{
+        event.preventDefault();
+        if(signup&&password.value!==confirm.value){error.textContent='Passwords do not match.';return;}
+        submit.disabled=true;error.textContent='';
+        try{
+          const response=await fetch(`${BACKEND}/auth/${signup?'signup':'login'}`,{method:'POST',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:email.value.trim(),password:password.value})});
+          const data=await response.json().catch(()=>({}));
+          if(!response.ok) throw new Error(data.detail||'Authentication failed');
+          sessionStorage.setItem('flowsignal_user_portal_intent','1');
+          if(data.csrf_token) sessionStorage.setItem('flowsignal_csrf_token',String(data.csrf_token));
+          location.replace('/?user=1');
+        }catch(err){error.textContent=String(err.message||'Authentication failed').replaceAll('_',' ');}finally{submit.disabled=false;}
+      });
+      render();
+    })();
+  </script>
+</body>
+</html>
