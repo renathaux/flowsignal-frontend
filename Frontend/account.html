@@ -52,9 +52,9 @@
       }
       switchBtn.addEventListener('click',()=>{signup=!signup;history.replaceState(null,'',`/account.html?mode=${signup?'signup':'login'}`);render();});
       home.addEventListener('click',()=>{
-        sessionStorage.setItem(PUBLIC_HOME_KEY,'1');
+        sessionStorage.removeItem(PUBLIC_HOME_KEY);
         sessionStorage.removeItem('flowsignal_tab_role');
-        location.replace('/?home=1');
+        location.replace('/');
       });
       form.addEventListener('submit',async(event)=>{
         event.preventDefault();
@@ -70,7 +70,7 @@
           sessionStorage.removeItem(TAB_SIGNED_OUT_KEY);
           sessionStorage.setItem('flowsignal_user_portal_intent','1');
           if(data.csrf_token) sessionStorage.setItem('flowsignal_csrf_token',String(data.csrf_token));
-          location.replace('/?user=1');
+          location.replace('/app?user=1');
         }catch(err){error.textContent=String(err.message||'Authentication failed').replaceAll('_',' ');}finally{submit.disabled=false;}
       });
       render();
