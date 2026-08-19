@@ -14,9 +14,12 @@ assert.match(auth, /\/auth\/login/);
 assert.match(auth, /\/auth\/logout/);
 assert.match(auth, /credentials:'include'/);
 assert.match(auth, /X-FlowSignal-CSRF/);
-assert.match(auth, /delete payload\.user_id/, 'legacy browser user_id is stripped before authenticated Deriv requests');
-assert.match(auth, /binary\/account-settings\/\$\{match\[1\]\}/, 'legacy account settings URL is rewritten without browser user id');
-assert.match(auth, /binary\/execution-status\/\$\{match\[1\]\}/, 'legacy execution status URL is rewritten without browser user id');
+assert.match(auth, /if\(!sessionUser\?\.id\) return parsed\.toString\(\)/, 'legacy owner keeps original Deriv namespace');
+assert.match(auth, /parsed\.pathname=`\/user\$\{parsed\.pathname\}`/, 'authenticated customers use user Deriv namespace');
+assert.match(auth, /if\(!sessionUser\?\.id\|\|!body/, 'browser user_id stripping applies only to authenticated customers');
+assert.match(auth, /delete payload\.user_id/, 'customer requests cannot authorize with browser user_id');
+assert.match(auth, /binary\/account-settings\/\$\{match\[1\]\}/, 'legacy account-settings URL is normalized before customer namespace rewrite');
+assert.match(auth, /binary\/execution-status\/\$\{match\[1\]\}/, 'legacy execution-status URL is normalized before customer namespace rewrite');
 assert.match(auth, /sessionUser\?\.id/, 'authenticated backend identity is exposed to the UI');
 assert.match(loader, /user-auth\.js\?v=1/);
 assert.match(loader, /authenticatedRole\(\)/);
@@ -24,10 +27,12 @@ assert.match(loader, /if \(authenticatedRole\(\) && normalized !== authenticated
 
 assert.match(callback, /\/auth\/session/);
 assert.match(callback, /flowsignal_deriv_oauth_user_id/);
-assert.match(callback, /\/deriv\/oauth\/state/);
-assert.match(callback, /\/deriv\/oauth\/exchange/);
+assert.match(callback, /\/user\/deriv\/oauth\/state/);
+assert.match(callback, /\/user\/deriv\/oauth\/exchange/);
 assert.match(callback, /X-FlowSignal-CSRF/);
-assert.doesNotMatch(callback, /user_id:userId|flowsignal_binary_user_id/, 'OAuth callback no longer authorizes from a browser-generated user id');
+assert.match(callback, /initiatingUser&&initiatingUser!==sessionData\.user\.id/, 'customer OAuth callback is bound to initiating FlowSignal user');
+assert.match(callback, /\/deriv\/oauth\/exchange/, 'legacy owner OAuth exchange is preserved');
+assert.match(callback, /user_id:legacyUserId/, 'legacy owner keeps its existing temporary execution identity');
 
 assert.match(binary, /FOREX_MODE_ID='flowsignalForexMode'/);
 assert.match(binary, /BINARY_MODE_ID='flowsignalBinaryMode'/);
