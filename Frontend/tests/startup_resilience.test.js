@@ -31,12 +31,15 @@ const button = element();
 const sideMenu = element(["hidden"]);
 const mainApp = element();
 const body = element();
+body.appendChild = () => {};
 const documentListeners = {};
 global.CustomEvent = class CustomEvent {
   constructor(type, options) { this.type = type; this.detail = options?.detail; }
 };
 global.document = {
   body,
+  querySelector() { return null; },
+  createElement() { return element(); },
   getElementById(id) {
     return { menuToggleBtn: button, sideMenu, mainApp }[id] || null;
   },
@@ -44,6 +47,7 @@ global.document = {
   dispatchEvent(event) { documentListeners[event.type]?.(event); },
 };
 global.window = {
+  fetch() {},
   addEventListener() {},
   setTimeout,
   clearTimeout,

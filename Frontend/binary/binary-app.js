@@ -1,288 +1,91 @@
 (function(){
   'use strict';
-
-  const ROOT_ID='flowsignalBinaryApp';
-  const CONNECTION_KEY='flowsignal_deriv_connection_id';
-  const STATE_KEY='flowsignal_deriv_oauth_state';
-  const VERIFIER_KEY='flowsignal_deriv_pkce_verifier';
-  const USER_KEY='flowsignal_binary_user_id';
-  const ACCOUNT_KEY='flowsignal_deriv_account_id';
-  const FOREX_ALERT_PREF_KEY='soundEnabled';
-  const FOREX_ALERT_GUARD_KEY='flowsignal_binary_oauth_forex_alert_guard';
+  const FOREX_MODE_ID='flowsignalForexMode', BINARY_MODE_ID='flowsignalBinaryMode';
+  const MODE_KEY='flowsignal_trading_mode', CONNECTION_KEY='flowsignal_deriv_connection_id', STATE_KEY='flowsignal_deriv_oauth_state', VERIFIER_KEY='flowsignal_deriv_pkce_verifier', USER_KEY='flowsignal_binary_user_id', ACCOUNT_KEY='flowsignal_deriv_account_id';
+  const FOREX_ALERT_PREF_KEY='soundEnabled', FOREX_ALERT_GUARD_KEY='flowsignal_binary_oauth_forex_alert_guard';
   const BACKEND=(location.hostname==='localhost'||location.hostname==='127.0.0.1')?'http://127.0.0.1:8001':'https://flowsignal-backend-3.onrender.com';
-  const POLL_MS=6000;
-  const DEFAULT_STAKE=1;
-  const EXPIRY_MINUTES=5;
-  let mounted=false;
-  let pollTimer=null;
-  let executionBusy=false;
-  let lastLocalSignalId='';
-  let selectedAccount=null;
+  const POLL_MS=6000, DEFAULT_STAKE=10, EXPIRY_MINUTES=5;
+  const STRATEGY_VERSION='DERIV_BINARY_V5_NOISY_REVERSAL_FROZEN_1';
+  const RULE_HASH='fab52bb80f7f4dd9150adb2f90d7e090816915ff70e6b368518e7fb39444b249';
+  let mounted=false, pollTimer=null, executionBusy=false, lastLocalSignalId='', selectedAccount=null;
 
-  function binaryUserId(){
-    let value=localStorage.getItem(USER_KEY);
-    if(!value){ value=crypto.randomUUID(); localStorage.setItem(USER_KEY,value); }
-    return value;
-  }
+  function getCurrentFlowSignalUserId(){let value=localStorage.getItem(USER_KEY); if(!value){value=crypto.randomUUID(); localStorage.setItem(USER_KEY,value);} return value;}
+  function normalizeMode(value){return String(value||'').toLowerCase()==='binary'?'binary':'forex';}
+  function currentMode(){return normalizeMode(localStorage.getItem(MODE_KEY));}
+  function binaryVisible(){return currentMode()==='binary';}
+  function accountId(account){return account?.account_id||account?.id||account?.loginid||'';}
+  function accountType(account){return String(account?.account_type_normalized||account?.account_type||'UNKNOWN').toUpperCase();}
+  function setText(id,value){const el=document.getElementById(id); if(el) el.textContent=value;}
+  function toggleClass(id,name,on){document.getElementById(id)?.classList.toggle(name,Boolean(on));}
+  function formatMoney(value,currency='USD'){const amount=Number(value); if(!Number.isFinite(amount)) return `-- ${currency}`; try{return `${new Intl.NumberFormat(undefined,{style:'currency',currency,minimumFractionDigits:2}).format(amount)} ${currency}`;}catch(_error){return `$${amount.toFixed(2)} ${currency}`;}}
+  function formatTime(value){if(value===null||value===undefined||value==='') return '--'; const number=Number(value); const date=Number.isFinite(number)?new Date(number<1e12?number*1000:number):new Date(value); return Number.isNaN(date.getTime())?'--':date.toLocaleString();}
 
-  // Deriv OAuth leaves FlowSignal and returns with a full-page reload. The
-  // Forex alert module keeps its lastSignals only in JS memory, so a reload can
-  // make an already-running BUY/SELL look "new" and replay an alert. During a
-  // Binary OAuth round-trip only, temporarily mute Forex alerts while the first
-  // dashboard snapshot establishes its baseline, then restore the exact prior
-  // user preference. This does not touch Forex strategy/execution state.
-  function beginForexAlertIsolationGuard(){
-    const previous=localStorage.getItem(FOREX_ALERT_PREF_KEY);
-    sessionStorage.setItem(FOREX_ALERT_GUARD_KEY,JSON.stringify({previous,startedAt:Date.now()}));
-    localStorage.setItem(FOREX_ALERT_PREF_KEY,'false');
-  }
+  function beginForexAlertIsolationGuard(){const previous=localStorage.getItem(FOREX_ALERT_PREF_KEY); sessionStorage.setItem(FOREX_ALERT_GUARD_KEY,JSON.stringify({previous,startedAt:Date.now()})); localStorage.setItem(FOREX_ALERT_PREF_KEY,'false');}
+  function restoreForexAlertIsolationGuard(){const raw=sessionStorage.getItem(FOREX_ALERT_GUARD_KEY); if(!raw) return; let state=null; try{state=JSON.parse(raw);}catch(_error){} window.setTimeout(()=>{const prior=state?.previous; if(prior===null||prior===undefined) localStorage.removeItem(FOREX_ALERT_PREF_KEY); else localStorage.setItem(FOREX_ALERT_PREF_KEY,String(prior)); sessionStorage.removeItem(FOREX_ALERT_GUARD_KEY); console.info('BINARY_OAUTH_FOREX_ALERT_GUARD_RESTORED');},15000);}
+  if(sessionStorage.getItem(FOREX_ALERT_GUARD_KEY)){localStorage.setItem(FOREX_ALERT_PREF_KEY,'false'); restoreForexAlertIsolationGuard();}
+  function injectCss(){if(document.querySelector('link[data-flowsignal-binary-css]')) return; const link=document.createElement('link'); link.rel='stylesheet'; link.href='binary/binary.css?v=3'; link.dataset.flowsignalBinaryCss='true'; document.head.appendChild(link);}
 
-  function restoreForexAlertIsolationGuard(){
-    const raw=sessionStorage.getItem(FOREX_ALERT_GUARD_KEY);
-    if(!raw) return;
-    let state=null;
-    try{ state=JSON.parse(raw); }catch(_error){}
-    // Keep alerts muted long enough for at least two normal panel refreshes to
-    // record the existing EURUSD/XAUUSD state as baseline after OAuth return.
-    window.setTimeout(()=>{
-      const prior=state?.previous;
-      if(prior===null||prior===undefined) localStorage.removeItem(FOREX_ALERT_PREF_KEY);
-      else localStorage.setItem(FOREX_ALERT_PREF_KEY,String(prior));
-      sessionStorage.removeItem(FOREX_ALERT_GUARD_KEY);
-      console.info('BINARY_OAUTH_FOREX_ALERT_GUARD_RESTORED');
-    },15000);
-  }
+  function binaryHtml(){return `<aside class="binary-sidebar" aria-label="Binary navigation"><div class="binary-brand"><span>≋</span> FlowSignal <small>BINARY</small></div><nav><button type="button" class="active" data-binary-section="dashboard">⌂ Binary Dashboard</button><button type="button" data-binary-section="accounts">◎ Deriv Accounts</button><button type="button" data-binary-section="history">◷ Binary History</button><button type="button" data-binary-section="settings">⚙ Settings</button></nav><button type="button" id="binaryLogoutBtn" class="binary-logout">← Log Out</button></aside>
+  <main class="binary-dashboard"><header class="binary-page-header"><div><span class="binary-eyebrow">BINARY MODE</span><h1>Binary Dashboard</h1><p>Five-minute directional execution from the frozen V5 strategy.</p></div><div class="binary-header-actions"><span id="binaryHeaderConnection" class="binary-connection disconnected">DISCONNECTED</span><button id="binaryDerivConnectBtn" type="button">Connect Deriv</button><button id="binaryDerivDisconnectBtn" type="button" class="hidden">Disconnect</button></div></header>
+  <section class="binary-layout"><div class="binary-center-column">
+  <article class="binary-card binary-signal-card"><div class="binary-card-label"><span>AUTHORITATIVE V5 SIGNAL</span><span>EURUSD · 5 MINUTE</span></div><div id="binaryDerivSignal" class="binary-signal wait">WAIT</div><p id="binarySignalCopy">Waiting for next signal</p><div class="binary-time-grid"><span>Last signal <strong id="binaryLastSignalAt">--</strong></span><span>Last update <strong id="binaryLastUpdateAt">--</strong></span></div></article>
+  <article class="binary-card binary-contract-card"><div class="binary-card-heading"><div><span class="binary-eyebrow">ACTIVE CONTRACT</span><h2 id="binaryContractTitle">No Active Contract</h2></div><span id="binaryContractStatus" class="binary-status-pill neutral">IDLE</span></div><p id="binaryContractEmpty">When a signal is executed, contract details will appear here.</p><div id="binaryContractDetails" class="binary-contract-details hidden"><div><span>Direction</span><strong id="binaryContractDirection">--</strong></div><div><span>Account</span><strong id="binaryContractAccount">--</strong></div><div><span>Stake</span><strong id="binaryContractStake">--</strong></div><div><span>Contract ID</span><strong id="binaryContractId">--</strong></div><div><span>Broker entry</span><strong id="binaryContractEntry">--</strong></div><div><span>Potential payout</span><strong id="binaryContractPayout">--</strong></div><div><span>Purchase time</span><strong id="binaryContractPurchaseAt">--</strong></div><div><span>Expiry / settlement</span><strong id="binaryContractExpiry">--</strong></div><div><span>Countdown</span><strong id="binaryContractCountdown">--</strong></div></div></article>
+  <article class="binary-card binary-history-card"><div class="binary-card-heading"><div><span class="binary-eyebrow">RECENT BINARY CONTRACTS</span><h2>Broker Results</h2></div></div><div class="binary-table-wrap"><table><thead><tr><th>Time</th><th>Direction</th><th>Stake</th><th>Result</th><th>Payout</th><th>P/L</th><th>Contract ID</th></tr></thead><tbody id="binaryHistoryRows"><tr><td colspan="7" class="binary-empty-row">No contracts yet</td></tr></tbody></table></div></article></div>
+  <aside class="binary-right-column">
+  <article class="binary-card" id="binaryAccountCard"><div class="binary-card-heading"><div><span class="binary-eyebrow">DERIV ACCOUNT</span><h2>Execution Account</h2></div><span id="binaryAccountBadge" class="binary-account-badge unknown">UNKNOWN</span></div><select id="binaryDerivAccountSelect" aria-label="Deriv account"><option value="">No connected account</option></select><strong id="binaryAccountId" class="binary-account-id">Not connected</strong><span id="binaryAccountBalance" class="binary-account-balance">--</span><span id="binaryAccountConnection" class="binary-muted">DISCONNECTED</span></article>
+  <article class="binary-card binary-setting-card"><div><span class="binary-eyebrow">BINARY AUTO</span><p>Selected account only</p></div><label class="binary-switch"><input id="binaryAutoToggle" type="checkbox" disabled><span></span><b id="binaryAutoLabel">OFF</b></label></article>
+  <article class="binary-card binary-setting-card"><div><span class="binary-eyebrow">STAKE</span><p id="binaryStakeCurrency">USD per contract</p></div><div class="binary-stake-editor"><span>$</span><input id="binaryStake" type="number" min="0.01" step="0.01" value="10" disabled><button id="binarySaveSettings" type="button" disabled>Save</button></div></article>
+  <article class="binary-card binary-duration-card"><span class="binary-eyebrow">CONTRACT DURATION</span><strong>5 Minutes</strong><p>Fixed expiry · No SL / TP</p></article>
+  <article class="binary-card"><span class="binary-eyebrow">EXECUTION STATUS</span><ol class="binary-lifecycle"><li><span>Signal</span><strong id="binaryStageSignal">WAIT</strong></li><li><span>Eligibility</span><strong id="binaryStageEligibility">--</strong></li><li><span>Proposal</span><strong id="binaryStageProposal">--</strong></li><li><span>Execution</span><strong id="binaryStageExecution">--</strong></li><li><span>Settlement</span><strong id="binaryStageSettlement">--</strong></li></ol></article>
+  <article class="binary-card"><span class="binary-eyebrow">SIGNAL MAPPING</span><div class="binary-mapping"><strong>RISE <span>→</span> CALL</strong><strong>FALL <span>→</span> PUT</strong></div><p class="binary-muted">5 minute duration · EURUSD<br>Based on V5 Frozen Strategy</p></article>
+  <article class="binary-card"><span class="binary-eyebrow">SYSTEM STATUS</span><div class="binary-system"><span>V5 Research <strong id="binarySystemResearch">UNKNOWN</strong></span><span>Relay <strong id="binarySystemRelay">UNKNOWN</strong></span><span>Deriv Connection <strong id="binarySystemDeriv">DISCONNECTED</strong></span><span>Execution Engine <strong id="binarySystemExecution">IDLE</strong></span></div><p id="binaryDerivStatus" class="binary-inline-status">Waiting for connection</p></article></aside></section></main>`;}
 
-  // Run immediately on script evaluation, before normal dashboard polling has a
-  // chance to replay an already-active Forex signal after the Deriv redirect.
-  if(sessionStorage.getItem(FOREX_ALERT_GUARD_KEY)){
-    localStorage.setItem(FOREX_ALERT_PREF_KEY,'false');
-    restoreForexAlertIsolationGuard();
-  }
-
-  function injectCss(){
-    if(document.querySelector('link[data-flowsignal-binary-css]')) return;
-    const link=document.createElement('link');
-    link.rel='stylesheet';
-    link.href='binary/binary.css?v=2';
-    link.dataset.flowsignalBinaryCss='true';
-    document.head.appendChild(link);
-  }
-
-  function cardHtml(){
-    return '<div class="binary-app-title">BINARY 5M</div>'+
-      '<div class="binary-app-signal" id="binaryDerivSignal">WAIT</div>'+
-      `<div class="binary-app-meta" id="binaryDerivMeta">EURUSD · ${EXPIRY_MINUTES}m · AUTHORITATIVE V5 RELAY</div>`+
-      '<div class="binary-app-account" id="binaryDerivAccount">ACCOUNT · NOT CONNECTED</div>'+
-      '<div class="binary-app-status" id="binaryDerivStatus">DERIV-NATIVE STRATEGY · NOT CONNECTED</div>'+
-      '<div class="binary-app-settings"><select id="binaryDerivAccountSelect" aria-label="Deriv account"></select><label><input id="binaryAutoToggle" type="checkbox"> Binary Auto</label><label>Stake <input id="binaryStake" type="number" min="0.01" step="0.01" value="1"></label><button type="button" id="binarySaveSettings">Save</button></div>'+
-      '<div class="binary-app-actions">'+
-        '<button type="button" id="binaryDerivConnectBtn">Connect Deriv</button>'+
-        '<button type="button" id="binaryDerivDisconnectBtn" class="hidden">Disconnect</button>'+
-      '</div>';
-  }
-
-  function findMountAnchor(){ return document.querySelector('.main-trade-card .main-smc-panel'); }
-  function removeLegacyBinary(){ const legacy=document.getElementById('binary-shadow-placeholder'); if(legacy) legacy.remove(); }
-
-  function mount(){
-    removeLegacyBinary();
-    if(document.getElementById(ROOT_ID)){mounted=true;startPolling();return true;}
-    const anchor=findMountAnchor();
-    if(!anchor) return false;
-    injectCss();
-    const root=document.createElement('section');
-    root.id=ROOT_ID;
-    root.className='flowsignal-binary-app';
-    root.innerHTML=cardHtml();
-    anchor.insertAdjacentElement('afterend',root);
-    root.querySelector('#binaryDerivConnectBtn')?.addEventListener('click',onConnectClick);
-    root.querySelector('#binaryDerivDisconnectBtn')?.addEventListener('click',onDisconnectClick);
-    root.querySelector('#binaryDerivAccountSelect')?.addEventListener('change',onAccountSelect);
-    root.querySelector('#binarySaveSettings')?.addEventListener('click',saveBinarySettings);
-    mounted=true;
-    refreshStatus();
-    startPolling();
-    console.info('BINARY_NATIVE_5M_APP_MOUNTED');
-    return true;
-  }
-
-  function setStatus(text,isError=false){
-    const el=document.getElementById('binaryDerivStatus');
-    if(!el) return;
-    el.textContent=text;
-    el.classList.toggle('binary-app-error',Boolean(isError));
-  }
-
-  function setSignal(signal,confidence){
-    const signalEl=document.getElementById('binaryDerivSignal');
-    const metaEl=document.getElementById('binaryDerivMeta');
-    const normalized=['RISE','FALL'].includes(String(signal||'').toUpperCase())?String(signal).toUpperCase():'WAIT';
-    if(signalEl) signalEl.textContent=normalized;
-    if(metaEl){
-      const confidenceText=Number.isFinite(Number(confidence))?`${Math.round(Number(confidence))}%`:'--';
-      metaEl.textContent=`EURUSD · ${EXPIRY_MINUTES}m · AUTHORITATIVE V5 · CONFIDENCE ${confidenceText}`;
+  function bindBinaryEvents(root){root.querySelector('#binaryDerivConnectBtn')?.addEventListener('click',onConnectClick); root.querySelector('#binaryDerivDisconnectBtn')?.addEventListener('click',onDisconnectClick); root.querySelector('#binaryDerivAccountSelect')?.addEventListener('change',onAccountSelect); root.querySelector('#binarySaveSettings')?.addEventListener('click',saveBinarySettings); root.querySelector('#binaryAutoToggle')?.addEventListener('change',()=>setText('binaryAutoLabel',document.getElementById('binaryAutoToggle').checked?'ON':'OFF')); root.querySelector('#binaryLogoutBtn')?.addEventListener('click',()=>document.getElementById('logoutBtn')?.click()); root.querySelectorAll('[data-binary-section]').forEach(button=>button.addEventListener('click',()=>{root.querySelectorAll('[data-binary-section]').forEach(item=>item.classList.toggle('active',item===button)); if(button.dataset.binarySection==='accounts') document.getElementById('binaryAccountCard')?.scrollIntoView({behavior:'smooth',block:'start'}); if(button.dataset.binarySection==='history') root.querySelector('.binary-history-card')?.scrollIntoView({behavior:'smooth',block:'start'});}));}
+  function buildModeShell(){
+    const desktopApp=document.getElementById('mainApp');
+    const mobileApp=document.getElementById('mobileApp');
+    const host=desktopApp||document.body;
+    if(!desktopApp&&!mobileApp) return false;
+    let forex=document.getElementById(FOREX_MODE_ID);
+    if(!forex){
+      forex=document.createElement('div'); forex.id=FOREX_MODE_ID; forex.className='flowsignal-mode-panel';
+      if(desktopApp){Array.from(desktopApp.children).forEach(child=>forex.appendChild(child)); desktopApp.appendChild(forex);}
+      else{mobileApp.insertAdjacentElement('beforebegin',forex); forex.appendChild(mobileApp);}
     }
+    let selector=document.getElementById('flowsignalTradingModeSelector');
+    if(!selector){selector=document.createElement('div'); selector.id='flowsignalTradingModeSelector'; selector.className='flowsignal-mode-selector'; selector.setAttribute('aria-label','Trading mode'); selector.innerHTML='<button type="button" data-trading-mode="forex">FOREX</button><button type="button" data-trading-mode="binary">BINARY</button>'; host.insertBefore(selector,forex); selector.addEventListener('click',event=>{const button=event.target.closest('[data-trading-mode]'); if(button) setMode(button.dataset.tradingMode);});}
+    let binary=document.getElementById(BINARY_MODE_ID);
+    if(!binary){binary=document.createElement('section'); binary.id=BINARY_MODE_ID; binary.className='flowsignal-mode-panel flowsignal-binary-mode'; binary.innerHTML=binaryHtml(); host.appendChild(binary); bindBinaryEvents(binary);}
+    applyMode(currentMode()); return true;
   }
+  function applyMode(mode){const normalized=normalizeMode(mode), forex=document.getElementById(FOREX_MODE_ID), binary=document.getElementById(BINARY_MODE_ID); if(forex){forex.hidden=normalized!=='forex'; forex.setAttribute('aria-hidden',normalized==='forex'?'false':'true');} if(binary){binary.hidden=normalized!=='binary'; binary.setAttribute('aria-hidden',normalized==='binary'?'false':'true');} document.querySelectorAll('#flowsignalTradingModeSelector [data-trading-mode]').forEach(button=>{const active=button.dataset.tradingMode===normalized; button.classList.toggle('active',active); button.setAttribute('aria-pressed',String(active));}); document.body?.setAttribute('data-trading-mode',normalized); if(normalized==='binary'){refreshAll(); startPolling();}else stopPolling(); document.dispatchEvent(new CustomEvent('flowsignal:trading-mode-changed',{detail:{mode:normalized}}));}
+  function setMode(mode){const normalized=normalizeMode(mode); localStorage.setItem(MODE_KEY,normalized); applyMode(normalized); return normalized;}
+  function setStatus(text,isError=false){setText('binaryDerivStatus',text); toggleClass('binaryDerivStatus','error',isError);}
+  function genuineV5Signal(data){const direction=String(data?.signal||data?.direction||'').toUpperCase(); if(!['RISE','FALL'].includes(direction)||data?.strategy_version!==STRATEGY_VERSION||data?.rule_hash!==RULE_HASH) return false; const match=String(data?.signal_id||'').match(/^DERIV_BINARY_V5_NOISY_REVERSAL_FROZEN_1:frxEURUSD:(\d{10,13}):(RISE|FALL)$/); if(!match||match[2]!==direction) return false; const timestamp=Number(match[1]); return Number.isFinite(timestamp)&&timestamp>0;}
+  function renderSignal(data){const requested=String(data?.signal||'WAIT').toUpperCase(); const direction=requested==='WAIT'?'WAIT':genuineV5Signal(data)?requested:'WAIT'; const el=document.getElementById('binaryDerivSignal'); if(el){el.textContent=direction; el.className=`binary-signal ${direction.toLowerCase()}`;} setText('binarySignalCopy',direction==='RISE'?'5-minute RISE signal':direction==='FALL'?'5-minute FALL signal':'Waiting for next signal'); setText('binaryStageSignal',direction); setText('binaryLastUpdateAt',new Date().toLocaleString()); if(direction!=='WAIT') setText('binaryLastSignalAt',formatTime(data.decision_timestamp||data.timestamp||String(data.signal_id).split(':')[2])); return direction;}
 
-  function randomVerifier(){
-    const alphabet='ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~';
-    const bytes=crypto.getRandomValues(new Uint8Array(64));
-    return Array.from(bytes,b=>alphabet[b%alphabet.length]).join('');
-  }
-  async function codeChallenge(verifier){
-    const digest=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(verifier));
-    return btoa(String.fromCharCode(...new Uint8Array(digest))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/g,'');
-  }
-  function randomState(){ return Array.from(crypto.getRandomValues(new Uint8Array(16)),b=>b.toString(16).padStart(2,'0')).join(''); }
-  async function getConfig(){
-    const response=await fetch(`${BACKEND}/deriv/config`,{cache:'no-store'});
-    if(!response.ok) throw new Error(`backend ${response.status}`);
-    return response.json();
-  }
+  function randomVerifier(){const alphabet='ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~'; const bytes=crypto.getRandomValues(new Uint8Array(64)); return Array.from(bytes,b=>alphabet[b%alphabet.length]).join('');}
+  async function codeChallenge(verifier){const digest=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(verifier)); return btoa(String.fromCharCode(...new Uint8Array(digest))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/g,'');}
+  function randomState(){return Array.from(crypto.getRandomValues(new Uint8Array(16)),b=>b.toString(16).padStart(2,'0')).join('');}
+  async function getConfig(){const response=await fetch(`${BACKEND}/deriv/config`,{cache:'no-store'}); if(!response.ok) throw new Error(`backend ${response.status}`); return response.json();}
+  async function onConnectClick(event){event.preventDefault(); event.stopPropagation(); const button=event.currentTarget; button.disabled=true; button.textContent='Connecting…'; setStatus('Preparing Deriv login…'); try{const cfg=await getConfig(); if(!cfg?.configured||!cfg?.client_id||!cfg?.authorization_url) throw new Error('Deriv app configuration unavailable'); const verifier=randomVerifier(), state=randomState(), challenge=await codeChallenge(verifier); sessionStorage.setItem(VERIFIER_KEY,verifier); sessionStorage.setItem(STATE_KEY,state); localStorage.setItem(MODE_KEY,'binary'); const url=new URL(cfg.authorization_url); url.searchParams.set('response_type','code'); url.searchParams.set('client_id',cfg.client_id); url.searchParams.set('redirect_uri',cfg.redirect_uri); url.searchParams.set('scope',cfg.scope||'trade'); url.searchParams.set('state',state); url.searchParams.set('code_challenge',challenge); url.searchParams.set('code_challenge_method','S256'); beginForexAlertIsolationGuard(); window.location.href=url.toString();}catch(error){console.error('BINARY_DERIV_CONNECT_ERROR',error); setStatus(`Connect error · ${error.message||'unknown error'}`,true); button.disabled=false; button.textContent='Connect Deriv';}}
+  async function onDisconnectClick(event){event.preventDefault(); const id=localStorage.getItem(CONNECTION_KEY); try{if(id) await fetch(`${BACKEND}/deriv/disconnect`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({connection_id:id})});}catch(error){console.warn('BINARY_DERIV_DISCONNECT_WARNING',error);} localStorage.removeItem(CONNECTION_KEY); localStorage.removeItem(ACCOUNT_KEY); selectedAccount=null; lastLocalSignalId=''; await refreshStatus();}
+  function renderAccount(account,connected){const type=connected?accountType(account):'UNKNOWN', id=connected?accountId(account):'', currency=account?.currency||'USD'; setText('binaryAccountBadge',type); const badge=document.getElementById('binaryAccountBadge'); if(badge) badge.className=`binary-account-badge ${type.toLowerCase()}`; setText('binaryAccountId',id||'Not connected'); setText('binaryAccountBalance',connected?formatMoney(account?.balance,currency):'--'); setText('binaryAccountConnection',connected?'CONNECTED':'DISCONNECTED'); setText('binaryHeaderConnection',connected?'CONNECTED':'DISCONNECTED'); setText('binarySystemDeriv',connected?'CONNECTED':'DISCONNECTED'); setText('binaryStakeCurrency',`${currency} per contract`); ['binaryHeaderConnection','binaryAccountConnection'].forEach(name=>{const el=document.getElementById(name); el?.classList.toggle('connected',connected); el?.classList.toggle('disconnected',!connected);});}
+  async function loadBinarySettings(){if(!selectedAccount) return; const response=await fetch(`${BACKEND}/deriv/binary/account-settings/${encodeURIComponent(getCurrentFlowSignalUserId())}/${encodeURIComponent(accountId(selectedAccount))}`,{cache:'no-store'}); if(!response.ok) return; const data=await response.json(); const toggle=document.getElementById('binaryAutoToggle'), stake=document.getElementById('binaryStake'), save=document.getElementById('binarySaveSettings'); if(toggle){toggle.checked=Boolean(data.binary_auto_enabled); toggle.disabled=false;} if(stake){stake.value=String(data.binary_stake??DEFAULT_STAKE); stake.disabled=false;} if(save) save.disabled=false; setText('binaryAutoLabel',data.binary_auto_enabled?'ON':'OFF');}
+  async function saveBinarySettings(){if(!selectedAccount) return setStatus('Select a Deriv account',true); const stake=Number(document.getElementById('binaryStake').value); if(!Number.isFinite(stake)||stake<=0) return setStatus('Enter a valid stake',true); const response=await fetch(`${BACKEND}/deriv/binary/account-settings`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({user_id:getCurrentFlowSignalUserId(),deriv_account_id:accountId(selectedAccount),enabled:document.getElementById('binaryAutoToggle').checked,stake})}); const data=await response.json().catch(()=>({})); if(!response.ok) return setStatus(data.detail||'Binary settings error',true); await loadBinarySettings(); setStatus(`${data.account_type} ${data.deriv_account_id} · Binary Auto ${data.binary_auto_enabled?'ON':'OFF'}`);}
+  async function onAccountSelect(event){const connectionId=localStorage.getItem(CONNECTION_KEY), id=event.target.value; if(!connectionId||!id) return; const response=await fetch(`${BACKEND}/deriv/account/select`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({connection_id:connectionId,user_id:getCurrentFlowSignalUserId(),deriv_account_id:id})}); const data=await response.json().catch(()=>({})); if(!response.ok) return setStatus(data.detail||'Account selection blocked',true); localStorage.setItem(ACCOUNT_KEY,id); await refreshStatus();}
+  async function refreshStatus(){const root=document.getElementById(BINARY_MODE_ID); if(!root) return false; const connect=root.querySelector('#binaryDerivConnectBtn'), disconnect=root.querySelector('#binaryDerivDisconnectBtn'), connectionId=localStorage.getItem(CONNECTION_KEY); if(!connectionId){selectedAccount=null; renderAccount(null,false); setStatus('Waiting for connection'); connect?.classList.remove('hidden'); disconnect?.classList.add('hidden'); return false;} try{const response=await fetch(`${BACKEND}/deriv/status`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({connection_id:connectionId}),cache:'no-store'}); const data=await response.json().catch(()=>({})); if(!response.ok||!data.connected){localStorage.removeItem(CONNECTION_KEY); selectedAccount=null; renderAccount(null,false); setStatus('Deriv connection expired',true); connect?.classList.remove('hidden'); disconnect?.classList.add('hidden'); return false;} connect?.classList.add('hidden'); disconnect?.classList.remove('hidden'); const select=document.getElementById('binaryDerivAccountSelect'), wanted=data.selected_account_id||localStorage.getItem(ACCOUNT_KEY)||''; select.innerHTML=(data.accounts||[]).map(account=>{const id=accountId(account); return `<option value="${id}" ${id===wanted?'selected':''}>${accountType(account)} · ${id}</option>`;}).join('')||'<option value="">No connected account</option>'; selectedAccount=(data.accounts||[]).find(account=>accountId(account)===wanted)||null; if(!selectedAccount){renderAccount(null,true); setStatus('Deriv connected · select an account',true); return false;} localStorage.setItem(ACCOUNT_KEY,accountId(selectedAccount)); renderAccount(selectedAccount,true); await loadBinarySettings(); await refreshExecution(); setStatus(`Deriv ${accountType(selectedAccount)} connected`); return true;}catch(error){console.warn('BINARY_DERIV_STATUS_WARNING',error); setStatus('Deriv status unavailable',true); return false;}}
 
-  async function onConnectClick(event){
-    event.preventDefault(); event.stopPropagation();
-    const button=event.currentTarget;
-    button.disabled=true; button.textContent='Connecting…'; setStatus('PREPARING DERIV LOGIN…');
-    try{
-      const cfg=await getConfig();
-      if(!cfg?.configured||!cfg?.client_id||!cfg?.authorization_url) throw new Error('Deriv app configuration unavailable');
-      const verifier=randomVerifier(); const state=randomState(); const challenge=await codeChallenge(verifier);
-      sessionStorage.setItem(VERIFIER_KEY,verifier); sessionStorage.setItem(STATE_KEY,state);
-      const url=new URL(cfg.authorization_url);
-      url.searchParams.set('response_type','code'); url.searchParams.set('client_id',cfg.client_id);
-      url.searchParams.set('redirect_uri',cfg.redirect_uri); url.searchParams.set('scope',cfg.scope||'trade');
-      url.searchParams.set('state',state); url.searchParams.set('code_challenge',challenge); url.searchParams.set('code_challenge_method','S256');
-      beginForexAlertIsolationGuard();
-      window.location.href=url.toString();
-    }catch(error){
-      console.error('BINARY_DERIV_CONNECT_ERROR',error); setStatus(`CONNECT ERROR · ${error.message||'unknown error'}`,true);
-      button.disabled=false; button.textContent='Connect Deriv';
-    }
-  }
-
-  async function onDisconnectClick(event){
-    event.preventDefault(); const id=localStorage.getItem(CONNECTION_KEY);
-    try{ if(id) await fetch(`${BACKEND}/deriv/disconnect`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({connection_id:id})}); }
-    catch(error){ console.warn('BINARY_DERIV_DISCONNECT_WARNING',error); }
-    localStorage.removeItem(CONNECTION_KEY); localStorage.removeItem(ACCOUNT_KEY); selectedAccount=null; lastLocalSignalId=''; refreshStatus();
-  }
-
-  async function loadBinarySettings(){
-    if(!selectedAccount) return;
-    const response=await fetch(`${BACKEND}/deriv/binary/account-settings/${encodeURIComponent(binaryUserId())}/${encodeURIComponent(selectedAccount.account_id||selectedAccount.id||selectedAccount.loginid)}`,{cache:'no-store'});
-    if(!response.ok) return;
-    const data=await response.json();
-    document.getElementById('binaryAutoToggle').checked=Boolean(data.binary_auto_enabled);
-    document.getElementById('binaryStake').value=String(data.binary_stake??DEFAULT_STAKE);
-  }
-
-  async function saveBinarySettings(){
-    if(!selectedAccount) return setStatus('SELECT A DERIV ACCOUNT',true);
-    const accountId=selectedAccount.account_id||selectedAccount.id||selectedAccount.loginid;
-    const response=await fetch(`${BACKEND}/deriv/binary/account-settings`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({user_id:binaryUserId(),deriv_account_id:accountId,enabled:document.getElementById('binaryAutoToggle').checked,stake:Number(document.getElementById('binaryStake').value)})});
-    const data=await response.json().catch(()=>({})); if(!response.ok) return setStatus(data.detail||'BINARY SETTINGS ERROR',true);
-    await loadBinarySettings(); setStatus(`${data.account_type} ${data.deriv_account_id} · BINARY AUTO ${data.binary_auto_enabled?'ON':'OFF'}`);
-  }
-
-  async function onAccountSelect(event){
-    const connectionId=localStorage.getItem(CONNECTION_KEY); const accountId=event.target.value;
-    const response=await fetch(`${BACKEND}/deriv/account/select`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({connection_id:connectionId,user_id:binaryUserId(),deriv_account_id:accountId})});
-    const data=await response.json().catch(()=>({})); if(!response.ok) return setStatus(data.detail||'ACCOUNT SELECTION BLOCKED',true);
-    localStorage.setItem(ACCOUNT_KEY,accountId); await refreshStatus();
-  }
-
-  async function refreshStatus(){
-    const root=document.getElementById(ROOT_ID); if(!root) return false;
-    const connect=root.querySelector('#binaryDerivConnectBtn'); const disconnect=root.querySelector('#binaryDerivDisconnectBtn');
-    const id=localStorage.getItem(CONNECTION_KEY);
-    if(!id){ setStatus('DERIV-NATIVE 5M · NOT CONNECTED'); connect?.classList.remove('hidden'); disconnect?.classList.add('hidden'); return false; }
-    try{
-      const response=await fetch(`${BACKEND}/deriv/status`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({connection_id:id}),cache:'no-store'});
-      const data=await response.json().catch(()=>({}));
-      if(!response.ok||!data.connected){ localStorage.removeItem(CONNECTION_KEY); setStatus('DEMO CONNECTION EXPIRED',true); connect?.classList.remove('hidden'); disconnect?.classList.add('hidden'); return false; }
-      connect?.classList.add('hidden'); disconnect?.classList.remove('hidden');
-      const select=document.getElementById('binaryDerivAccountSelect'); const wanted=data.selected_account_id||localStorage.getItem(ACCOUNT_KEY)||'';
-      select.innerHTML=(data.accounts||[]).map(a=>{const id=a.account_id||a.id||a.loginid; const type=a.account_type_normalized||'UNKNOWN'; return `<option value="${id}" ${id===wanted?'selected':''}>${type} · ${id}</option>`;}).join('');
-      selectedAccount=(data.accounts||[]).find(a=>(a.account_id||a.id||a.loginid)===wanted)||null;
-      if(!selectedAccount){ setStatus('DERIV CONNECTED · SELECT AN ACCOUNT',true); return false; }
-      const id=selectedAccount.account_id||selectedAccount.id||selectedAccount.loginid; const type=selectedAccount.account_type_normalized||'UNKNOWN';
-      localStorage.setItem(ACCOUNT_KEY,id); document.getElementById('binaryDerivAccount').textContent=`${type} · ${id} · ${selectedAccount.balance??'--'} ${selectedAccount.currency||''}`;
-      await loadBinarySettings(); setStatus(`DERIV ${type} CONNECTED`); return type!=='UNKNOWN';
-    }catch(error){ console.warn('BINARY_DERIV_STATUS_WARNING',error); setStatus('DERIV STATUS UNAVAILABLE',true); return false; }
-  }
-
-  async function executeNativeSignal(nativeSignal){
-    if(executionBusy) return;
-    const direction=String(nativeSignal?.signal||'WAIT').toUpperCase();
-    const confidence=nativeSignal?.confidence;
-    setSignal(direction,confidence);
-    if(!['RISE','FALL'].includes(direction)) return;
-
-    const connectionId=localStorage.getItem(CONNECTION_KEY);
-    if(!connectionId) return;
-    const signalId=String(nativeSignal?.signal_id||'').trim();
-    if(!signalId){ setStatus('DEMO CONNECTED · WAITING FOR CLOSED 5M SIGNAL'); return; }
-    if(signalId===lastLocalSignalId) return;
-
-    const executionSide=direction==='RISE'?'BUY':'SELL';
-    executionBusy=true;
-    try{
-      const accountType=selectedAccount?.account_type_normalized||'UNKNOWN'; const stake=document.getElementById('binaryStake').value;
-      setStatus(`${direction} · ${accountType} · $${stake} / ${EXPIRY_MINUTES}m…`);
-      const response=await fetch(`${BACKEND}/deriv/binary/v5/execute`,{
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({connection_id:connectionId,user_id:binaryUserId(),signal_id:signalId}),
-      });
-      const data=await response.json().catch(()=>({}));
-      if(!response.ok) throw new Error(data?.detail||`backend ${response.status}`);
-      lastLocalSignalId=signalId;
-      if(data.executed){
-        const contract=data.contract_id?` · #${data.contract_id}`:'';
-        setStatus(`${data.account_type} ${direction} · ${data.outcome||'OPEN'}${contract}`);
-        console.info('BINARY_NATIVE_5M_EXECUTED',data);
-      }else if(data.duplicate){ setStatus('DERIV DEMO CONNECTED · 5M SIGNAL ALREADY EXECUTED'); }
-    }catch(error){
-      console.error('BINARY_NATIVE_5M_EXECUTION_ERROR',error);
-      setStatus(`DEMO EXECUTION ERROR · ${error.message||'unknown error'}`,true);
-    }finally{ executionBusy=false; }
-  }
-
-  async function pollBinary(){
-    if(!document.getElementById(ROOT_ID)) return;
-    try{
-      const response=await fetch(`${BACKEND}/deriv/binary/v5/signal`,{cache:'no-store'});
-      if(!response.ok) throw new Error(`binary signal ${response.status}`);
-      const data=await response.json();
-      setSignal(data?.signal,data?.confidence);
-      if(!data?.ok){
-        setStatus(`BINARY DATA WAIT · ${data?.reason||'UNAVAILABLE'}`,true);
-        return;
-      }
-      const connected=Boolean(localStorage.getItem(CONNECTION_KEY));
-      if(connected){
-        if(['RISE','FALL'].includes(String(data?.signal||'').toUpperCase())) await executeNativeSignal(data);
-        else setStatus(`DERIV ${selectedAccount?.account_type_normalized||''} CONNECTED · WAIT · ${data?.reason||'NO RELAYED V5 SIGNAL'}`);
-      }else{
-        setStatus(`DERIV-NATIVE 5M · ${data?.reason||'READY'}`);
-      }
-    }catch(error){
-      console.warn('BINARY_NATIVE_5M_POLL_WARNING',error);
-      setSignal('WAIT',0);
-      setStatus('BINARY 5M DATA UNAVAILABLE',true);
-    }
-  }
-
-  function startPolling(){ if(pollTimer) return; pollBinary(); pollTimer=setInterval(pollBinary,POLL_MS); }
-  function start(){
-    removeLegacyBinary(); if(mount()) return; let tries=0;
-    const timer=setInterval(()=>{ tries+=1; if(mount()||tries>=40) clearInterval(timer); },250);
-  }
-
-  document.addEventListener('flowsignal:authenticated',()=>setTimeout(start,0));
-  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',start,{once:true}); else start();
-  window.addEventListener('focus',()=>{if(mounted){refreshStatus();pollBinary();}});
-  window.FlowSignalBinary={mount,refreshStatus,pollBinary};
+  function executionValue(data,...keys){for(const key of keys){if(data?.[key]!==undefined&&data?.[key]!==null) return data[key];} return null;}
+  function renderExecution(snapshot){const running=snapshot?.running_contract||null, latest=snapshot?.last_execution||null, record=running||latest; if(!record){setText('binaryContractTitle','No Active Contract'); setText('binaryContractStatus','IDLE'); toggleClass('binaryContractDetails','hidden',true); toggleClass('binaryContractEmpty','hidden',false); setText('binarySystemExecution','IDLE'); return;} const status=String(executionValue(record,'status','outcome')||(running?'RUNNING':'UNKNOWN')).toUpperCase(), direction=String(executionValue(record,'direction')||'--').toUpperCase(), contractType=executionValue(record,'contract_type'), currency=executionValue(record,'currency')||selectedAccount?.currency||'USD', stake=executionValue(record,'stake','purchase_price','buy_price'), payout=executionValue(record,'payout','potential_payout'), profit=executionValue(record,'profit','profit_loss','pnl'), settled=['WIN','LOSS','WON','LOST','SOLD','SETTLED'].includes(status); setText('binaryContractTitle',settled?(status==='WON'?'WIN':status==='LOST'?'LOSS':status):`${direction} RUNNING`); setText('binaryContractStatus',settled?status:'RUNNING'); toggleClass('binaryContractDetails','hidden',false); toggleClass('binaryContractEmpty','hidden',true); setText('binaryContractDirection',`${direction}${contractType?` · ${contractType}`:''}`); setText('binaryContractAccount',`${accountType(selectedAccount)} · ${accountId(selectedAccount)}`); setText('binaryContractStake',formatMoney(stake,currency)); setText('binaryContractId',executionValue(record,'contract_id')||'--'); setText('binaryContractEntry',executionValue(record,'entry_spot','entry_price','buy_price','purchase_price')??'--'); setText('binaryContractPayout',formatMoney(payout,currency)); setText('binaryContractPurchaseAt',formatTime(executionValue(record,'purchase_time','purchased_at','created_at'))); setText('binaryContractExpiry',formatTime(executionValue(record,'expiry_time','settlement_timestamp','settled_at'))); setText('binaryContractCountdown',running?'RUNNING':'COMPLETE'); setText('binaryStageEligibility','ELIGIBLE'); setText('binaryStageProposal',executionValue(record,'proposal_id')?'ACCEPTED':'--'); setText('binaryStageExecution',executionValue(record,'contract_id')?'PURCHASED':'--'); setText('binaryStageSettlement',settled?status:'PENDING'); setText('binarySystemExecution',running?'RUNNING':settled?'IDLE':'BLOCKED'); if(latest){const result=status==='WON'?'WIN':status==='LOST'?'LOSS':status; document.getElementById('binaryHistoryRows').innerHTML=`<tr><td>${formatTime(executionValue(latest,'settlement_timestamp','settled_at','purchase_time','created_at'))}</td><td>${direction}</td><td>${formatMoney(stake,currency)}</td><td><span class="binary-result ${result.toLowerCase()}">${result}</span></td><td>${formatMoney(payout,currency)}</td><td>${formatMoney(profit,currency)}</td><td>${executionValue(latest,'contract_id')||'--'}</td></tr>`;}}
+  async function refreshExecution(){if(!selectedAccount) return; try{const response=await fetch(`${BACKEND}/deriv/binary/execution-status/${encodeURIComponent(getCurrentFlowSignalUserId())}/${encodeURIComponent(accountId(selectedAccount))}`,{cache:'no-store'}); if(response.ok) renderExecution(await response.json());}catch(error){console.warn('BINARY_EXECUTION_STATUS_WARNING',error);}}
+  async function executeNativeSignal(data){if(executionBusy||!genuineV5Signal(data)) return; const connectionId=localStorage.getItem(CONNECTION_KEY); if(!connectionId) return; const signalId=String(data.signal_id); if(signalId===lastLocalSignalId) return; executionBusy=true; try{setText('binaryStageEligibility','CHECKING'); const response=await fetch(`${BACKEND}/deriv/binary/v5/execute`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({connection_id:connectionId,user_id:getCurrentFlowSignalUserId(),signal_id:signalId})}); const result=await response.json().catch(()=>({})); if(!response.ok) throw new Error(result?.detail||`backend ${response.status}`); lastLocalSignalId=signalId; await refreshExecution();}catch(error){console.error('BINARY_NATIVE_5M_EXECUTION_ERROR',error); setStatus(error.message==='REAL_BINARY_EXECUTION_DISABLED'?'REAL BINARY EXECUTION DISABLED':`Execution blocked · ${error.message||'unknown error'}`,true); setText('binaryStageExecution','BLOCKED');}finally{executionBusy=false;}}
+  async function pollBinary(){if(!binaryVisible()||!document.getElementById(BINARY_MODE_ID)) return; try{const response=await fetch(`${BACKEND}/deriv/binary/v5/signal`,{cache:'no-store'}); if(!response.ok) throw new Error(`binary signal ${response.status}`); const data=await response.json(), direction=renderSignal(data), available=Boolean(data?.ok); setText('binarySystemResearch',available?'LIVE':'UNKNOWN'); setText('binarySystemRelay',available||data?.reason==='NO_RELAYED_V5_SIGNAL'?'LIVE':'UNKNOWN'); if(direction!=='WAIT') await executeNativeSignal(data); await refreshExecution();}catch(error){console.warn('BINARY_NATIVE_5M_POLL_WARNING',error); renderSignal({signal:'WAIT'}); setText('binarySystemResearch','UNKNOWN'); setText('binarySystemRelay','UNAVAILABLE'); setStatus('Binary data unavailable',true);}}
+  function startPolling(){if(pollTimer||!binaryVisible()) return; pollBinary(); pollTimer=setInterval(pollBinary,POLL_MS);}
+  function stopPolling(){if(pollTimer){clearInterval(pollTimer); pollTimer=null;}}
+  async function refreshAll(){await refreshStatus(); await pollBinary();}
+  function mount(){if(mounted) return true; injectCss(); if(!buildModeShell()) return false; mounted=true; if(binaryVisible()) refreshAll(); console.info('BINARY_MODE_SHELL_MOUNTED'); return true;}
+  function start(){if(mount()) return; let tries=0; const timer=setInterval(()=>{tries+=1; if(mount()||tries>=40) clearInterval(timer);},250);}
+  document.addEventListener('flowsignal:authenticated',()=>setTimeout(start,0)); if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',start,{once:true}); else start(); window.addEventListener('focus',()=>{if(mounted&&binaryVisible()) refreshAll();});
+  window.FlowSignalBinary={mount,setMode,currentMode,refreshStatus,pollBinary,refreshExecution,getCurrentFlowSignalUserId,genuineV5Signal,renderSignal,renderExecution};
 })();

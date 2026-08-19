@@ -28,7 +28,7 @@
   function loadBinaryMiniApp() {
     if (document.querySelector('script[data-flowsignal-binary-app]')) return;
     const script = document.createElement('script');
-    script.src = 'binary/binary-app.js?v=2';
+    script.src = 'binary/binary-app.js?v=3';
     script.async = true;
     script.dataset.flowsignalBinaryApp = 'true';
     script.addEventListener('error', () => console.warn('BINARY_APP_LOAD_FAILED'));
