@@ -6,6 +6,7 @@
   const IS_LOCAL=location.hostname==='localhost'||location.hostname==='127.0.0.1';
   const BACKEND=IS_LOCAL?LOCAL_BACKEND:`${location.origin}/api/proxy`;
   const CSRF_KEY='flowsignal_csrf_token';
+  const USER_SESSION_KEY='flowsignal_user_session_token';
   const OAUTH_USER_KEY='flowsignal_deriv_oauth_user_id';
   const LEGACY_BINARY_USER_KEY='flowsignal_binary_user_id';
   const LEGACY_SESSION_TOKEN_KEY='flowsignal_session_token';
@@ -28,6 +29,7 @@
   let csrfToken=sessionStorage.getItem(CSRF_KEY)||'';
   const nativeFetch=window.fetch.bind(window);
 
+  function userSessionToken(){return String(sessionStorage.getItem(USER_SESSION_KEY)||'').trim();}
   function publicHome(){return sessionStorage.getItem(PUBLIC_HOME_KEY)==='1';}
   function tabSignedOut(){return sessionStorage.getItem(TAB_SIGNED_OUT_KEY)==='1';}
   function installPublicHomeStyle(){
@@ -42,7 +44,10 @@
     else{sessionStorage.removeItem(PUBLIC_HOME_KEY);document.body.classList.remove('flowsignal-public-home');}
   }
 
-  function legacyOwner(){return String(sessionStorage.getItem('flowsignal_tab_role')||localStorage.getItem('flowsignal_role')||'').toLowerCase()==='admin';}
+  function legacyOwner(){
+    if(userSessionToken())return false;
+    return String(sessionStorage.getItem('flowsignal_tab_role')||localStorage.getItem('flowsignal_role')||'').toLowerCase()==='admin';
+  }
   function isBackend(input){
     try{
       const raw=typeof input==='string'?input:input?.url;
@@ -53,13 +58,17 @@
       return parsed.origin===location.origin&&parsed.pathname.startsWith('/api/proxy/');
     }catch(_error){return false;}
   }
-  function isCustomerProtectedRequest(raw){
+  function logicalBackendPath(raw){
     try{
       const parsed=new URL(raw,location.href);
       let path=parsed.pathname;
       if(path.startsWith('/api/proxy'))path=path.slice('/api/proxy'.length)||'/';
-      return path.startsWith('/user/')||path.startsWith('/deriv/');
-    }catch(_error){return false;}
+      return path;
+    }catch(_error){return '';}
+  }
+  function isCustomerRequest(raw){
+    const path=logicalBackendPath(raw);
+    return path.startsWith('/user/')||path.startsWith('/deriv/')||path==='/auth/session'||path==='/auth/me'||path==='/auth/logout';
   }
   function customerUrl(raw){
     const parsed=new URL(raw,location.href);
@@ -85,15 +94,18 @@
   window.fetch=async function(input,init={}){
     if(!isBackend(input))return nativeFetch(input,init);
     const raw=typeof input==='string'?input:input.url;
-    if(tabSignedOut()&&isCustomerProtectedRequest(raw)){
+    const token=userSessionToken();
+    const customerRequest=isCustomerRequest(raw);
+    if((tabSignedOut()||!token)&&customerRequest&&logicalBackendPath(raw)!=='/auth/session'){
       return new Response(JSON.stringify({detail:'TAB_SIGNED_OUT'}),{status:401,headers:{'Content-Type':'application/json'}});
     }
     const url=customerUrl(raw);
-    const options={...init,credentials:'include'};
+    const options={...init};
     options.headers=new Headers(init.headers||{});
     const method=String(options.method||'GET').toUpperCase();
-    if(sessionUser?.id&&!['GET','HEAD','OPTIONS'].includes(method)&&csrfToken)options.headers.set('X-FlowSignal-CSRF',csrfToken);
-    if(!sessionUser?.id&&legacyOwner()&&!options.headers.has('Authorization')){
+    if(token&&customerRequest)options.headers.set('Authorization',`FlowSignalUser ${token}`);
+    if(token&&sessionUser?.id&&!['GET','HEAD','OPTIONS'].includes(method)&&csrfToken)options.headers.set('X-FlowSignal-CSRF',csrfToken);
+    if(!token&&legacyOwner()&&!options.headers.has('Authorization')){
       const ownerToken=localStorage.getItem(LEGACY_SESSION_TOKEN_KEY);
       if(ownerToken)options.headers.set('Authorization',`Bearer ${ownerToken}`);
     }
@@ -124,7 +136,9 @@
   }
   function openOwnerAccess(event){
     event?.preventDefault?.();
+    sessionStorage.removeItem(USER_SESSION_KEY);
     sessionStorage.removeItem(TAB_SIGNED_OUT_KEY);
+    sessionStorage.removeItem(LEGACY_BINARY_USER_KEY);
     setPublicHome(false);
     const landing=document.getElementById('landingPage');
     if(landing){landing.classList.remove('hidden');landing.style.removeProperty('display');}
@@ -159,31 +173,44 @@
     sessionUser=user||null;
     if(!user)return;
     sessionStorage.removeItem(TAB_SIGNED_OUT_KEY);
-    localStorage.setItem(LEGACY_BINARY_USER_KEY,user.id);
-    localStorage.setItem('flowsignal_role',user.role||'user');
+    sessionStorage.setItem(LEGACY_BINARY_USER_KEY,user.id);
     sessionStorage.setItem('flowsignal_tab_role',user.role||'user');
     document.body.dataset.userRole=user.role||'user';
     document.dispatchEvent(new CustomEvent('flowsignal:authenticated',{detail:{user}}));
     enterFullUserDashboard(user);
   }
   async function session(){
-    if(publicHome()||tabSignedOut()){
+    const token=userSessionToken();
+    if(publicHome()||tabSignedOut()||!token){
       sessionUser=null;
       csrfToken='';
       sessionStorage.removeItem(CSRF_KEY);
       showLanding();
       return null;
     }
-    if(legacyOwner())return null;
     try{
-      const response=await nativeFetch(`${BACKEND}/auth/session`,{credentials:'include',cache:'no-store'});
+      const response=await nativeFetch(`${BACKEND}/auth/session`,{cache:'no-store',headers:{'Authorization':`FlowSignalUser ${token}`}});
       const data=await response.json().catch(()=>({}));
       if(data?.authenticated&&data?.user){csrfToken=String(data.csrf_token||'');sessionStorage.setItem(CSRF_KEY,csrfToken);applyUser(data.user);return data.user;}
     }catch(_error){}
+    sessionStorage.removeItem(USER_SESSION_KEY);
+    sessionStorage.removeItem(LEGACY_BINARY_USER_KEY);
     sessionUser=null;csrfToken='';sessionStorage.removeItem(CSRF_KEY);showLanding();return null;
   }
   async function logout(){
+    const token=userSessionToken();
+    const csrf=csrfToken;
+    if(token&&csrf){
+      try{
+        await nativeFetch(`${BACKEND}/auth/logout`,{
+          method:'POST',
+          headers:{'Authorization':`FlowSignalUser ${token}`,'X-FlowSignal-CSRF':csrf}
+        });
+      }catch(_error){}
+    }
     sessionStorage.setItem(TAB_SIGNED_OUT_KEY,'1');
+    sessionStorage.removeItem(USER_SESSION_KEY);
+    sessionStorage.removeItem(LEGACY_BINARY_USER_KEY);
     sessionUser=null;
     csrfToken='';
     sessionStorage.removeItem(CSRF_KEY);
@@ -217,6 +244,6 @@
 
   installPublicHomeStyle();
   wireLanding();
-  window.FlowSignalAuth={get user(){return sessionUser;},get csrf(){return csrfToken;},currentUserId(){return sessionUser?.id||'';},session,logout,open(mode='login'){openAccount(mode);},openOwner:openOwnerAccess,backend:BACKEND};
+  window.FlowSignalAuth={get user(){return sessionUser;},get csrf(){return csrfToken;},get sessionToken(){return userSessionToken();},currentUserId(){return sessionUser?.id||'';},session,logout,open(mode='login'){openAccount(mode);},openOwner:openOwnerAccess,backend:BACKEND};
   session();
 })();
