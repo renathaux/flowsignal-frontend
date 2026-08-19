@@ -22,18 +22,32 @@
       const returnedState=params.get('state');
       const expectedState=sessionStorage.getItem('flowsignal_deriv_oauth_state');
       const verifier=sessionStorage.getItem('flowsignal_deriv_pkce_verifier');
-      let userId=localStorage.getItem('flowsignal_binary_user_id');
-      if(!userId){userId=crypto.randomUUID();localStorage.setItem('flowsignal_binary_user_id',userId);}
+      const initiatingUser=sessionStorage.getItem('flowsignal_deriv_oauth_user_id');
       if(!code||!returnedState||!expectedState||returnedState!==expectedState||!verifier){
         status.className='error';status.textContent='Deriv OAuth verification failed. Return to FlowSignal and connect again.';return;
       }
       try{
-        const response=await fetch(`${backend}/deriv/oauth/exchange`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code,code_verifier:verifier,user_id:userId})});
+        const sessionResponse=await fetch(`${backend}/auth/session`,{credentials:'include',cache:'no-store'});
+        const sessionData=await sessionResponse.json().catch(()=>({}));
+        let response;
+        if(sessionData?.authenticated&&sessionData?.user?.id&&sessionData?.csrf_token){
+          if(initiatingUser&&initiatingUser!==sessionData.user.id) throw new Error('Deriv OAuth user mismatch. Return to FlowSignal and reconnect from the correct user account.');
+          const headers={'Content-Type':'application/json','X-FlowSignal-CSRF':sessionData.csrf_token};
+          const stateResponse=await fetch(`${backend}/user/deriv/oauth/state`,{method:'POST',credentials:'include',headers,body:JSON.stringify({state:returnedState,code_verifier:verifier})});
+          const statePayload=await stateResponse.json().catch(()=>({}));
+          if(!stateResponse.ok) throw new Error(statePayload.detail||'Deriv OAuth state validation failed');
+          response=await fetch(`${backend}/user/deriv/oauth/exchange`,{method:'POST',credentials:'include',headers,body:JSON.stringify({code,code_verifier:verifier,state:returnedState})});
+        }else{
+          let legacyUserId=localStorage.getItem('flowsignal_binary_user_id');
+          if(!legacyUserId){legacyUserId=crypto.randomUUID();localStorage.setItem('flowsignal_binary_user_id',legacyUserId);}
+          response=await fetch(`${backend}/deriv/oauth/exchange`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code,code_verifier:verifier,user_id:legacyUserId})});
+        }
         const payload=await response.json().catch(()=>({}));
         if(!response.ok||!payload.connection_id)throw new Error(payload.detail||'Deriv connection failed');
         localStorage.setItem('flowsignal_deriv_connection_id',payload.connection_id);
         sessionStorage.removeItem('flowsignal_deriv_oauth_state');
         sessionStorage.removeItem('flowsignal_deriv_pkce_verifier');
+        sessionStorage.removeItem('flowsignal_deriv_oauth_user_id');
         status.textContent=payload.selected_account_id?'Deriv account connected. Returning to FlowSignal…':'Deriv connected. Select the account to use for Binary execution.';
         setTimeout(()=>location.replace('/?deriv=connected'),700);
       }catch(err){status.className='error';status.textContent=err.message||'Could not connect Deriv.';}

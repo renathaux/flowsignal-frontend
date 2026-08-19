@@ -9,6 +9,10 @@
     return role === 'admin' || role === 'user' ? role : '';
   }
 
+  function authenticatedRole() {
+    return normalizeRole(window.FlowSignalAuth?.user?.role);
+  }
+
   function isChromeDesktop() {
     const ua = String(navigator.userAgent || '');
     return /Chrome\//.test(ua) && !/(Edg|OPR|SamsungBrowser)\//.test(ua) && window.matchMedia('(min-width: 701px)').matches;
@@ -24,6 +28,17 @@
   const supportedDesktop = chromeDesktop || safariDesktop;
   if (chromeDesktop) document.body?.classList.add('flowsignal-chrome-desktop');
   if (safariDesktop) document.body?.classList.add('flowsignal-safari-desktop');
+
+  function loadUserAuth() {
+    const existing = document.querySelector('script[data-flowsignal-user-auth]');
+    if (existing) return;
+    const script = document.createElement('script');
+    script.src = 'user-auth.js?v=1';
+    script.async = false;
+    script.dataset.flowsignalUserAuth = 'true';
+    script.addEventListener('error', () => console.warn('USER_AUTH_LOAD_FAILED'));
+    document.body.appendChild(script);
+  }
 
   function loadBinaryMiniApp() {
     if (document.querySelector('script[data-flowsignal-binary-app]')) return;
@@ -68,10 +83,11 @@
   }
   installSafariSpeechNormalizer();
 
-  function getTabRole() { return normalizeRole(sessionStorage.getItem(TAB_ROLE_KEY)); }
+  function getTabRole() { return authenticatedRole() || normalizeRole(sessionStorage.getItem(TAB_ROLE_KEY)); }
   function setTabRole(role) {
     const normalized = normalizeRole(role);
     if (!normalized) return false;
+    if (authenticatedRole() && normalized !== authenticatedRole()) return false;
     sessionStorage.setItem(TAB_ROLE_KEY, normalized);
     document.body.dataset.userRole = normalized;
     return true;
@@ -218,6 +234,7 @@
   }
 
   function adoptRequestedRole(requestedRole) {
+    if (authenticatedRole()) return;
     const wanted = normalizeRole(requestedRole);
     if (!wanted) return;
     let tries = 0;
@@ -242,9 +259,14 @@
   }, true);
 
   window.addEventListener('storage', (event) => {
-    if (event.key === SHARED_ROLE_KEY) refreshRoleUi();
+    if (event.key === SHARED_ROLE_KEY && !authenticatedRole()) refreshRoleUi();
   });
   document.addEventListener('flowsignal:authenticated', () => {
+    const role = authenticatedRole();
+    if (role) {
+      sessionStorage.setItem(TAB_ROLE_KEY, role);
+      localStorage.setItem(SHARED_ROLE_KEY, role);
+    }
     setTimeout(refreshRoleUi, 0);
     setTimeout(refreshRoleUi, 250);
   });
@@ -263,6 +285,7 @@
   }
 
   refreshRoleUi();
+  loadUserAuth();
   loadBinaryMiniApp();
 
   window.FlowSignalTabRole = {
