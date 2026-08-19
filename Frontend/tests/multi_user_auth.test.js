@@ -14,6 +14,8 @@ assert.match(auth, /\/auth\/login/);
 assert.match(auth, /\/auth\/logout/);
 assert.match(auth, /credentials:'include'/);
 assert.match(auth, /X-FlowSignal-CSRF/);
+assert.match(auth, /LEGACY_SESSION_TOKEN_KEY='flowsignal_session_token'/, 'existing owner session token is reused');
+assert.match(auth, /options\.headers\.set\('Authorization',`Bearer \$\{ownerToken\}`\)/, 'legacy admin requests carry the owner bearer token');
 assert.match(auth, /if\(!sessionUser\?\.id\) return parsed\.toString\(\)/, 'legacy owner keeps original Deriv namespace');
 assert.match(auth, /parsed\.pathname=`\/user\$\{parsed\.pathname\}`/, 'authenticated customers use user Deriv namespace');
 assert.match(auth, /if\(!sessionUser\?\.id\|\|!body/, 'browser user_id stripping applies only to authenticated customers');
