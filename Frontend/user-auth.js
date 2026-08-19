@@ -11,14 +11,16 @@
   function isBackend(input){try{const raw=typeof input==='string'?input:input?.url; return raw&&new URL(raw,location.href).origin===new URL(BACKEND).origin;}catch(_error){return false;}}
   function rewriteDerivUrl(url){
     const parsed=new URL(url,location.href);
+    if(!sessionUser?.id) return parsed.toString();
     let match=parsed.pathname.match(/^\/deriv\/binary\/account-settings\/[^/]+\/([^/]+)$/);
     if(match) parsed.pathname=`/deriv/binary/account-settings/${match[1]}`;
     match=parsed.pathname.match(/^\/deriv\/binary\/execution-status\/[^/]+\/([^/]+)$/);
     if(match) parsed.pathname=`/deriv/binary/execution-status/${match[1]}`;
+    if(parsed.pathname.startsWith('/deriv/')) parsed.pathname=`/user${parsed.pathname}`;
     return parsed.toString();
   }
   function rewriteBody(body){
-    if(!body||typeof body!=='string') return body;
+    if(!sessionUser?.id||!body||typeof body!=='string') return body;
     try{const payload=JSON.parse(body); if(payload&&typeof payload==='object') delete payload.user_id; return JSON.stringify(payload);}catch(_error){return body;}
   }
   window.fetch=async function(input,init={}){
@@ -28,9 +30,9 @@
     const options={...init,credentials:'include'};
     options.headers=new Headers(init.headers||{});
     const method=String(options.method||'GET').toUpperCase();
-    if(!['GET','HEAD','OPTIONS'].includes(method)&&csrfToken) options.headers.set('X-FlowSignal-CSRF',csrfToken);
+    if(sessionUser?.id&&!['GET','HEAD','OPTIONS'].includes(method)&&csrfToken) options.headers.set('X-FlowSignal-CSRF',csrfToken);
     if(options.body) options.body=rewriteBody(options.body);
-    if(url.endsWith('/deriv/config')&&sessionUser?.id) sessionStorage.setItem(OAUTH_USER_KEY,sessionUser.id);
+    if(sessionUser?.id&&url.includes('/user/deriv/config')) sessionStorage.setItem(OAUTH_USER_KEY,sessionUser.id);
     return nativeFetch(url,options);
   };
 
