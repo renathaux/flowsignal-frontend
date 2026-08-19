@@ -1,6 +1,8 @@
 (function(){
   'use strict';
-  const BACKEND=(location.hostname==='localhost'||location.hostname==='127.0.0.1')?'http://127.0.0.1:8001':'https://flowsignal-backend-3.onrender.com';
+  const LOCAL_BACKEND='http://127.0.0.1:8001';
+  const DIRECT_BACKEND='https://flowsignal-backend-3.onrender.com';
+  const BACKEND=(location.hostname==='localhost'||location.hostname==='127.0.0.1')?LOCAL_BACKEND:`${location.origin}/api`;
   const CSRF_KEY='flowsignal_csrf_token';
   const OAUTH_USER_KEY='flowsignal_deriv_oauth_user_id';
   const LEGACY_BINARY_USER_KEY='flowsignal_binary_user_id';
@@ -11,15 +13,23 @@
   const nativeFetch=window.fetch.bind(window);
 
   function legacyOwner(){return String(sessionStorage.getItem('flowsignal_tab_role')||localStorage.getItem('flowsignal_role')||'').toLowerCase()==='admin';}
-  function isBackend(input){try{const raw=typeof input==='string'?input:input?.url; return raw&&new URL(raw,location.href).origin===new URL(BACKEND).origin;}catch(_error){return false;}}
+  function isBackend(input){try{const raw=typeof input==='string'?input:input?.url;if(!raw)return false;const origin=new URL(raw,location.href).origin;return origin===new URL(BACKEND,location.href).origin||origin===new URL(DIRECT_BACKEND).origin;}catch(_error){return false;}}
   function rewriteDerivUrl(url){
     const parsed=new URL(url,location.href);
     if(!sessionUser?.id) return parsed.toString();
-    let match=parsed.pathname.match(/^\/deriv\/binary\/account-settings\/[^/]+\/([^/]+)$/);
-    if(match) parsed.pathname=`/deriv/binary/account-settings/${match[1]}`;
-    match=parsed.pathname.match(/^\/deriv\/binary\/execution-status\/[^/]+\/([^/]+)$/);
-    if(match) parsed.pathname=`/deriv/binary/execution-status/${match[1]}`;
-    if(parsed.pathname.startsWith('/deriv/')) parsed.pathname=`/user${parsed.pathname}`;
+    if(parsed.origin===new URL(DIRECT_BACKEND).origin&&location.hostname!=='localhost'&&location.hostname!=='127.0.0.1'){
+      parsed.protocol=location.protocol;
+      parsed.host=location.host;
+      parsed.pathname=`/api${parsed.pathname}`;
+    }
+    const apiPrefix=parsed.pathname.startsWith('/api/')?'/api':'';
+    let logicalPath=apiPrefix?parsed.pathname.slice(4):parsed.pathname;
+    let match=logicalPath.match(/^\/deriv\/binary\/account-settings\/[^/]+\/([^/]+)$/);
+    if(match) logicalPath=`/deriv/binary/account-settings/${match[1]}`;
+    match=logicalPath.match(/^\/deriv\/binary\/execution-status\/[^/]+\/([^/]+)$/);
+    if(match) logicalPath=`/deriv/binary/execution-status/${match[1]}`;
+    if(logicalPath.startsWith('/deriv/')) logicalPath=`/user${logicalPath}`;
+    parsed.pathname=`${apiPrefix}${logicalPath}`;
     return parsed.toString();
   }
   function rewriteBody(body){
@@ -43,7 +53,7 @@
     return nativeFetch(url,options);
   };
 
-  function style(){if(document.getElementById('flowsignalUserAuthStyle')) return; const link=document.createElement('link'); link.id='flowsignalUserAuthStyle'; link.rel='stylesheet'; link.href='user-auth.css?v=1'; document.head.appendChild(link);}
+  function style(){if(document.getElementById('flowsignalUserAuthStyle')) return; const link=document.createElement('link'); link.id='flowsignalUserAuthStyle'; link.rel='stylesheet'; link.href='user-auth.css?v=2'; document.head.appendChild(link);}
   function authRoot(){let root=document.getElementById('flowsignalUserAuth'); if(root) return root; root=document.createElement('div'); root.id='flowsignalUserAuth'; root.innerHTML=`<div class="fs-auth-card"><div class="fs-auth-brand">FlowSignal <span>USER</span></div><h1 id="fsAuthTitle">Log in</h1><p id="fsAuthCopy">Access Forex signals and your own Binary account.</p><form id="fsAuthForm"><label>Email<input id="fsAuthEmail" type="email" autocomplete="email" required></label><label>Password<input id="fsAuthPassword" type="password" autocomplete="current-password" minlength="10" required></label><label id="fsAuthConfirmWrap" class="hidden">Confirm password<input id="fsAuthConfirm" type="password" autocomplete="new-password" minlength="10"></label><button id="fsAuthSubmit" type="submit">Log in</button></form><button id="fsAuthSwitch" type="button" class="fs-auth-link">Create account</button><p id="fsAuthError" class="fs-auth-error"></p></div>`; document.body.appendChild(root); return root;}
   let signupMode=false;
   function setSignupMode(value){signupMode=Boolean(value); const root=authRoot(); root.querySelector('#fsAuthTitle').textContent=signupMode?'Create account':'Log in'; root.querySelector('#fsAuthSubmit').textContent=signupMode?'Create account':'Log in'; root.querySelector('#fsAuthSwitch').textContent=signupMode?'Already have an account? Log in':'Create account'; root.querySelector('#fsAuthConfirmWrap').classList.toggle('hidden',!signupMode); root.querySelector('#fsAuthPassword').autocomplete=signupMode?'new-password':'current-password'; root.querySelector('#fsAuthError').textContent='';}
