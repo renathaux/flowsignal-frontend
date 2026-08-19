@@ -4,10 +4,12 @@
   const CSRF_KEY='flowsignal_csrf_token';
   const OAUTH_USER_KEY='flowsignal_deriv_oauth_user_id';
   const LEGACY_BINARY_USER_KEY='flowsignal_binary_user_id';
+  const LEGACY_SESSION_TOKEN_KEY='flowsignal_session_token';
   let sessionUser=null;
   let csrfToken=sessionStorage.getItem(CSRF_KEY)||'';
   const nativeFetch=window.fetch.bind(window);
 
+  function legacyOwner(){return String(sessionStorage.getItem('flowsignal_tab_role')||localStorage.getItem('flowsignal_role')||'').toLowerCase()==='admin';}
   function isBackend(input){try{const raw=typeof input==='string'?input:input?.url; return raw&&new URL(raw,location.href).origin===new URL(BACKEND).origin;}catch(_error){return false;}}
   function rewriteDerivUrl(url){
     const parsed=new URL(url,location.href);
@@ -31,6 +33,10 @@
     options.headers=new Headers(init.headers||{});
     const method=String(options.method||'GET').toUpperCase();
     if(sessionUser?.id&&!['GET','HEAD','OPTIONS'].includes(method)&&csrfToken) options.headers.set('X-FlowSignal-CSRF',csrfToken);
+    if(!sessionUser?.id&&legacyOwner()&&!options.headers.has('Authorization')){
+      const ownerToken=localStorage.getItem(LEGACY_SESSION_TOKEN_KEY);
+      if(ownerToken) options.headers.set('Authorization',`Bearer ${ownerToken}`);
+    }
     if(options.body) options.body=rewriteBody(options.body);
     if(sessionUser?.id&&url.includes('/user/deriv/config')) sessionStorage.setItem(OAUTH_USER_KEY,sessionUser.id);
     return nativeFetch(url,options);
@@ -42,7 +48,6 @@
   function setSignupMode(value){signupMode=Boolean(value); const root=authRoot(); root.querySelector('#fsAuthTitle').textContent=signupMode?'Create account':'Log in'; root.querySelector('#fsAuthSubmit').textContent=signupMode?'Create account':'Log in'; root.querySelector('#fsAuthSwitch').textContent=signupMode?'Already have an account? Log in':'Create account'; root.querySelector('#fsAuthConfirmWrap').classList.toggle('hidden',!signupMode); root.querySelector('#fsAuthPassword').autocomplete=signupMode?'new-password':'current-password'; root.querySelector('#fsAuthError').textContent='';}
   function showAuth(){style(); const root=authRoot(); root.classList.add('visible'); document.body.classList.add('flowsignal-user-auth-required');}
   function hideAuth(){document.getElementById('flowsignalUserAuth')?.classList.remove('visible'); document.body.classList.remove('flowsignal-user-auth-required');}
-  function legacyOwner(){return String(sessionStorage.getItem('flowsignal_tab_role')||localStorage.getItem('flowsignal_role')||'').toLowerCase()==='admin';}
   function applyUser(user){sessionUser=user||null; if(!user) return; localStorage.setItem(LEGACY_BINARY_USER_KEY,user.id); localStorage.setItem('flowsignal_role',user.role||'user'); sessionStorage.setItem('flowsignal_tab_role',user.role||'user'); document.body.dataset.userRole=user.role||'user'; hideAuth(); document.dispatchEvent(new CustomEvent('flowsignal:authenticated',{detail:{user}}));}
   async function session(){const response=await nativeFetch(`${BACKEND}/auth/session`,{credentials:'include',cache:'no-store'}); const data=await response.json().catch(()=>({})); if(data?.authenticated&&data?.user){csrfToken=String(data.csrf_token||''); sessionStorage.setItem(CSRF_KEY,csrfToken); applyUser(data.user); return data.user;} sessionUser=null; csrfToken=''; sessionStorage.removeItem(CSRF_KEY); if(!legacyOwner()) showAuth(); return null;}
   async function submit(event){event.preventDefault(); const root=authRoot(), email=root.querySelector('#fsAuthEmail').value.trim(), password=root.querySelector('#fsAuthPassword').value, confirm=root.querySelector('#fsAuthConfirm').value, error=root.querySelector('#fsAuthError'), button=root.querySelector('#fsAuthSubmit'); if(signupMode&&password!==confirm){error.textContent='Passwords do not match.'; return;} button.disabled=true; error.textContent=''; try{const response=await nativeFetch(`${BACKEND}/auth/${signupMode?'signup':'login'}`,{method:'POST',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify({email,password})}); const data=await response.json().catch(()=>({})); if(!response.ok) throw new Error(data.detail||'Authentication failed'); csrfToken=String(data.csrf_token||''); sessionStorage.setItem(CSRF_KEY,csrfToken); applyUser(data.user);}catch(err){error.textContent=String(err.message||'Authentication failed').replaceAll('_',' ');}finally{button.disabled=false;}}
