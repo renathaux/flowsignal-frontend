@@ -27,6 +27,7 @@
     (function(){
       'use strict';
       const BACKEND='/api/proxy';
+      const PUBLIC_HOME_KEY='flowsignal_public_home_mode';
       const params=new URLSearchParams(location.search);
       let signup=params.get('mode')==='signup';
       const title=document.getElementById('title');
@@ -49,7 +50,7 @@
       }
       switchBtn.addEventListener('click',()=>{signup=!signup;history.replaceState(null,'',`/account.html?mode=${signup?'signup':'login'}`);render();});
       home.addEventListener('click',()=>{
-        sessionStorage.setItem('flowsignal_force_public_home','1');
+        localStorage.setItem(PUBLIC_HOME_KEY,'1');
         sessionStorage.removeItem('flowsignal_tab_role');
         localStorage.removeItem('flowsignal_access');
         if(String(localStorage.getItem('flowsignal_role')||'').toLowerCase()==='user')localStorage.removeItem('flowsignal_role');
@@ -63,7 +64,7 @@
           const response=await fetch(`${BACKEND}/auth/${signup?'signup':'login'}`,{method:'POST',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:email.value.trim(),password:password.value})});
           const data=await response.json().catch(()=>({}));
           if(!response.ok) throw new Error(data.detail||'Authentication failed');
-          sessionStorage.removeItem('flowsignal_force_public_home');
+          localStorage.removeItem(PUBLIC_HOME_KEY);
           sessionStorage.setItem('flowsignal_user_portal_intent','1');
           if(data.csrf_token) sessionStorage.setItem('flowsignal_csrf_token',String(data.csrf_token));
           location.replace('/?user=1');
