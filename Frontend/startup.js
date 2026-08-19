@@ -1,9 +1,51 @@
 (function () {
-  // Apply the public-home guard before the heavier dashboard scripts load.
-  // This prevents dashboard, assistant, modal, and error UI from flashing during refresh.
+  const earlyParams = new URLSearchParams(window.location.search);
+  const isAppRoute = /^\/app\/?$/i.test(window.location.pathname);
+  const customerSessionToken = String(sessionStorage.getItem('flowsignal_user_session_token') || '').trim();
+  const ownerRequested = earlyParams.get('owner') === '1';
+  const legacyRole = String(sessionStorage.getItem('flowsignal_tab_role') || localStorage.getItem('flowsignal_role') || '').toLowerCase();
+
+  // /app is never a public landing page. If this tab has no customer session and
+  // is not intentionally entering Owner/Admin mode, leave before dashboard code boots.
+  if (isAppRoute && !customerSessionToken && !ownerRequested && legacyRole !== 'admin') {
+    window.location.replace('/');
+    return;
+  }
+
+  if (ownerRequested) {
+    sessionStorage.removeItem('flowsignal_user_session_token');
+    sessionStorage.removeItem('flowsignal_binary_user_id');
+    sessionStorage.removeItem('flowsignal_tab_signed_out');
+    sessionStorage.removeItem('flowsignal_public_home_mode');
+  }
+
+  // Customer logout must leave the app document completely. This listener is
+  // installed before the legacy dashboard listeners, so they cannot reveal the old
+  // embedded landing page or keep voice/polling alive underneath it.
+  document.addEventListener('click', async (event) => {
+    const target = event.target?.closest?.('#logoutBtn,#binaryLogoutBtn');
+    if (!target) return;
+    const token = String(sessionStorage.getItem('flowsignal_user_session_token') || '').trim();
+    if (!token) return; // Owner/admin keeps the existing legacy logout flow.
+    event.preventDefault();
+    event.stopPropagation();
+    event.stopImmediatePropagation();
+    try {
+      await window.FlowSignalAuth?.logout?.();
+    } catch (_error) {
+      sessionStorage.removeItem('flowsignal_user_session_token');
+      sessionStorage.removeItem('flowsignal_binary_user_id');
+      sessionStorage.removeItem('flowsignal_csrf_token');
+      sessionStorage.removeItem('flowsignal_tab_role');
+    }
+    try { window.speechSynthesis?.cancel?.(); } catch (_error) {}
+    window.location.replace('/');
+  }, true);
+
+  // Apply the old public-home guard only for backward-compatible URLs. The new
+  // production public page is home.html and does not load this file at all.
   try {
-    const params = new URLSearchParams(window.location.search);
-    const publicHome = params.get('home') === '1' || sessionStorage.getItem('flowsignal_public_home_mode') === '1';
+    const publicHome = earlyParams.get('home') === '1' || sessionStorage.getItem('flowsignal_public_home_mode') === '1';
     if (publicHome) {
       document.body?.classList.add('flowsignal-public-home');
       if (!document.getElementById('flowsignalEarlyPublicHomeStyle')) {
@@ -35,6 +77,7 @@
         `;
         document.head.appendChild(style);
       }
+      try { window.speechSynthesis?.cancel?.(); } catch (_error) {}
       window.__FLOWSIGNAL_PUBLIC_HOME_BOOT = true;
     }
   } catch (_error) {}
@@ -101,8 +144,9 @@
       if (!window.matchMedia("(max-width: 700px)").matches) return false;
       if (/\/mobile\.html$/i.test(window.location.pathname)) return false;
       const access = JSON.parse(localStorage.getItem("flowsignal_access") || "null");
-      const role = String(localStorage.getItem("flowsignal_role") || "").toLowerCase();
-      return access?.granted === true || role === "admin" || role === "user";
+      const role = String(sessionStorage.getItem('flowsignal_tab_role') || localStorage.getItem("flowsignal_role") || "").toLowerCase();
+      const userToken = String(sessionStorage.getItem('flowsignal_user_session_token') || '').trim();
+      return Boolean(userToken) || access?.granted === true || role === "admin";
     } catch (_error) { return false; }
   }
 
@@ -294,6 +338,21 @@
   }));
   window.addEventListener("load", openRequestedDesktopPanel, { once: true });
   window.addEventListener("load", attachDesktopChartFullscreen, { once: true });
+
+  if (ownerRequested) {
+    window.addEventListener('load', () => {
+      let attempts = 0;
+      const openOwner = () => {
+        attempts += 1;
+        if (typeof window.openFlowSignalAdminLogin === 'function') {
+          window.openFlowSignalAdminLogin();
+          return;
+        }
+        if (attempts < 30) window.setTimeout(openOwner, 100);
+      };
+      openOwner();
+    }, { once: true });
+  }
 
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", loadTabRoleSession, { once: true });
