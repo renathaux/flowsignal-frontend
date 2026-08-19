@@ -188,8 +188,6 @@
     csrfToken='';
     sessionStorage.removeItem(CSRF_KEY);
     sessionStorage.removeItem('flowsignal_tab_role');
-    localStorage.removeItem('flowsignal_deriv_connection_id');
-    localStorage.removeItem('flowsignal_deriv_account_id');
     showLanding();
   }
 
@@ -206,7 +204,16 @@
     }
   }
 
-  document.addEventListener('click',event=>{if(event.target?.closest?.('#logoutBtn,#binaryLogoutBtn')){event.preventDefault();logout();}},true);
+  document.addEventListener('click',event=>{
+    const target=event.target?.closest?.('#logoutBtn,#binaryLogoutBtn');
+    if(!target)return;
+    const role=String(sessionUser?.role||sessionStorage.getItem('flowsignal_tab_role')||'').toLowerCase();
+    if(role!=='user')return;
+    event.preventDefault();
+    event.stopPropagation();
+    event.stopImmediatePropagation();
+    logout();
+  },true);
 
   installPublicHomeStyle();
   wireLanding();
