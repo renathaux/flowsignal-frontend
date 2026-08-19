@@ -1,4 +1,44 @@
 (function () {
+  // Apply the public-home guard before the heavier dashboard scripts load.
+  // This prevents dashboard, assistant, modal, and error UI from flashing during refresh.
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const publicHome = params.get('home') === '1' || sessionStorage.getItem('flowsignal_public_home_mode') === '1';
+    if (publicHome) {
+      document.body?.classList.add('flowsignal-public-home');
+      if (!document.getElementById('flowsignalEarlyPublicHomeStyle')) {
+        const style = document.createElement('style');
+        style.id = 'flowsignalEarlyPublicHomeStyle';
+        style.textContent = `
+          body.flowsignal-public-home #mainApp,
+          body.flowsignal-public-home #smartExplain,
+          body.flowsignal-public-home #assistantModal,
+          body.flowsignal-public-home #tradeModal,
+          body.flowsignal-public-home #adminModal,
+          body.flowsignal-public-home #feedbackModal,
+          body.flowsignal-public-home #feedbackToast,
+          body.flowsignal-public-home #statsModal,
+          body.flowsignal-public-home #settingsModal,
+          body.flowsignal-public-home #newsModeConfirmModal,
+          body.flowsignal-public-home #brokerAccountsModal,
+          body.flowsignal-public-home #paperModal,
+          body.flowsignal-public-home #tradeLevelConfirmModal,
+          body.flowsignal-public-home #flowsignalTradingModeSelector,
+          body.flowsignal-public-home .trade-modal,
+          body.flowsignal-public-home .smart-explain,
+          body.flowsignal-public-home .feedback-toast {
+            display: none !important;
+            visibility: hidden !important;
+            opacity: 0 !important;
+            pointer-events: none !important;
+          }
+        `;
+        document.head.appendChild(style);
+      }
+      window.__FLOWSIGNAL_PUBLIC_HOME_BOOT = true;
+    }
+  } catch (_error) {}
+
   // Keep browser dashboard reads isolated from the heavyweight /panel-data
   // trading/diagnostic endpoint. This is installed before script.js loads.
   if (!window.__flowSignalDashboardFetchPatched) {
