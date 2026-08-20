@@ -13,6 +13,7 @@ assert.match(binary, /if\(!isLegacyAdmin\(\)\)\{const stateResponse=/, 'Legacy a
 assert.match(callback, /location\.replace\('\/app\.html\?deriv=connected'\)/, 'OAuth returns to the authenticated app');
 assert.match(callback, /flowsignal_trading_mode','binary'/, 'OAuth preserves Binary mode');
 assert.match(binary, /else if\(!localStorage\.getItem\(MODE_KEY\)\) localStorage\.setItem\(MODE_KEY,'forex'\)/, 'reload preserves the selected trading mode');
-assert.match(roleSession, /binary\/binary-app\.js\?v=9/, 'Binary bundle cache is bumped');
+assert.match(binary, /binaryAutoToggle'\)\?\.addEventListener\('change',async\(\)=>/, 'Binary Auto persists immediately when toggled');
+assert.match(roleSession, /binary\/binary-app\.js\?v=10/, 'Binary bundle cache is bumped');
 
 console.log('admin Binary OAuth routing checks passed');
