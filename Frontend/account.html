@@ -21,6 +21,7 @@
         <label id="confirmWrap" class="field hidden">Confirm password<input id="confirm" type="password" minlength="10" autocomplete="new-password"></label>
         <button id="submit" class="submit" type="submit">Log in</button>
       </form>
+      <button id="forgot" class="link" type="button">Forgot password?</button>
       <button id="switch" class="link" type="button">Create account</button>
     </section>
 
@@ -64,6 +65,7 @@
       const confirmWrap=document.getElementById('confirmWrap');
       const submit=document.getElementById('submit');
       const switchBtn=document.getElementById('switch');
+      const forgotBtn=document.getElementById('forgot');
       const home=document.getElementById('home');
       const error=document.getElementById('error');
       const success=document.getElementById('success');
@@ -95,10 +97,12 @@
         title.textContent=signup?'Create account':'Log in';
         submit.textContent=signup?'Create account':'Log in';
         switchBtn.textContent=signup?'Already have an account? Log in':'Create account';
+        forgotBtn.classList.toggle('hidden',signup);
         confirmWrap.classList.toggle('hidden',!signup);
         password.autocomplete=signup?'new-password':'current-password';
         pendingEmail='';
         clearMessages();
+        if(params.get('reset')==='1'&&!signup)success.textContent='Password reset. Log in with your new password.';
       }
       function startResendCountdown(seconds=60){
         if(resendTimer)clearInterval(resendTimer);
@@ -120,6 +124,7 @@
       }
 
       switchBtn.addEventListener('click',()=>{signup=!signup;history.replaceState(null,'',`/account.html?mode=${signup?'signup':'login'}`);render();});
+      forgotBtn.addEventListener('click',()=>location.href='/reset-password.html');
       changeEmailBtn.addEventListener('click',()=>render());
       home.addEventListener('click',()=>{
         sessionStorage.removeItem(PUBLIC_HOME_KEY);
