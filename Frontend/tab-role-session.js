@@ -32,7 +32,7 @@
     const existing = document.querySelector('script[data-flowsignal-user-auth]');
     if (existing) return;
     const script = document.createElement('script');
-    script.src = 'user-auth.js?v=3';
+    script.src = 'user-auth.js?v=4';
     script.async = false;
     script.dataset.flowsignalUserAuth = 'true';
     script.addEventListener('error', () => console.warn('USER_AUTH_LOAD_FAILED'));
@@ -42,7 +42,7 @@
   function loadBinaryMiniApp() {
     if (document.querySelector('script[data-flowsignal-binary-app]')) return;
     const script = document.createElement('script');
-    script.src = 'binary/binary-app.js?v=6';
+    script.src = 'binary/binary-app.js?v=7';
     script.async = true;
     script.dataset.flowsignalBinaryApp = 'true';
     script.addEventListener('error', () => console.warn('BINARY_APP_LOAD_FAILED'));
