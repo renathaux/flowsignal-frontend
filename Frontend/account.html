@@ -5,23 +5,42 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>FlowSignal Account</title>
   <style>
-    :root{color-scheme:dark}*{box-sizing:border-box}body{margin:0;min-height:100vh;display:grid;place-items:center;background:#020812;color:#eaf3ff;font-family:Inter,Arial,sans-serif}.wrap{width:min(430px,calc(100vw - 32px));padding:30px;border:1px solid #1c4f7f;border-radius:20px;background:linear-gradient(180deg,#081624 0%,#05101c 100%);box-shadow:0 24px 80px rgba(0,0,0,.45)}.brand{font-size:22px;font-weight:800}.brand span{margin-left:8px;padding:4px 8px;border:1px solid #1688ff;border-radius:999px;color:#79baff;font-size:10px;letter-spacing:.16em}h1{margin:28px 0 8px;font-size:30px}.copy{margin:0 0 24px;color:#93a9c1}.form{display:grid;gap:16px}.field{display:grid;gap:7px;color:#a9bbce;font-size:12px;font-weight:700;letter-spacing:.05em;text-transform:uppercase}.field input{width:100%;padding:13px 14px;border:1px solid #244866;border-radius:10px;background:#07111e;color:#eef6ff;outline:none;font:inherit}.field input:focus{border-color:#1688ff;box-shadow:0 0 0 3px rgba(22,136,255,.13)}button{font:inherit}.submit{margin-top:4px;padding:13px;border:0;border-radius:10px;background:#087df2;color:#fff;font-weight:800;cursor:pointer}.submit:disabled{opacity:.55;cursor:wait}.link{width:100%;margin-top:14px;border:0;background:transparent;color:#69adff;cursor:pointer}.error{min-height:20px;margin:12px 0 0;color:#ff7474;font-size:12px}.hidden{display:none!important}@media(max-width:600px){.wrap{padding:24px}h1{font-size:26px}}
+    :root{color-scheme:dark}*{box-sizing:border-box}body{margin:0;min-height:100vh;display:grid;place-items:center;background:#020812;color:#eaf3ff;font-family:Inter,Arial,sans-serif}.wrap{width:min(430px,calc(100vw - 32px));padding:30px;border:1px solid #1c4f7f;border-radius:20px;background:linear-gradient(180deg,#081624 0%,#05101c 100%);box-shadow:0 24px 80px rgba(0,0,0,.45)}.brand{font-size:22px;font-weight:800}.brand span{margin-left:8px;padding:4px 8px;border:1px solid #1688ff;border-radius:999px;color:#79baff;font-size:10px;letter-spacing:.16em}h1{margin:28px 0 8px;font-size:30px}.copy{margin:0 0 24px;color:#93a9c1;line-height:1.5}.form{display:grid;gap:16px}.field{display:grid;gap:7px;color:#a9bbce;font-size:12px;font-weight:700;letter-spacing:.05em;text-transform:uppercase}.field input{width:100%;padding:13px 14px;border:1px solid #244866;border-radius:10px;background:#07111e;color:#eef6ff;outline:none;font:inherit}.field input:focus{border-color:#1688ff;box-shadow:0 0 0 3px rgba(22,136,255,.13)}.otp-input{text-align:center!important;font-size:28px!important;font-weight:800!important;letter-spacing:10px!important;padding-left:24px!important}button{font:inherit}.submit{margin-top:4px;padding:13px;border:0;border-radius:10px;background:#087df2;color:#fff;font-weight:800;cursor:pointer}.submit:disabled{opacity:.55;cursor:wait}.link{width:100%;margin-top:14px;border:0;background:transparent;color:#69adff;cursor:pointer}.link:disabled{opacity:.5;cursor:wait}.error{min-height:20px;margin:12px 0 0;color:#ff7474;font-size:12px}.success{min-height:20px;margin:12px 0 0;color:#64d98b;font-size:12px}.hidden{display:none!important}.otp-meta{margin:-8px 0 2px;color:#7f97b0;font-size:12px;text-align:center}@media(max-width:600px){.wrap{padding:24px}h1{font-size:26px}}
   </style>
 </head>
 <body>
   <main class="wrap">
     <div class="brand">FlowSignal <span>USER</span></div>
-    <h1 id="title">Log in</h1>
-    <p class="copy">Access Forex signals and your own Binary account.</p>
-    <form id="form" class="form">
-      <label class="field">Email<input id="email" type="email" autocomplete="email" required></label>
-      <label class="field">Password<input id="password" type="password" minlength="10" autocomplete="current-password" required></label>
-      <label id="confirmWrap" class="field hidden">Confirm password<input id="confirm" type="password" minlength="10" autocomplete="new-password"></label>
-      <button id="submit" class="submit" type="submit">Log in</button>
-    </form>
-    <button id="switch" class="link" type="button">Create account</button>
+
+    <section id="authPanel">
+      <h1 id="title">Log in</h1>
+      <p class="copy">Access Forex signals and your own Binary account.</p>
+      <form id="form" class="form">
+        <label class="field">Email<input id="email" type="email" autocomplete="email" required></label>
+        <label class="field">Password<input id="password" type="password" minlength="10" autocomplete="current-password" required></label>
+        <label id="confirmWrap" class="field hidden">Confirm password<input id="confirm" type="password" minlength="10" autocomplete="new-password"></label>
+        <button id="submit" class="submit" type="submit">Log in</button>
+      </form>
+      <button id="switch" class="link" type="button">Create account</button>
+    </section>
+
+    <section id="otpPanel" class="hidden">
+      <h1>Check your email</h1>
+      <p id="otpCopy" class="copy">We sent a 6-digit verification code.</p>
+      <form id="otpForm" class="form">
+        <label class="field">Verification code
+          <input id="otpCode" class="otp-input" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="6" pattern="[0-9]{6}" placeholder="000000" required>
+        </label>
+        <div class="otp-meta">Code expires in 10 minutes.</div>
+        <button id="verifyBtn" class="submit" type="submit">Verify email</button>
+      </form>
+      <button id="resendBtn" class="link" type="button">Resend code</button>
+      <button id="changeEmailBtn" class="link" type="button">Use a different email</button>
+    </section>
+
     <button id="home" class="link" type="button">Back to home</button>
     <p id="error" class="error"></p>
+    <p id="success" class="success"></p>
   </main>
   <script>
     (function(){
@@ -32,8 +51,13 @@
       const USER_SESSION_KEY='flowsignal_user_session_token';
       const params=new URLSearchParams(location.search);
       let signup=params.get('mode')==='signup';
+      let pendingEmail='';
+      let resendTimer=null;
       const title=document.getElementById('title');
+      const authPanel=document.getElementById('authPanel');
+      const otpPanel=document.getElementById('otpPanel');
       const form=document.getElementById('form');
+      const otpForm=document.getElementById('otpForm');
       const email=document.getElementById('email');
       const password=document.getElementById('password');
       const confirm=document.getElementById('confirm');
@@ -42,37 +66,128 @@
       const switchBtn=document.getElementById('switch');
       const home=document.getElementById('home');
       const error=document.getElementById('error');
+      const success=document.getElementById('success');
+      const otpCode=document.getElementById('otpCode');
+      const otpCopy=document.getElementById('otpCopy');
+      const verifyBtn=document.getElementById('verifyBtn');
+      const resendBtn=document.getElementById('resendBtn');
+      const changeEmailBtn=document.getElementById('changeEmailBtn');
+
+      function detailCode(data){
+        if(typeof data?.detail==='string')return data.detail;
+        if(data?.detail&&typeof data.detail==='object')return data.detail.code||'AUTHENTICATION_FAILED';
+        return 'AUTHENTICATION_FAILED';
+      }
+      function friendly(value){return String(value||'Something went wrong').replaceAll('_',' ').toLowerCase().replace(/^./,c=>c.toUpperCase());}
+      function clearMessages(){error.textContent='';success.textContent='';}
+      function finishSession(data){
+        if(!data.session_token)throw new Error('SESSION_TOKEN_MISSING');
+        sessionStorage.setItem(USER_SESSION_KEY,String(data.session_token));
+        sessionStorage.removeItem(PUBLIC_HOME_KEY);
+        sessionStorage.removeItem(TAB_SIGNED_OUT_KEY);
+        sessionStorage.setItem('flowsignal_user_portal_intent','1');
+        if(data.csrf_token)sessionStorage.setItem('flowsignal_csrf_token',String(data.csrf_token));
+        location.replace('/app?user=1');
+      }
       function render(){
+        authPanel.classList.remove('hidden');
+        otpPanel.classList.add('hidden');
         title.textContent=signup?'Create account':'Log in';
         submit.textContent=signup?'Create account':'Log in';
         switchBtn.textContent=signup?'Already have an account? Log in':'Create account';
         confirmWrap.classList.toggle('hidden',!signup);
         password.autocomplete=signup?'new-password':'current-password';
-        error.textContent='';
+        pendingEmail='';
+        clearMessages();
       }
+      function startResendCountdown(seconds=60){
+        if(resendTimer)clearInterval(resendTimer);
+        let left=Math.max(0,Number(seconds)||60);
+        resendBtn.disabled=left>0;
+        const draw=()=>{resendBtn.textContent=left>0?`Resend code in ${left}s`:'Resend code';resendBtn.disabled=left>0;};
+        draw();
+        resendTimer=setInterval(()=>{left-=1;draw();if(left<=0){clearInterval(resendTimer);resendTimer=null;}},1000);
+      }
+      function showOtp(actualEmail,maskedEmail,resendAfter=60){
+        pendingEmail=String(actualEmail||'').trim().toLowerCase();
+        authPanel.classList.add('hidden');
+        otpPanel.classList.remove('hidden');
+        otpCopy.textContent=`We sent a 6-digit code to ${maskedEmail||pendingEmail}.`;
+        otpCode.value='';
+        clearMessages();
+        startResendCountdown(resendAfter);
+        setTimeout(()=>otpCode.focus(),50);
+      }
+
       switchBtn.addEventListener('click',()=>{signup=!signup;history.replaceState(null,'',`/account.html?mode=${signup?'signup':'login'}`);render();});
+      changeEmailBtn.addEventListener('click',()=>render());
       home.addEventListener('click',()=>{
         sessionStorage.removeItem(PUBLIC_HOME_KEY);
         sessionStorage.removeItem('flowsignal_tab_role');
         location.replace('/');
       });
+
       form.addEventListener('submit',async(event)=>{
         event.preventDefault();
         if(signup&&password.value!==confirm.value){error.textContent='Passwords do not match.';return;}
-        submit.disabled=true;error.textContent='';
+        submit.disabled=true;clearMessages();
         try{
-          const response=await fetch(`${BACKEND}/auth/${signup?'signup':'login'}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:email.value.trim(),password:password.value})});
+          const response=await fetch(`${BACKEND}/auth/${signup?'signup':'login'}`,{
+            method:'POST',headers:{'Content-Type':'application/json'},
+            body:JSON.stringify({email:email.value.trim(),password:password.value})
+          });
           const data=await response.json().catch(()=>({}));
-          if(!response.ok) throw new Error(data.detail||'Authentication failed');
-          if(!data.session_token) throw new Error('SESSION_TOKEN_MISSING');
-          sessionStorage.setItem(USER_SESSION_KEY,String(data.session_token));
-          sessionStorage.removeItem(PUBLIC_HOME_KEY);
-          sessionStorage.removeItem(TAB_SIGNED_OUT_KEY);
-          sessionStorage.setItem('flowsignal_user_portal_intent','1');
-          if(data.csrf_token) sessionStorage.setItem('flowsignal_csrf_token',String(data.csrf_token));
-          location.replace('/app?user=1');
-        }catch(err){error.textContent=String(err.message||'Authentication failed').replaceAll('_',' ');}finally{submit.disabled=false;}
+          const verificationDetail=data?.detail&&typeof data.detail==='object'?data.detail:null;
+          if(response.status===403&&verificationDetail?.code==='EMAIL_VERIFICATION_REQUIRED'){
+            showOtp(email.value,verificationDetail.email,60);
+            return;
+          }
+          if(!response.ok)throw new Error(detailCode(data));
+          if(data.verification_required){
+            showOtp(email.value,data.email,data.resend_after||60);
+            return;
+          }
+          finishSession(data);
+        }catch(err){error.textContent=friendly(err.message||'Authentication failed');}finally{submit.disabled=false;}
       });
+
+      otpForm.addEventListener('submit',async(event)=>{
+        event.preventDefault();
+        const code=otpCode.value.replace(/\D/g,'').slice(0,6);
+        if(code.length!==6){error.textContent='Enter the 6-digit code.';return;}
+        verifyBtn.disabled=true;clearMessages();
+        try{
+          const response=await fetch(`${BACKEND}/auth/verify-email`,{
+            method:'POST',headers:{'Content-Type':'application/json'},
+            body:JSON.stringify({email:pendingEmail,code})
+          });
+          const data=await response.json().catch(()=>({}));
+          if(!response.ok)throw new Error(detailCode(data));
+          success.textContent='Email verified. Opening FlowSignal…';
+          finishSession(data);
+        }catch(err){error.textContent=friendly(err.message||'Verification failed');}finally{verifyBtn.disabled=false;}
+      });
+
+      resendBtn.addEventListener('click',async()=>{
+        if(!pendingEmail)return;
+        resendBtn.disabled=true;clearMessages();
+        try{
+          const response=await fetch(`${BACKEND}/auth/resend-verification`,{
+            method:'POST',headers:{'Content-Type':'application/json'},
+            body:JSON.stringify({email:pendingEmail})
+          });
+          const data=await response.json().catch(()=>({}));
+          if(!response.ok)throw new Error(detailCode(data));
+          success.textContent='A new verification code was sent.';
+          startResendCountdown(data.resend_after||60);
+        }catch(err){
+          const code=String(err.message||'');
+          error.textContent=code==='VERIFICATION_CODE_COOLDOWN'?'Please wait before requesting another code.':friendly(code||'Could not resend code');
+          if(code==='VERIFICATION_CODE_COOLDOWN')startResendCountdown(60);else resendBtn.disabled=false;
+        }
+      });
+
+      otpCode.addEventListener('input',()=>{otpCode.value=otpCode.value.replace(/\D/g,'').slice(0,6);});
       render();
     })();
   </script>
