@@ -42,7 +42,8 @@
         }else{
           let legacyUserId=localStorage.getItem('flowsignal_binary_user_id');
           if(!legacyUserId){legacyUserId=crypto.randomUUID();localStorage.setItem('flowsignal_binary_user_id',legacyUserId);}
-          response=await fetch(`${directBackend}/deriv/oauth/exchange`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code,code_verifier:verifier,user_id:legacyUserId})});
+          const ownerToken=localStorage.getItem('flowsignal_session_token')||'';
+          response=await fetch(`${directBackend}/deriv/oauth/exchange`,{method:'POST',headers:{'Content-Type':'application/json',...(ownerToken?{'Authorization':`Bearer ${ownerToken}`}:{})},body:JSON.stringify({code,code_verifier:verifier,user_id:legacyUserId})});
         }
         const payload=await response.json().catch(()=>({}));
         if(!response.ok||!payload.connection_id){const messages={DERIV_OAUTH_STATE_EXPIRED:'The Deriv login window expired. Start again.',DERIV_OAUTH_STATE_REPLAYED:'This Deriv callback was already used.',DERIV_OAUTH_USER_MISMATCH:'This Deriv login belongs to another FlowSignal account.'};throw new Error(messages[payload.detail]||'Deriv connection could not be completed. Return to FlowSignal and try again.');}
@@ -51,7 +52,8 @@
         sessionStorage.removeItem('flowsignal_deriv_pkce_verifier');
         sessionStorage.removeItem('flowsignal_deriv_oauth_user_id');
         status.textContent=payload.selected_account_id?'Deriv account connected. Returning to FlowSignal…':'Deriv connected. Select the account to use for Binary execution.';
-        setTimeout(()=>location.replace('/?deriv=connected'),700);
+        localStorage.setItem('flowsignal_trading_mode','binary');
+        setTimeout(()=>location.replace('/app.html?deriv=connected'),700);
       }catch(err){status.className='error';status.textContent=err.message||'Could not connect Deriv.';}
     })();
   </script>
