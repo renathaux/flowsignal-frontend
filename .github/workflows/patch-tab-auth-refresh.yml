@@ -1,0 +1,73 @@
+name: Patch tab auth refresh
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/patch-tab-auth-refresh.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: ${{ !contains(github.event.head_commit.message, '[skip auth patch]') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Apply exact auth refresh recovery patch
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          def replace_once(path, old, new):
+              p = Path(path)
+              text = p.read_text()
+              if text.count(old) != 1:
+                  raise SystemExit(f"Expected exactly one match in {path}, found {text.count(old)}")
+              p.write_text(text.replace(old, new, 1))
+
+          account = "Frontend/account.html"
+          replace_once(account,
+          "      const USER_SESSION_KEY='flowsignal_user_session_token';\n      const params=new URLSearchParams(location.search);",
+          "      const USER_SESSION_KEY='flowsignal_user_session_token';\n      const TAB_WINDOW_PREFIX='flowsignal-tab:';\n      function ensureTabId(){\n        const current=String(window.name||'');\n        if(current.startsWith(TAB_WINDOW_PREFIX)&&current.length>TAB_WINDOW_PREFIX.length)return current.slice(TAB_WINDOW_PREFIX.length);\n        const id=(crypto.randomUUID?.()||`${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`);\n        window.name=TAB_WINDOW_PREFIX+id;\n        return id;\n      }\n      const params=new URLSearchParams(location.search);")
+          replace_once(account,
+          "        sessionStorage.setItem(USER_SESSION_KEY,String(data.session_token));\n        sessionStorage.removeItem(PUBLIC_HOME_KEY);",
+          "        const tabId=ensureTabId();\n        sessionStorage.setItem(USER_SESSION_KEY,String(data.session_token));\n        localStorage.setItem(`flowsignal_tab_user_session:${tabId}`,JSON.stringify({token:String(data.session_token),csrf:String(data.csrf_token||'')}));\n        sessionStorage.removeItem(PUBLIC_HOME_KEY);")
+
+          owner = "Frontend/owner.html"
+          replace_once(owner,
+          "      const form=document.getElementById('form');",
+          "      const TAB_WINDOW_PREFIX='flowsignal-tab:';\n      function ensureTabId(){\n        const current=String(window.name||'');\n        if(current.startsWith(TAB_WINDOW_PREFIX)&&current.length>TAB_WINDOW_PREFIX.length)return current.slice(TAB_WINDOW_PREFIX.length);\n        const id=(crypto.randomUUID?.()||`${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`);\n        window.name=TAB_WINDOW_PREFIX+id;\n        return id;\n      }\n      const form=document.getElementById('form');")
+          replace_once(owner,
+          "          sessionStorage.setItem('flowsignal_tab_role','admin');\n          localStorage.setItem('flowsignal_access',JSON.stringify({granted:true,time:Date.now()}));",
+          "          const tabId=ensureTabId();\n          sessionStorage.setItem('flowsignal_tab_role','admin');\n          localStorage.setItem(`flowsignal_tab_admin_session:${tabId}`,JSON.stringify({token:String(data.token)}));\n          localStorage.setItem('flowsignal_access',JSON.stringify({granted:true,time:Date.now()}));")
+
+          auth = "Frontend/user-auth.js"
+          replace_once(auth,
+          "  const TAB_ROLE_KEY='flowsignal_tab_role';\n  const params=new URLSearchParams(location.search);",
+          "  const TAB_ROLE_KEY='flowsignal_tab_role';\n  const TAB_WINDOW_PREFIX='flowsignal-tab:';\n  function currentTabId(){\n    const current=String(window.name||'');\n    return current.startsWith(TAB_WINDOW_PREFIX)?current.slice(TAB_WINDOW_PREFIX.length):'';\n  }\n  function recoverTabAuth(){\n    const id=currentTabId();\n    if(!id)return;\n    if(!sessionStorage.getItem(USER_SESSION_KEY)){\n      try{\n        const saved=JSON.parse(localStorage.getItem(`flowsignal_tab_user_session:${id}`)||'null');\n        if(saved?.token){\n          sessionStorage.setItem(USER_SESSION_KEY,String(saved.token));\n          if(saved.csrf)sessionStorage.setItem(CSRF_KEY,String(saved.csrf));\n          sessionStorage.setItem(TAB_ROLE_KEY,'user');\n          sessionStorage.removeItem(PUBLIC_HOME_KEY);\n          sessionStorage.removeItem(TAB_SIGNED_OUT_KEY);\n          return;\n        }\n      }catch(_error){}\n    }\n    if(!sessionStorage.getItem(USER_SESSION_KEY)&&sessionStorage.getItem(TAB_ROLE_KEY)!=='admin'){\n      try{\n        const saved=JSON.parse(localStorage.getItem(`flowsignal_tab_admin_session:${id}`)||'null');\n        if(saved?.token){\n          sessionStorage.setItem(TAB_ROLE_KEY,'admin');\n          localStorage.setItem(LEGACY_SESSION_TOKEN_KEY,String(saved.token));\n          sessionStorage.removeItem(PUBLIC_HOME_KEY);\n          sessionStorage.removeItem(TAB_SIGNED_OUT_KEY);\n        }\n      }catch(_error){}\n    }\n  }\n  recoverTabAuth();\n  const params=new URLSearchParams(location.search);")
+          replace_once(auth,
+          "    sessionStorage.setItem(TAB_SIGNED_OUT_KEY,'1');\n    sessionStorage.removeItem(USER_SESSION_KEY);",
+          "    const tabId=currentTabId();\n    if(tabId)localStorage.removeItem(`flowsignal_tab_user_session:${tabId}`);\n    window.name='';\n    sessionStorage.setItem(TAB_SIGNED_OUT_KEY,'1');\n    sessionStorage.removeItem(USER_SESSION_KEY);")
+          replace_once(auth,
+          "  function logoutAdmin(){\n    sessionStorage.removeItem(USER_SESSION_KEY);",
+          "  function logoutAdmin(){\n    const tabId=currentTabId();\n    if(tabId)localStorage.removeItem(`flowsignal_tab_admin_session:${tabId}`);\n    window.name='';\n    sessionStorage.removeItem(USER_SESSION_KEY);")
+
+          print('Auth refresh recovery patch applied successfully')
+          PY
+      - name: Validate changed JavaScript snippets
+        run: |
+          grep -q "flowsignal_tab_user_session" Frontend/account.html
+          grep -q "flowsignal_tab_admin_session" Frontend/owner.html
+          grep -q "recoverTabAuth" Frontend/user-auth.js
+      - name: Commit patch and remove one-off workflow
+        run: |
+          git config user.name "FlowSignal Auth Patch"
+          git config user.email "actions@users.noreply.github.com"
+          git rm .github/workflows/patch-tab-auth-refresh.yml
+          git add Frontend/account.html Frontend/owner.html Frontend/user-auth.js
+          git commit -m "Fix per-tab auth refresh recovery [skip auth patch]"
+          git push origin main
