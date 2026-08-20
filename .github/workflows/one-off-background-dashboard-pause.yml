@@ -4,9 +4,6 @@ on:
   push:
     branches:
       - fix/background-dashboard-pause
-  pull_request:
-    branches:
-      - main
 
 permissions:
   contents: write
@@ -127,7 +124,6 @@ jobs:
           PY
 
       - name: Commit verified patch
-        if: github.event_name == 'pull_request'
         shell: bash
         run: |
           git config user.name "FlowSignal Safety Bot"
