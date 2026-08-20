@@ -104,6 +104,7 @@ assert.match(css, /\.binary-signal-card\{grid-column:1\/4/);
 assert.match(css, /#binaryAccountCard\{grid-column:4/);
 assert.match(css, /\.binary-system-card\{position:fixed/);
 assert.match(css, /\.flowsignal-mode-selector\{position:fixed[^}]*right:164px/);
+assert.match(css, /body\[data-trading-mode="binary"\] \.flowsignal-mode-selector\{left:calc\(50% \+ 125px\);right:auto;transform:translateX\(-50%\)\}/);
 assert.match(css, /@media\(max-width:1050px\)/);
 assert.match(css, /@media\(max-width:700px\)/);
 assert.match(css, /content:attr\(data-label\)/, 'history becomes labeled cards on mobile');
