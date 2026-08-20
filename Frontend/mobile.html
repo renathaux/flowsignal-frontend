@@ -18,9 +18,9 @@
   <link rel="stylesheet" href="mobileSheet.css?v=7" />
   <link rel="stylesheet" href="mobileChartLayout.css?v=5" />
   <link rel="stylesheet" href="mobileFullMenu.css?v=1" />
-  <link rel="stylesheet" href="binary/binary.css?v=8" />
+  <link rel="stylesheet" href="binary/binary.css?v=9" />
 </head>
-<body>
+<body class="mobile-only">
   <main class="mobile-app" id="mobileApp">
     <header class="app-head">
       <button id="mobileMenuBtn" class="icon-btn" type="button" aria-label="Open menu">☰</button>
@@ -70,11 +70,11 @@
       <span class="arrow">›</span>
     </button>
     <nav class="bottom-nav" aria-label="Mobile navigation">
-      <button class="active" data-nav="mode" aria-label="Switch Forex or Binary mode"><b>FX</b><span>Fx/Bi</span></button>
+      <button class="active" data-nav="home"><b>⌂</b><span>Home</span></button>
       <button data-nav="isch"><b>✓</b><span>ISCH</span></button>
       <button data-nav="fundamental"><b>◉</b><span>Fundamental</span></button>
       <button data-nav="history"><b>↻</b><span>History</span></button>
-      <button data-nav="auto"><b>⚙</b><span>Auto Trade</span></button>
+      <button data-nav="mode" aria-label="Switch Forex or Binary mode"><b>FX</b><span>Fx/Bi</span></button>
     </nav>
   </main>
 
@@ -121,7 +121,7 @@
   <script src="mobileDashboard.js?v=8"></script>
   <script src="mobileTradePriceLines.js?v=1"></script>
   <script src="mobileNav.js?v=5"></script>
-  <script src="binary/binary-app.js?v=12"></script>
+  <script src="binary/binary-app.js?v=13"></script>
   <script>
     window.addEventListener('pageshow', function(){
       var menu=document.getElementById('mobileMenu'), detail=document.getElementById('mobileDetail'), back=document.getElementById('mobileBackdrop');
