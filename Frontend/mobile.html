@@ -9,7 +9,10 @@
   <meta http-equiv="Expires" content="0" />
   <title>FlowSignal Mobile</title>
   <script>
-    (function(){try{var a=JSON.parse(localStorage.getItem("flowsignal_access")||"null");var r=String(localStorage.getItem("flowsignal_role")||"").toLowerCase();if(!(a&&a.granted===true)&&r!=="admin"&&r!=="user")window.location.replace("index.html");}catch(e){window.location.replace("index.html");}})();
+    (function(){
+      if(window.innerWidth>700){window.location.replace("app.html");return;}
+      try{var a=JSON.parse(localStorage.getItem("flowsignal_access")||"null");var r=String(localStorage.getItem("flowsignal_role")||"").toLowerCase();if(!(a&&a.granted===true)&&r!=="admin"&&r!=="user")window.location.replace("index.html");}catch(e){window.location.replace("index.html");}
+    })();
   </script>
   <link rel="stylesheet" href="mobile.css?v=8" />
   <link rel="stylesheet" href="mobileSheet.css?v=7" />
