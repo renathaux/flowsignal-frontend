@@ -6,6 +6,66 @@
   const ownerRequested = earlyParams.get('owner') === '1';
   const legacyRole = String(sessionStorage.getItem('flowsignal_tab_role') || localStorage.getItem('flowsignal_role') || '').toLowerCase();
 
+  // Browser-only background suspension. Render/cTrader keep running on the
+  // server; this only stops hidden dashboard tabs from polling and speaking.
+  if (isAppRoute && !window.__FLOWSIGNAL_BACKGROUND_PAUSE_INSTALLED) {
+    const nativeSetInterval = window.setInterval.bind(window);
+    const runtimeSuspended = () => Boolean(
+      document.hidden || window.__FLOWSIGNAL_FRONTEND_SUSPENDED
+    );
+
+    window.__FLOWSIGNAL_FRONTEND_SUSPENDED = Boolean(document.hidden);
+    window.__FLOWSIGNAL_BACKGROUND_PAUSE_INSTALLED = true;
+
+    window.setInterval = function (callback, delay, ...args) {
+      if (typeof callback !== 'function') {
+        return nativeSetInterval(callback, delay, ...args);
+      }
+      return nativeSetInterval(function () {
+        if (runtimeSuspended()) return;
+        return callback.apply(this, args);
+      }, delay);
+    };
+
+    try {
+      const synth = window.speechSynthesis;
+      if (
+        synth &&
+        typeof synth.speak === 'function' &&
+        !synth.speak.__flowSignalVisibilityGuard
+      ) {
+        const nativeSpeak = synth.speak.bind(synth);
+        const guardedSpeak = function (utterance) {
+          if (runtimeSuspended()) return;
+          return nativeSpeak(utterance);
+        };
+        guardedSpeak.__flowSignalVisibilityGuard = true;
+        synth.speak = guardedSpeak;
+      }
+    } catch (_error) {}
+
+    const updateFrontendVisibility = () => {
+      const hidden = Boolean(document.hidden);
+      window.__FLOWSIGNAL_FRONTEND_SUSPENDED = hidden;
+      document.body?.classList.toggle('flowsignal-background-paused', hidden);
+      if (hidden) {
+        try { window.speechSynthesis?.cancel?.(); } catch (_error) {}
+      }
+      document.dispatchEvent(new CustomEvent(
+        hidden ? 'flowsignal:frontend-paused' : 'flowsignal:frontend-resumed',
+        { detail: { hidden, serverTradingContinues: true } }
+      ));
+    };
+
+    document.addEventListener('visibilitychange', updateFrontendVisibility, true);
+    window.addEventListener('pagehide', () => {
+      window.__FLOWSIGNAL_FRONTEND_SUSPENDED = true;
+      try { window.speechSynthesis?.cancel?.(); } catch (_error) {}
+    }, true);
+    window.addEventListener('pageshow', updateFrontendVisibility, true);
+    updateFrontendVisibility();
+  }
+
   // HARD PUBLIC HOME LOCK.
   // Production has a dedicated home.html route, but if Vercel/custom-domain routing
   // serves the legacy combined index at `/`, do not let any dashboard runtime boot.
@@ -77,7 +137,7 @@
         owner.className = 'landing-login-btn';
         owner.type = 'button';
         owner.textContent = 'Owner';
-        owner.onclick = () => { window.location.href = '/app?owner=1'; };
+        owner.onclick = () => { window.location.href = '/owner.html'; };
         nav.appendChild(owner);
       }
     };
@@ -102,14 +162,11 @@
     sessionStorage.removeItem('flowsignal_public_home_mode');
   }
 
-  // Customer logout must leave the app document completely. This listener is
-  // installed before the legacy dashboard listeners, so they cannot reveal the old
-  // embedded landing page or keep voice/polling alive underneath it.
   document.addEventListener('click', async (event) => {
     const target = event.target?.closest?.('#logoutBtn,#binaryLogoutBtn');
     if (!target) return;
     const token = String(sessionStorage.getItem('flowsignal_user_session_token') || '').trim();
-    if (!token) return; // Owner/admin keeps the existing legacy logout flow.
+    if (!token) return;
     event.preventDefault();
     event.stopPropagation();
     event.stopImmediatePropagation();
@@ -125,8 +182,6 @@
     window.location.replace('/');
   }, true);
 
-  // Apply the old public-home guard only for backward-compatible URLs. The new
-  // production public page is home.html and does not load this file at all.
   try {
     const publicHome = earlyParams.get('home') === '1' || sessionStorage.getItem('flowsignal_public_home_mode') === '1';
     if (publicHome) {
@@ -165,8 +220,6 @@
     }
   } catch (_error) {}
 
-  // Keep browser dashboard reads isolated from the heavyweight /panel-data
-  // trading/diagnostic endpoint. This is installed before script.js loads.
   if (!window.__flowSignalDashboardFetchPatched) {
     const nativeFetch = window.fetch.bind(window);
     window.fetch = function (input, init) {
