@@ -113,6 +113,7 @@
         pendingEmail='';
         clearMessages();
         if(params.get('reset')==='1'&&!signup)success.textContent='Password reset. Log in with your new password.';
+        if(params.get('expired')==='1'&&!signup)error.textContent='Your session expired. Log in again to continue.';
       }
       function startResendCountdown(seconds=60){
         if(resendTimer)clearInterval(resendTimer);
