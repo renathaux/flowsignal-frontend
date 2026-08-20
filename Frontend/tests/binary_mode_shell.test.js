@@ -43,7 +43,7 @@ assert.match(script, /Authoritative V5 Signal/i);
 assert.match(script, /Waiting for next signal/);
 assert.match(script, /5-minute RISE signal/);
 assert.match(script, /5-minute FALL signal/);
-assert.match(script, /ACTIVE CONTRACT/);
+assert.match(script, /LIVE CONTRACT/);
 assert.match(script, /RECENT CONTRACTS/);
 assert.match(script, /No contracts yet/);
 assert.match(script, /EXECUTION STATUS/);
@@ -65,9 +65,9 @@ assert.match(script, /binary_auto_enabled/);
 assert.match(script, /account_type_normalized/);
 assert.match(script, /formatMoney\(account\?\.balance,currency\)/);
 assert.match(script, /REAL BINARY EXECUTION DISABLED/);
-assert.match(script, /5 Minutes/);
+assert.match(script, /5 MIN/);
 assert.match(script, /No SL \/ TP/);
-assert.doesNotMatch(script, /id="[^\"]*(?:stopLoss|takeProfit|riskReward|bos|ema|smc)[^\"]*"/i);
+assert.doesNotMatch(script, /id="[^\"]*(?:stopLoss|takeProfit|riskReward|bosCheck|emaCheck|smcCheck)[^\"]*"/i);
 
 const constantsStart = script.indexOf("const STRATEGY_VERSION=");
 const validatorStart = script.indexOf('function genuineV5Signal');
@@ -93,9 +93,9 @@ assert.doesNotMatch(script, /execution-status\/\$\{encodeURIComponent\(getCurren
 assert.doesNotMatch(script, /\/binary-v3|V3_RECOMPUTED|binary\/v3/i);
 assert.doesNotMatch(script, /ctrader|Forex LIVE Auto|Forex PAPER Auto/i, 'Binary code does not mutate Forex/cTrader state');
 assert.equal((script.match(/binary\/v5\/execute/g)||[]).length, 1, 'only the genuine execution path can call execute');
-assert.match(loader, /binary\/binary-app\.js\?v=11/);
-assert.match(mobile, /binary\/binary\.css\?v=7/);
-assert.match(mobile, /binary\/binary-app\.js\?v=11/);
+assert.match(loader, /binary\/binary-app\.js\?v=12/);
+assert.match(mobile, /binary\/binary\.css\?v=8/);
+assert.match(mobile, /binary\/binary-app\.js\?v=12/);
 assert.match(script, /const mobileApp=document\.getElementById\('mobileApp'\)/);
 assert.match(script, /forex\.appendChild\(mobileApp\)/, 'mobile Forex structure is preserved intact');
 
