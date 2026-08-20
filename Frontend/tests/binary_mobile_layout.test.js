@@ -20,5 +20,6 @@ assert.match(app, /--binary-current-position/, 'life bar position is driven by t
 assert.match(mobile, /data-nav="mode"[^>]*aria-label="Switch Forex or Binary mode"/, 'mobile bottom navigation exposes the Fx/Bi switch');
 assert.match(mobile, /<span>Fx\/Bi<\/span>/, 'mobile switch uses the requested Fx/Bi label');
 assert.match(mobileNav, /window\.FlowSignalBinary\?\.setMode/, 'bottom switch changes the real trading mode');
+assert.match(mobile, /if\(window\.innerWidth>700\)\{window\.location\.replace\("app\.html"\);return;\}/, 'wide screens leave the mobile-only route for the real desktop app');
 
 console.log('Binary mobile layout checks passed');
