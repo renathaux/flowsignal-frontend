@@ -157,7 +157,12 @@
     }
     if(options.body)options.body=cleanBody(options.body);
     if(sessionUser?.id&&url.includes('/user/deriv/config'))sessionStorage.setItem(OAUTH_USER_KEY,sessionUser.id);
-    return nativeFetch(url,options);
+    const response=await nativeFetch(url,options);
+    if(response.status===401&&token&&customerRequest&&logicalBackendPath(raw)!=='/auth/session'){
+      sessionStorage.removeItem(USER_SESSION_KEY);sessionStorage.removeItem(CSRF_KEY);sessionStorage.removeItem(TAB_ROLE_KEY);
+      window.setTimeout(()=>location.replace('/account.html?expired=1'),0);
+    }
+    return response;
   };
 
   function showLanding(){
@@ -238,7 +243,7 @@
     sessionStorage.removeItem(LEGACY_BINARY_USER_KEY);
     sessionStorage.removeItem(TAB_ROLE_KEY);
     sessionUser=null;csrfToken='';sessionStorage.removeItem(CSRF_KEY);
-    if(location.pathname.startsWith('/app')) location.replace('/');
+    if(location.pathname.startsWith('/app')) location.replace('/account.html?expired=1');
     else showLanding();
     return null;
   }
