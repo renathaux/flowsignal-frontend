@@ -15,6 +15,40 @@
   const PUBLIC_HOME_KEY='flowsignal_public_home_mode';
   const TAB_SIGNED_OUT_KEY='flowsignal_tab_signed_out';
   const TAB_ROLE_KEY='flowsignal_tab_role';
+  const TAB_WINDOW_PREFIX='flowsignal-tab:';
+  function currentTabId(){
+    const current=String(window.name||'');
+    return current.startsWith(TAB_WINDOW_PREFIX)?current.slice(TAB_WINDOW_PREFIX.length):'';
+  }
+  function recoverTabAuth(){
+    const id=currentTabId();
+    if(!id)return;
+    if(!sessionStorage.getItem(USER_SESSION_KEY)){
+      try{
+        const saved=JSON.parse(localStorage.getItem(`flowsignal_tab_user_session:${id}`)||'null');
+        if(saved?.token){
+          sessionStorage.setItem(USER_SESSION_KEY,String(saved.token));
+          if(saved.csrf)sessionStorage.setItem(CSRF_KEY,String(saved.csrf));
+          sessionStorage.setItem(TAB_ROLE_KEY,'user');
+          sessionStorage.removeItem(PUBLIC_HOME_KEY);
+          sessionStorage.removeItem(TAB_SIGNED_OUT_KEY);
+          return;
+        }
+      }catch(_error){}
+    }
+    if(!sessionStorage.getItem(USER_SESSION_KEY)&&sessionStorage.getItem(TAB_ROLE_KEY)!=='admin'){
+      try{
+        const saved=JSON.parse(localStorage.getItem(`flowsignal_tab_admin_session:${id}`)||'null');
+        if(saved?.token){
+          sessionStorage.setItem(TAB_ROLE_KEY,'admin');
+          localStorage.setItem(LEGACY_SESSION_TOKEN_KEY,String(saved.token));
+          sessionStorage.removeItem(PUBLIC_HOME_KEY);
+          sessionStorage.removeItem(TAB_SIGNED_OUT_KEY);
+        }
+      }catch(_error){}
+    }
+  }
+  recoverTabAuth();
   const params=new URLSearchParams(location.search);
   if(params.get('home')==='1')sessionStorage.setItem(PUBLIC_HOME_KEY,'1');
   if(params.get('user')==='1'){
@@ -214,6 +248,9 @@
     if(token&&csrf){
       try{await nativeFetch(`${AUTH_BACKEND}/auth/logout`,{method:'POST',headers:{'Authorization':`FlowSignalUser ${token}`,'X-FlowSignal-CSRF':csrf}});}catch(_error){}
     }
+    const tabId=currentTabId();
+    if(tabId)localStorage.removeItem(`flowsignal_tab_user_session:${tabId}`);
+    window.name='';
     sessionStorage.setItem(TAB_SIGNED_OUT_KEY,'1');
     sessionStorage.removeItem(USER_SESSION_KEY);
     sessionStorage.removeItem(LEGACY_BINARY_USER_KEY);
@@ -224,6 +261,9 @@
     location.replace('/');
   }
   function logoutAdmin(){
+    const tabId=currentTabId();
+    if(tabId)localStorage.removeItem(`flowsignal_tab_admin_session:${tabId}`);
+    window.name='';
     sessionStorage.removeItem(USER_SESSION_KEY);
     sessionStorage.removeItem(LEGACY_BINARY_USER_KEY);
     sessionStorage.removeItem(CSRF_KEY);

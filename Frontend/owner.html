@@ -26,6 +26,14 @@
       'use strict';
       try{window.speechSynthesis?.cancel?.();}catch(_error){}
       const BACKEND='https://flowsignal-backend-3.onrender.com';
+      const TAB_WINDOW_PREFIX='flowsignal-tab:';
+      function ensureTabId(){
+        const current=String(window.name||'');
+        if(current.startsWith(TAB_WINDOW_PREFIX)&&current.length>TAB_WINDOW_PREFIX.length)return current.slice(TAB_WINDOW_PREFIX.length);
+        const id=(crypto.randomUUID?.()||`${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`);
+        window.name=TAB_WINDOW_PREFIX+id;
+        return id;
+      }
       const form=document.getElementById('form');
       const email=document.getElementById('email');
       const password=document.getElementById('password');
@@ -47,7 +55,9 @@
           sessionStorage.removeItem('flowsignal_user_session_token');
           sessionStorage.removeItem('flowsignal_binary_user_id');
           sessionStorage.removeItem('flowsignal_tab_signed_out');
+          const tabId=ensureTabId();
           sessionStorage.setItem('flowsignal_tab_role','admin');
+          localStorage.setItem(`flowsignal_tab_admin_session:${tabId}`,JSON.stringify({token:String(data.token)}));
           localStorage.setItem('flowsignal_access',JSON.stringify({granted:true,time:Date.now()}));
           localStorage.setItem('flowsignal_role','admin');
           localStorage.setItem('flowsignal_session_token',String(data.token));

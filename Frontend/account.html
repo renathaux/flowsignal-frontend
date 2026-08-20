@@ -50,6 +50,14 @@
       const PUBLIC_HOME_KEY='flowsignal_public_home_mode';
       const TAB_SIGNED_OUT_KEY='flowsignal_tab_signed_out';
       const USER_SESSION_KEY='flowsignal_user_session_token';
+      const TAB_WINDOW_PREFIX='flowsignal-tab:';
+      function ensureTabId(){
+        const current=String(window.name||'');
+        if(current.startsWith(TAB_WINDOW_PREFIX)&&current.length>TAB_WINDOW_PREFIX.length)return current.slice(TAB_WINDOW_PREFIX.length);
+        const id=(crypto.randomUUID?.()||`${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`);
+        window.name=TAB_WINDOW_PREFIX+id;
+        return id;
+      }
       const params=new URLSearchParams(location.search);
       let signup=params.get('mode')==='signup';
       let pendingEmail='';
@@ -84,7 +92,9 @@
       function clearMessages(){error.textContent='';success.textContent='';}
       function finishSession(data){
         if(!data.session_token)throw new Error('SESSION_TOKEN_MISSING');
+        const tabId=ensureTabId();
         sessionStorage.setItem(USER_SESSION_KEY,String(data.session_token));
+        localStorage.setItem(`flowsignal_tab_user_session:${tabId}`,JSON.stringify({token:String(data.session_token),csrf:String(data.csrf_token||'')}));
         sessionStorage.removeItem(PUBLIC_HOME_KEY);
         sessionStorage.removeItem(TAB_SIGNED_OUT_KEY);
         sessionStorage.setItem('flowsignal_user_portal_intent','1');
