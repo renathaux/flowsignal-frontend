@@ -59,6 +59,8 @@ assert.match(script, /Execution Engine/);
 assert.match(script, /DEFAULT_STAKE=10/);
 assert.match(script, /value="10"/);
 assert.match(script, /binary\/account-settings/);
+assert.match(script, /binary\/history\//);
+assert.match(script, /limit=50&offset=0/);
 assert.match(script, /binary_auto_enabled/);
 assert.match(script, /account_type_normalized/);
 assert.match(script, /formatMoney\(account\?\.balance,currency\)/);
@@ -86,12 +88,14 @@ assert.equal(validatorContext.genuineV5Signal({...genuine, rule_hash:'wrong'}), 
 
 assert.match(script, /getCurrentFlowSignalUserId/, 'temporary user identity is abstracted');
 assert.match(script, /flowsignal_binary_user_id/);
+assert.doesNotMatch(script, /user_id:getCurrentFlowSignalUserId\(\)/, 'Binary requests derive user identity from the authenticated server session');
+assert.doesNotMatch(script, /execution-status\/\$\{encodeURIComponent\(getCurrentFlowSignalUserId/, 'execution status cannot select another browser user');
 assert.doesNotMatch(script, /\/binary-v3|V3_RECOMPUTED|binary\/v3/i);
 assert.doesNotMatch(script, /ctrader|Forex LIVE Auto|Forex PAPER Auto/i, 'Binary code does not mutate Forex/cTrader state');
 assert.equal((script.match(/\/deriv\/binary\/v5\/execute/g)||[]).length, 1, 'only the genuine execution path can call execute');
-assert.match(loader, /binary\/binary-app\.js\?v=5/);
-assert.match(mobile, /binary\/binary\.css\?v=5/);
-assert.match(mobile, /binary\/binary-app\.js\?v=5/);
+assert.match(loader, /binary\/binary-app\.js\?v=6/);
+assert.match(mobile, /binary\/binary\.css\?v=6/);
+assert.match(mobile, /binary\/binary-app\.js\?v=6/);
 assert.match(script, /const mobileApp=document\.getElementById\('mobileApp'\)/);
 assert.match(script, /forex\.appendChild\(mobileApp\)/, 'mobile Forex structure is preserved intact');
 
@@ -102,6 +106,7 @@ assert.match(css, /\.binary-system-card\{position:fixed/);
 assert.match(css, /\.flowsignal-mode-selector\{position:fixed[^}]*right:164px/);
 assert.match(css, /@media\(max-width:1050px\)/);
 assert.match(css, /@media\(max-width:700px\)/);
+assert.match(css, /content:attr\(data-label\)/, 'history becomes labeled cards on mobile');
 assert.match(css, /@media\(max-width:430px\)/);
 assert.match(css, /\.flowsignal-mode-panel\[hidden\]\{display:none!important\}/, 'both dashboards cannot display simultaneously');
 
