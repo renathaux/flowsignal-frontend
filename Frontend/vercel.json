@@ -3,6 +3,9 @@
     { "source": "/app", "destination": "/app.html", "permanent": false },
     { "source": "/app/", "destination": "/app.html", "permanent": false }
   ],
+  "rewrites": [
+    { "source": "/api/proxy/:path*", "destination": "/api/backend-proxy?path=:path*" }
+  ],
   "headers": [
     {
       "source": "/app.html",
