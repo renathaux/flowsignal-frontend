@@ -2,7 +2,6 @@
   'use strict';
 
   const TAB_ROLE_KEY = 'flowsignal_tab_role';
-  const SHARED_ROLE_KEY = 'flowsignal_role';
 
   function normalizeRole(value) {
     const role = String(value || '').toLowerCase();
@@ -33,7 +32,7 @@
     const existing = document.querySelector('script[data-flowsignal-user-auth]');
     if (existing) return;
     const script = document.createElement('script');
-    script.src = 'user-auth.js?v=1';
+    script.src = 'user-auth.js?v=3';
     script.async = false;
     script.dataset.flowsignalUserAuth = 'true';
     script.addEventListener('error', () => console.warn('USER_AUTH_LOAD_FAILED'));
@@ -91,11 +90,6 @@
     sessionStorage.setItem(TAB_ROLE_KEY, normalized);
     document.body.dataset.userRole = normalized;
     return true;
-  }
-
-  if (!getTabRole()) {
-    const inherited = normalizeRole(localStorage.getItem(SHARED_ROLE_KEY));
-    if (inherited) setTabRole(inherited);
   }
 
   window.isAdminAccount = function () { return getTabRole() === 'admin'; };
@@ -233,40 +227,9 @@
     attachDashboardObserver();
   }
 
-  function adoptRequestedRole(requestedRole) {
-    if (authenticatedRole()) return;
-    const wanted = normalizeRole(requestedRole);
-    if (!wanted) return;
-    let tries = 0;
-    const timer = setInterval(() => {
-      tries += 1;
-      const shared = normalizeRole(localStorage.getItem(SHARED_ROLE_KEY));
-      if (shared === wanted) {
-        clearInterval(timer);
-        setTabRole(wanted);
-        refreshRoleUi();
-        return;
-      }
-      if (tries >= 60) clearInterval(timer);
-    }, 100);
-  }
-
-  document.addEventListener('click', (event) => {
-    const target = event.target?.closest?.('#adminLoginBtn, #accessBtn');
-    if (!target) return;
-    if (target.id === 'adminLoginBtn') adoptRequestedRole('admin');
-    if (target.id === 'accessBtn') adoptRequestedRole('user');
-  }, true);
-
-  window.addEventListener('storage', (event) => {
-    if (event.key === SHARED_ROLE_KEY && !authenticatedRole()) refreshRoleUi();
-  });
   document.addEventListener('flowsignal:authenticated', () => {
     const role = authenticatedRole();
-    if (role) {
-      sessionStorage.setItem(TAB_ROLE_KEY, role);
-      localStorage.setItem(SHARED_ROLE_KEY, role);
-    }
+    if (role) sessionStorage.setItem(TAB_ROLE_KEY, role);
     setTimeout(refreshRoleUi, 0);
     setTimeout(refreshRoleUi, 250);
   });
