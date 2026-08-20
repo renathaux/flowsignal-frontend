@@ -1,0 +1,58 @@
+@media (max-width:700px) {
+  body.mobile-only .flowsignal-binary-mode {
+    -webkit-text-size-adjust:100%;
+    text-size-adjust:100%;
+  }
+
+  body.mobile-only .binary-card {
+    overflow:hidden;
+  }
+
+  body.mobile-only #binaryAccountCard {
+    grid-template-rows:auto minmax(0,1fr) auto auto 30px;
+  }
+
+  body.mobile-only #binaryDerivAccountSelect {
+    grid-row:5;
+    min-width:0;
+    max-width:100%;
+  }
+
+  body.mobile-only .binary-account-id,
+  body.mobile-only .binary-account-balance {
+    min-width:0;
+    max-width:100%;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+  }
+
+  body.mobile-only .binary-stake-card {
+    grid-template-rows:minmax(0,1fr) 22px;
+  }
+
+  body.mobile-only .binary-stake-card > div > p {
+    display:none;
+  }
+
+  body.mobile-only .binary-stake-editor {
+    min-height:0;
+    margin:0;
+    align-self:end;
+  }
+
+  body.mobile-only .binary-stake-editor button {
+    height:22px;
+    margin:0;
+    padding:2px;
+    line-height:1;
+  }
+
+  body.mobile-only .binary-history-card td {
+    min-width:0;
+    max-width:100%;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+  }
+}
