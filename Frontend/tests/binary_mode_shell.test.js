@@ -93,9 +93,9 @@ assert.doesNotMatch(script, /execution-status\/\$\{encodeURIComponent\(getCurren
 assert.doesNotMatch(script, /\/binary-v3|V3_RECOMPUTED|binary\/v3/i);
 assert.doesNotMatch(script, /ctrader|Forex LIVE Auto|Forex PAPER Auto/i, 'Binary code does not mutate Forex/cTrader state');
 assert.equal((script.match(/\/deriv\/binary\/v5\/execute/g)||[]).length, 1, 'only the genuine execution path can call execute');
-assert.match(loader, /binary\/binary-app\.js\?v=6/);
+assert.match(loader, /binary\/binary-app\.js\?v=7/);
 assert.match(mobile, /binary\/binary\.css\?v=6/);
-assert.match(mobile, /binary\/binary-app\.js\?v=6/);
+assert.match(mobile, /binary\/binary-app\.js\?v=7/);
 assert.match(script, /const mobileApp=document\.getElementById\('mobileApp'\)/);
 assert.match(script, /forex\.appendChild\(mobileApp\)/, 'mobile Forex structure is preserved intact');
 
