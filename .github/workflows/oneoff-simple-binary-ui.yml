@@ -1,0 +1,47 @@
+name: One-off simple Binary UI
+on:
+  push:
+    branches: [main]
+permissions:
+  contents: write
+jobs:
+  patch:
+    if: ${{ !contains(github.event.head_commit.message, '[skip simple binary ui patch]') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Update Binary strategy identity and copy
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path=Path('Frontend/binary/binary-app.js')
+          text=path.read_text()
+          replacements={
+            "const STRATEGY_VERSION='DERIV_BINARY_V5_NOISY_REVERSAL_FROZEN_1';":"const STRATEGY_VERSION='DERIV_BINARY_SIMPLE_5M_1';",
+            "const RULE_HASH='fab52bb80f7f4dd9150adb2f90d7e090816915ff70e6b368518e7fb39444b249';":"const RULE_HASH='755ea79159b49281b0671846d0883ec34702efa55c2cf397aafac47058f8e3cb';",
+            "/^DERIV_BINARY_V5_NOISY_REVERSAL_FROZEN_1:frxEURUSD:(\\d{10,13}):(RISE|FALL)$/":"/^DERIV_BINARY_SIMPLE_5M_1:frxEURUSD:(\\d{10,13}):(RISE|FALL)$/",
+            "Five-minute directional execution from the frozen V5 strategy.":"Simple five-minute candle-direction execution.",
+            "Authoritative V5 Signal":"Simple 5m Candle Signal",
+            "Based on V5 Frozen Strategy":"Previous completed candle direction",
+            "V5 Research":"Binary Signal",
+          }
+          for old,new in replacements.items():
+              if old not in text:
+                  raise SystemExit(f'anchor missing: {old}')
+              text=text.replace(old,new)
+          path.write_text(text)
+          PY
+          node --check Frontend/binary/binary-app.js
+      - name: Commit verified UI identity
+        shell: bash
+        run: |
+          rm .github/workflows/oneoff-simple-binary-ui.yml
+          git config user.name "FlowSignal automation"
+          git config user.email "actions@users.noreply.github.com"
+          git add Frontend/binary/binary-app.js .github/workflows/oneoff-simple-binary-ui.yml
+          git commit -m "Use simple 5m Binary signal identity [skip simple binary ui patch]"
+          git push
