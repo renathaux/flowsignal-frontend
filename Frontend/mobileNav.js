@@ -9,58 +9,6 @@
   const readable = value => String(value ?? "--").replaceAll("_"," ");
   const PANEL_CACHE_KEY = "flowsignal_mobile_panel_cache_v1";
   const FUND_CACHE_KEY = symbol => `flowsignal_mobile_fund_cache_${symbol}_v1`;
-  const MODE_KEY = "flowsignal_trading_mode";
-
-  function tradingMode(){
-    return String(localStorage.getItem(MODE_KEY)||"forex").toLowerCase()==="binary" ? "binary" : "forex";
-  }
-
-  function installMobileModeNavStyle(){
-    if(document.getElementById("mobileFxBiStyle")) return;
-    const style=document.createElement("style");
-    style.id="mobileFxBiStyle";
-    style.textContent=`
-      #flowsignalTradingModeSelector{display:none!important}
-      .bottom-nav.shared-mode-nav{position:fixed!important;left:9px;right:9px;bottom:max(8px,env(safe-area-inset-bottom));height:62px;z-index:3100}
-      body[data-trading-mode="binary"] #flowsignalBinaryMode{padding-bottom:calc(78px + env(safe-area-inset-bottom))}
-      @media(max-height:820px){.bottom-nav.shared-mode-nav{height:52px}}
-    `;
-    document.head.appendChild(style);
-  }
-
-  function ensureSharedModeNav(){
-    const nav=document.querySelector(".bottom-nav");
-    if(!nav) return null;
-    installMobileModeNavStyle();
-    if(nav.parentElement!==document.body) document.body.appendChild(nav);
-    nav.classList.add("shared-mode-nav");
-    return nav;
-  }
-
-  function syncFxBiNav(mode=tradingMode()){
-    const nav=ensureSharedModeNav();
-    if(!nav) return;
-    const fxbi=nav.querySelector('[data-nav="fxbi"]');
-    const home=nav.querySelector('[data-nav="home"]');
-    if(fxbi){
-      fxbi.setAttribute("aria-label",mode==="binary"?"Switch to Forex":"Switch to Binary");
-      fxbi.classList.toggle("active",mode==="binary");
-    }
-    if(mode==="binary") nav.querySelectorAll("button").forEach(button=>{if(button!==fxbi) button.classList.remove("active");});
-    else if(home&&!nav.querySelector('button.active:not([data-nav="fxbi"])')) home.classList.add("active");
-  }
-
-  function fxBiToggle(){
-    closeSheets();
-    const next=tradingMode()==="binary"?"forex":"binary";
-    const switchButton=document.querySelector(`#flowsignalTradingModeSelector [data-trading-mode="${next}"]`);
-    if(switchButton) switchButton.click();
-    else {
-      localStorage.setItem(MODE_KEY,next);
-      document.dispatchEvent(new CustomEvent("flowsignal:trading-mode-changed",{detail:{mode:next}}));
-    }
-    syncFxBiNav(next);
-  }
   const cache = { panel: null, fundamentals: {} };
   let activePanel = "home";
   let panelRefreshInFlight = null;
@@ -237,12 +185,37 @@
     refreshPanelCache();
   }
 
+  function renderAutoTrade(data=cache.panel||{}){
+    const meta=data?._meta||{};
+    const paper=first(meta.paper_auto_enabled,data.paper_auto_enabled,false);
+    const live=first(meta.live_auto_enabled,data.live_auto_enabled,false);
+    const broker=meta.live_account||{};
+    const connected=broker.connected===true;
+    const mode=first(broker.mode,"broker");
+    openDetail("Auto Trade", "AUTO TRADE", `<div class="detail-card desktop-auto-card"><h3>Auto Trade</h3><p class="auto-subtitle">Manage paper and live automated trading.</p>${row("Paper Auto",paper?"ON":"OFF")}${row("Live Auto",live?"ON":"OFF")}${row("Live Broker",connected?"CONNECTED":"DISCONNECTED")}${row("Broker mode",mode)}<p class="auto-readonly">Status only on mobile.</p></div>`);
+  }
+
+  function autoTradeDetail(){
+    activePanel="auto";
+    renderAutoTrade();
+    refreshPanelCache();
+  }
+
   function rerenderOpenPanel(){
     if(activePanel==="isch") renderIsch();
     else if(activePanel==="history") renderHistory();
+    else if(activePanel==="auto") renderAutoTrade();
   }
 
-  const actions={home:closeSheets,isch:ischDetail,fundamental:fundamentalDetail,history:historyDetail,fxbi:fxBiToggle};
+  function toggleTradingMode(){
+    closeSheets();
+    const current=window.FlowSignalBinary?.currentMode?.()||localStorage.getItem("flowsignal_trading_mode")||"forex";
+    const next=String(current).toLowerCase()==="binary"?"forex":"binary";
+    if(window.FlowSignalBinary?.setMode) window.FlowSignalBinary.setMode(next);
+    else{localStorage.setItem("flowsignal_trading_mode",next);location.reload();}
+  }
+
+  const actions={mode:toggleTradingMode,home:closeSheets,isch:ischDetail,fundamental:fundamentalDetail,history:historyDetail,auto:autoTradeDetail};
   document.querySelectorAll(".bottom-nav button").forEach(button=>{
     button.onclick=()=>{
       document.querySelectorAll(".bottom-nav button").forEach(x=>x.classList.remove("active"));
@@ -252,12 +225,6 @@
   });
 
   loadStoredCache();
-
-  document.addEventListener("flowsignal:trading-mode-changed",event=>{
-    syncFxBiNav(event.detail?.mode);
-  });
-  window.addEventListener("load",()=>syncFxBiNav(),{once:true});
-  setTimeout(()=>syncFxBiNav(),0);
 
   // Do not duplicate the main dashboard's 5-second /panel-data polling here.
   // Menu panels refresh only when opened. Fundamentals are prefetched later,
