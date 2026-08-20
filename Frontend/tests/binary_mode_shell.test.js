@@ -8,6 +8,7 @@ const script = fs.readFileSync(path.join(root, 'binary', 'binary-app.js'), 'utf8
 const css = fs.readFileSync(path.join(root, 'binary', 'binary.css'), 'utf8');
 const loader = fs.readFileSync(path.join(root, 'tab-role-session.js'), 'utf8');
 const mobile = fs.readFileSync(path.join(root, 'mobile.html'), 'utf8');
+const mobileNav = fs.readFileSync(path.join(root, 'mobileNav.js'), 'utf8');
 
 function extract(startNeedle, endNeedle, exports) {
   const start = script.indexOf(startNeedle);
@@ -96,6 +97,14 @@ assert.equal((script.match(/\/deriv\/binary\/v5\/execute/g)||[]).length, 1, 'onl
 assert.match(loader, /binary\/binary-app\.js\?v=7/);
 assert.match(mobile, /binary\/binary\.css\?v=6/);
 assert.match(mobile, /binary\/binary-app\.js\?v=7/);
+assert.match(mobile, /data-nav="fxbi"/, 'mobile Fx\/Bi button replaces Auto Trade');
+assert.match(mobile, /<span>Fx\/Bi<\/span>/);
+assert.doesNotMatch(mobile, /data-nav="auto"/, 'old mobile Auto Trade nav item is removed');
+assert.match(mobile, /mobileNav\.js\?v=5/, 'mobile mode-nav cache is bumped');
+assert.match(mobileNav, /fxBiToggle/);
+assert.match(mobileNav, /shared-mode-nav/);
+assert.match(mobileNav, /flowsignal:trading-mode-changed/);
+assert.match(mobileNav, /#flowsignalTradingModeSelector\{display:none!important\}/, 'top mode selector is hidden by mobile-only code');
 assert.match(script, /const mobileApp=document\.getElementById\('mobileApp'\)/);
 assert.match(script, /forex\.appendChild\(mobileApp\)/, 'mobile Forex structure is preserved intact');
 
