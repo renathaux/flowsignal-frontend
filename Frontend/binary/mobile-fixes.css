@@ -8,14 +8,79 @@
     overflow:hidden;
   }
 
+  body.mobile-only .binary-layout {
+    grid-template-rows:22fr 13fr 27fr 10fr 28fr;
+  }
+
   body.mobile-only #binaryAccountCard {
-    grid-template-rows:auto minmax(0,1fr) auto auto 30px;
+    grid-template-columns:minmax(0,1fr) minmax(0,1fr);
+    grid-template-rows:22px 32px 10px 28px 24px;
+    gap:2px 8px;
+    padding:7px 10px;
+  }
+
+  body.mobile-only #binaryAccountCard .binary-card-heading {
+    grid-column:1/-1;
+    grid-row:1;
+    min-width:0;
+    align-items:start;
+  }
+
+  body.mobile-only #binaryAccountCard .binary-card-heading h2 {
+    display:none;
+  }
+
+  body.mobile-only #binaryAccountCard .binary-account-badge {
+    flex:0 0 auto;
+    margin:0;
+  }
+
+  body.mobile-only #binaryAccountId {
+    grid-column:1;
+    grid-row:2/4;
+    align-self:center;
+    font-size:15px;
+  }
+
+  body.mobile-only #binaryAccountBalance {
+    grid-column:2;
+    grid-row:2;
+    align-self:center;
+    margin:0;
+    font-size:14px;
+  }
+
+  body.mobile-only #binaryAccountBalance::before {
+    margin-bottom:2px;
+    font-size:7px;
+  }
+
+  body.mobile-only #binaryAccountConnection {
+    grid-column:2;
+    grid-row:3;
+    align-self:start;
+    margin:0;
+    font-size:7px;
   }
 
   body.mobile-only #binaryDerivAccountSelect {
-    grid-row:5;
+    grid-column:1/-1;
+    grid-row:4;
+    width:100%;
+    height:28px;
+    min-height:28px;
+    margin:0;
+    padding:3px 8px;
+    font-size:10px;
     min-width:0;
     max-width:100%;
+  }
+
+  body.mobile-only #binaryMobileDisconnectBtn {
+    grid-column:1/-1;
+    grid-row:5;
+    height:24px;
+    margin:0;
   }
 
   body.mobile-only .binary-account-id,
@@ -28,7 +93,7 @@
   }
 
   body.mobile-only .binary-stake-card {
-    grid-template-rows:minmax(0,1fr) 22px;
+    grid-template-rows:minmax(0,1fr) 20px;
   }
 
   body.mobile-only .binary-stake-card > div > p {
@@ -42,10 +107,36 @@
   }
 
   body.mobile-only .binary-stake-editor button {
-    height:22px;
+    height:20px;
     margin:0;
     padding:2px;
     line-height:1;
+  }
+
+  body.mobile-only .binary-stake-display {
+    margin-top:3px;
+    line-height:1;
+  }
+
+  body.mobile-only .binary-stake-display strong {
+    font-size:15px;
+  }
+
+  body.mobile-only .binary-stake-display small {
+    display:none;
+  }
+
+  body.mobile-only .binary-mobile-stats-card {
+    padding:6px 10px;
+  }
+
+  body.mobile-only .binary-mobile-stats-card > div {
+    margin-top:3px;
+  }
+
+  body.mobile-only .binary-mobile-stats-card strong {
+    margin-top:1px;
+    font-size:11px;
   }
 
   body.mobile-only .binary-history-card td {
