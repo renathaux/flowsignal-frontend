@@ -5,6 +5,7 @@
   const DIRECT_BACKEND='https://flowsignal-backend-3.onrender.com';
   const IS_LOCAL=location.hostname==='localhost'||location.hostname==='127.0.0.1';
   const BACKEND=IS_LOCAL?LOCAL_BACKEND:`${location.origin}/api/proxy`;
+  const AUTH_BACKEND=IS_LOCAL?LOCAL_BACKEND:DIRECT_BACKEND;
   const CSRF_KEY='flowsignal_csrf_token';
   const USER_SESSION_KEY='flowsignal_user_session_token';
   const OAUTH_USER_KEY='flowsignal_deriv_oauth_user_id';
@@ -189,7 +190,7 @@
       return null;
     }
     try{
-      const response=await nativeFetch(`${BACKEND}/auth/session`,{cache:'no-store',headers:{'Authorization':`FlowSignalUser ${token}`}});
+      const response=await nativeFetch(`${AUTH_BACKEND}/auth/session`,{cache:'no-store',headers:{'Authorization':`FlowSignalUser ${token}`}});
       const data=await response.json().catch(()=>({}));
       if(data?.authenticated&&data?.user){csrfToken=String(data.csrf_token||'');sessionStorage.setItem(CSRF_KEY,csrfToken);applyUser(data.user);return data.user;}
     }catch(_error){}
@@ -205,7 +206,7 @@
     const csrf=csrfToken;
     if(token&&csrf){
       try{
-        await nativeFetch(`${BACKEND}/auth/logout`,{
+        await nativeFetch(`${AUTH_BACKEND}/auth/logout`,{
           method:'POST',
           headers:{'Authorization':`FlowSignalUser ${token}`,'X-FlowSignal-CSRF':csrf}
         });
