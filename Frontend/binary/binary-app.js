@@ -30,7 +30,7 @@
   function restoreForexAlertIsolationGuard(){const raw=sessionStorage.getItem(FOREX_ALERT_GUARD_KEY); if(!raw) return; let state=null; try{state=JSON.parse(raw);}catch(_error){} window.setTimeout(()=>{const prior=state?.previous; if(prior===null||prior===undefined) localStorage.removeItem(FOREX_ALERT_PREF_KEY); else localStorage.setItem(FOREX_ALERT_PREF_KEY,String(prior)); sessionStorage.removeItem(FOREX_ALERT_GUARD_KEY); console.info('BINARY_OAUTH_FOREX_ALERT_GUARD_RESTORED');},15000);}
   if(sessionStorage.getItem(FOREX_ALERT_GUARD_KEY)){localStorage.setItem(FOREX_ALERT_PREF_KEY,'false'); restoreForexAlertIsolationGuard();}
   else if(!localStorage.getItem(MODE_KEY)) localStorage.setItem(MODE_KEY,'forex');
-  function injectCss(){if(document.querySelector('link[data-flowsignal-binary-css]')) return; const link=document.createElement('link'); link.rel='stylesheet'; link.href='binary/binary.css?v=8'; link.dataset.flowsignalBinaryCss='true'; document.head.appendChild(link);}
+  function injectCss(){if(document.querySelector('link[data-flowsignal-binary-css]')) return; const link=document.createElement('link'); link.rel='stylesheet'; link.href='binary/binary.css?v=9'; link.dataset.flowsignalBinaryCss='true'; document.head.appendChild(link);}
 
   function binaryHtml(){return `<aside class="binary-sidebar" aria-label="Binary navigation"><div class="binary-brand"><span>⌁</span> FlowSignal</div><nav><button type="button" class="active" data-binary-section="dashboard">ϟ Binary Dashboard</button><button type="button" data-binary-section="accounts">♙ Deriv Accounts</button><button type="button" data-binary-section="history">▣ Binary History</button><button type="button" data-binary-section="settings">⚙ Settings</button><div class="binary-nav-separator"></div><button type="button" data-binary-section="documentation">▤ Documentation</button></nav><button type="button" id="binaryLogoutBtn" class="binary-logout">⇥ Log Out</button></aside>
   <main class="binary-dashboard"><header class="binary-page-header"><div><span class="binary-eyebrow">BINARY MODE</span><h1>Binary Dashboard</h1><p>Five-minute directional execution from the frozen V5 strategy.</p></div><div class="binary-header-actions"><span id="binaryHeaderConnection" class="binary-connection disconnected">DISCONNECTED</span><button id="binaryDerivConnectBtn" type="button">Connect Deriv</button><button id="binaryDerivDisconnectBtn" type="button" class="hidden">Disconnect</button></div></header>
@@ -52,21 +52,22 @@
   function buildModeShell(){
     const desktopApp=document.getElementById('mainApp');
     const mobileApp=document.getElementById('mobileApp');
-    const host=desktopApp||document.body;
     if(!desktopApp&&!mobileApp) return false;
     let forex=document.getElementById(FOREX_MODE_ID);
-    if(!forex){
+    if(desktopApp){
+      if(forex&&forex.parentNode===desktopApp){while(forex.firstChild) desktopApp.insertBefore(forex.firstChild,forex); forex.remove();}
+      forex=desktopApp;
+    }else if(!forex){
       forex=document.createElement('div'); forex.id=FOREX_MODE_ID; forex.className='flowsignal-mode-panel';
-      if(desktopApp){Array.from(desktopApp.children).forEach(child=>forex.appendChild(child)); desktopApp.appendChild(forex);}
-      else{mobileApp.insertAdjacentElement('beforebegin',forex); forex.appendChild(mobileApp);}
+      mobileApp.insertAdjacentElement('beforebegin',forex); forex.appendChild(mobileApp);
     }
     let selector=document.getElementById('flowsignalTradingModeSelector');
-    if(!selector){selector=document.createElement('div'); selector.id='flowsignalTradingModeSelector'; selector.className='flowsignal-mode-selector'; selector.setAttribute('aria-label','Trading mode'); selector.innerHTML='<button type="button" data-trading-mode="forex">FOREX</button><button type="button" data-trading-mode="binary">BINARY</button>'; host.insertBefore(selector,forex); selector.addEventListener('click',event=>{const button=event.target.closest('[data-trading-mode]'); if(button) setMode(button.dataset.tradingMode);});}
+    if(!selector){selector=document.createElement('div'); selector.id='flowsignalTradingModeSelector'; selector.className='flowsignal-mode-selector'; selector.setAttribute('aria-label','Trading mode'); selector.innerHTML='<button type="button" data-trading-mode="forex">FOREX</button><button type="button" data-trading-mode="binary">BINARY</button>'; document.body.appendChild(selector); selector.addEventListener('click',event=>{const button=event.target.closest('[data-trading-mode]'); if(button) setMode(button.dataset.tradingMode);});}
     let binary=document.getElementById(BINARY_MODE_ID);
-    if(!binary){binary=document.createElement('section'); binary.id=BINARY_MODE_ID; binary.className='flowsignal-mode-panel flowsignal-binary-mode'; binary.innerHTML=binaryHtml(); host.appendChild(binary); bindBinaryEvents(binary);}
+    if(!binary){binary=document.createElement('section'); binary.id=BINARY_MODE_ID; binary.className='flowsignal-mode-panel flowsignal-binary-mode'; binary.innerHTML=binaryHtml(); document.body.appendChild(binary); bindBinaryEvents(binary);}
     applyMode(currentMode()); return true;
   }
-  function applyMode(mode){const normalized=normalizeMode(mode), forex=document.getElementById(FOREX_MODE_ID), binary=document.getElementById(BINARY_MODE_ID); if(forex){forex.hidden=normalized!=='forex'; forex.setAttribute('aria-hidden',normalized==='forex'?'false':'true');} if(binary){binary.hidden=normalized!=='binary'; binary.setAttribute('aria-hidden',normalized==='binary'?'false':'true');} document.querySelectorAll('#flowsignalTradingModeSelector [data-trading-mode]').forEach(button=>{const active=button.dataset.tradingMode===normalized; button.classList.toggle('active',active); button.setAttribute('aria-pressed',String(active));}); document.body?.setAttribute('data-trading-mode',normalized); if(normalized==='binary'){refreshAll(); startPolling();}else stopPolling(); document.dispatchEvent(new CustomEvent('flowsignal:trading-mode-changed',{detail:{mode:normalized}}));}
+  function applyMode(mode){const normalized=normalizeMode(mode), forex=document.getElementById(FOREX_MODE_ID)||document.getElementById('mainApp'), binary=document.getElementById(BINARY_MODE_ID); if(forex){forex.hidden=normalized!=='forex'; forex.setAttribute('aria-hidden',normalized==='forex'?'false':'true');} if(binary){binary.hidden=normalized!=='binary'; binary.setAttribute('aria-hidden',normalized==='binary'?'false':'true');} document.querySelectorAll('#flowsignalTradingModeSelector [data-trading-mode]').forEach(button=>{const active=button.dataset.tradingMode===normalized; button.classList.toggle('active',active); button.setAttribute('aria-pressed',String(active));}); document.body?.setAttribute('data-trading-mode',normalized); if(normalized==='binary'){refreshAll(); startPolling();}else stopPolling(); document.dispatchEvent(new CustomEvent('flowsignal:trading-mode-changed',{detail:{mode:normalized}}));}
   function setMode(mode){const normalized=normalizeMode(mode); localStorage.setItem(MODE_KEY,normalized); applyMode(normalized); return normalized;}
   function setStatus(text,isError=false){setText('binaryDerivStatus',text); toggleClass('binaryDerivStatus','error',isError);}
   function genuineV5Signal(data){const direction=String(data?.signal||data?.direction||'').toUpperCase(); if(!['RISE','FALL'].includes(direction)||data?.strategy_version!==STRATEGY_VERSION||data?.rule_hash!==RULE_HASH) return false; const match=String(data?.signal_id||'').match(/^DERIV_BINARY_V5_NOISY_REVERSAL_FROZEN_1:frxEURUSD:(\d{10,13}):(RISE|FALL)$/); if(!match||match[2]!==direction) return false; const timestamp=Number(match[1]); return Number.isFinite(timestamp)&&timestamp>0;}
