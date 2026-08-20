@@ -1,6 +1,32 @@
 {
-  "rewrites": [
-    { "source": "/app", "destination": "/app.html" },
-    { "source": "/app/", "destination": "/app.html" }
+  "redirects": [
+    { "source": "/app", "destination": "/app.html", "permanent": false },
+    { "source": "/app/", "destination": "/app.html", "permanent": false }
+  ],
+  "headers": [
+    {
+      "source": "/app.html",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-store, max-age=0" }
+      ]
+    },
+    {
+      "source": "/startup.js",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-store, max-age=0" }
+      ]
+    },
+    {
+      "source": "/user-auth.js",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-store, max-age=0" }
+      ]
+    },
+    {
+      "source": "/tab-role-session.js",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-store, max-age=0" }
+      ]
+    }
   ]
 }
