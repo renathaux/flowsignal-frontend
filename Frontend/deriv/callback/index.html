@@ -19,7 +19,7 @@
       const directBackend=local?'http://127.0.0.1:8001':'https://flowsignal-backend-3.onrender.com';
       const params=new URLSearchParams(location.search);
       const error=params.get('error');
-      if(error){status.className='error';status.textContent=params.get('error_description')||error;return;}
+      if(error){status.className='error';status.textContent=error==='access_denied'?'Deriv connection was cancelled. Your existing account connection is unchanged.':'Deriv could not authorize the connection. Return to FlowSignal and try again.';return;}
       const code=params.get('code');
       const returnedState=params.get('state');
       const expectedState=sessionStorage.getItem('flowsignal_deriv_oauth_state');
@@ -29,15 +29,15 @@
         status.className='error';status.textContent='Deriv OAuth verification failed. Return to FlowSignal and connect again.';return;
       }
       try{
-        const sessionResponse=await fetch(`${customerBackend}/auth/session`,{credentials:'include',cache:'no-store'});
+        const customerToken=sessionStorage.getItem('flowsignal_user_session_token')||'';
+        const savedCsrf=sessionStorage.getItem('flowsignal_csrf_token')||'';
+        const sessionHeaders=customerToken?{'Authorization':`FlowSignalUser ${customerToken}`}:{ };
+        const sessionResponse=await fetch(`${customerBackend}/auth/session`,{credentials:'include',cache:'no-store',headers:sessionHeaders});
         const sessionData=await sessionResponse.json().catch(()=>({}));
         let response;
         if(sessionData?.authenticated&&sessionData?.user?.id&&sessionData?.csrf_token){
           if(initiatingUser&&initiatingUser!==sessionData.user.id) throw new Error('Deriv OAuth user mismatch. Return to FlowSignal and reconnect from the correct user account.');
-          const headers={'Content-Type':'application/json','X-FlowSignal-CSRF':sessionData.csrf_token};
-          const stateResponse=await fetch(`${customerBackend}/user/deriv/oauth/state`,{method:'POST',credentials:'include',headers,body:JSON.stringify({state:returnedState,code_verifier:verifier})});
-          const statePayload=await stateResponse.json().catch(()=>({}));
-          if(!stateResponse.ok) throw new Error(statePayload.detail||'Deriv OAuth state validation failed');
+          const headers={'Content-Type':'application/json','Authorization':`FlowSignalUser ${customerToken}`,'X-FlowSignal-CSRF':savedCsrf||sessionData.csrf_token};
           response=await fetch(`${customerBackend}/user/deriv/oauth/exchange`,{method:'POST',credentials:'include',headers,body:JSON.stringify({code,code_verifier:verifier,state:returnedState})});
         }else{
           let legacyUserId=localStorage.getItem('flowsignal_binary_user_id');
@@ -45,7 +45,7 @@
           response=await fetch(`${directBackend}/deriv/oauth/exchange`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code,code_verifier:verifier,user_id:legacyUserId})});
         }
         const payload=await response.json().catch(()=>({}));
-        if(!response.ok||!payload.connection_id)throw new Error(payload.detail||'Deriv connection failed');
+        if(!response.ok||!payload.connection_id){const messages={DERIV_OAUTH_STATE_EXPIRED:'The Deriv login window expired. Start again.',DERIV_OAUTH_STATE_REPLAYED:'This Deriv callback was already used.',DERIV_OAUTH_USER_MISMATCH:'This Deriv login belongs to another FlowSignal account.'};throw new Error(messages[payload.detail]||'Deriv connection could not be completed. Return to FlowSignal and try again.');}
         localStorage.setItem('flowsignal_deriv_connection_id',payload.connection_id);
         sessionStorage.removeItem('flowsignal_deriv_oauth_state');
         sessionStorage.removeItem('flowsignal_deriv_pkce_verifier');
