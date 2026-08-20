@@ -19,6 +19,10 @@
   <link rel="stylesheet" href="mobileChartLayout.css?v=5" />
   <link rel="stylesheet" href="mobileFullMenu.css?v=1" />
   <link rel="stylesheet" href="binary/binary.css?v=9" />
+  <style>
+    .mobile-only > .shared-mode-nav { position:fixed; left:9px; right:9px; bottom:max(8px,env(safe-area-inset-bottom)); height:62px; z-index:2100; }
+    @media (max-height:820px) { .mobile-only > .shared-mode-nav { height:52px; } }
+  </style>
 </head>
 <body class="mobile-only">
   <main class="mobile-app" id="mobileApp">
@@ -69,14 +73,15 @@
       <span><small>CONFIRMATIONS</small><strong id="mSmcConfirm">--</strong></span>
       <span class="arrow">›</span>
     </button>
-    <nav class="bottom-nav" aria-label="Mobile navigation">
-      <button class="active" data-nav="home"><b>⌂</b><span>Home</span></button>
-      <button data-nav="isch"><b>✓</b><span>ISCH</span></button>
-      <button data-nav="fundamental"><b>◉</b><span>Fundamental</span></button>
-      <button data-nav="history"><b>↻</b><span>History</span></button>
-      <button data-nav="mode" aria-label="Switch Forex or Binary mode"><b>FX</b><span>Fx/Bi</span></button>
-    </nav>
   </main>
+
+  <nav class="bottom-nav shared-mode-nav" aria-label="Mobile navigation">
+    <button class="active" data-nav="home"><b>⌂</b><span>Home</span></button>
+    <button data-nav="isch"><b>✓</b><span>ISCH</span></button>
+    <button data-nav="fundamental"><b>◉</b><span>Fundamental</span></button>
+    <button data-nav="history"><b>↻</b><span>History</span></button>
+    <button data-nav="mode" aria-label="Switch Forex or Binary mode"><b>FX</b><span>Fx/Bi</span></button>
+  </nav>
 
   <div id="mobileBackdrop" class="sheet-backdrop hidden" aria-hidden="true"></div>
   <aside id="mobileMenu" class="drawer sheet full-menu-drawer hidden" aria-hidden="true">
