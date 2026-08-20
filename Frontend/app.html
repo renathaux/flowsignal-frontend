@@ -4,6 +4,13 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>nathaux.Fx</title>
+  <script>
+    (function () {
+      if (window.innerWidth <= 700) {
+        window.location.replace("mobile.html?from=dashboard");
+      }
+    })();
+  </script>
   <link rel="stylesheet" href="style.css?v=61" />
   <link rel="stylesheet" href="desktop.css?v=1" media="(min-width: 701px)" />
   <link rel="stylesheet" href="phone.css?v=49" media="(max-width: 700px)" />
