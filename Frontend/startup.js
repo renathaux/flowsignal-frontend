@@ -2,6 +2,44 @@
   const earlyParams = new URLSearchParams(window.location.search);
   const isPublicRoot = /^\/$/.test(window.location.pathname);
   const isAppRoute = /^\/app\/?$/i.test(window.location.pathname);
+  const TAB_WINDOW_PREFIX = 'flowsignal-tab:';
+  const USER_SESSION_KEY = 'flowsignal_user_session_token';
+  const CSRF_KEY = 'flowsignal_csrf_token';
+  const TAB_ROLE_KEY = 'flowsignal_tab_role';
+
+  // This must run before the /app route gate below. user-auth.js is loaded later
+  // by tab-role-session.js, so relying on its recovery routine creates a boot
+  // race: the route gate redirects before that script can restore this tab.
+  function recoverThisTabBeforeRouteGate() {
+    const current = String(window.name || '');
+    if (!current.startsWith(TAB_WINDOW_PREFIX)) return;
+    const tabId = current.slice(TAB_WINDOW_PREFIX.length);
+    if (!tabId || sessionStorage.getItem(USER_SESSION_KEY)) return;
+
+    try {
+      const customer = JSON.parse(localStorage.getItem(`flowsignal_tab_user_session:${tabId}`) || 'null');
+      if (customer?.token) {
+        sessionStorage.setItem(USER_SESSION_KEY, String(customer.token));
+        if (customer.csrf) sessionStorage.setItem(CSRF_KEY, String(customer.csrf));
+        sessionStorage.setItem(TAB_ROLE_KEY, 'user');
+        sessionStorage.removeItem('flowsignal_public_home_mode');
+        sessionStorage.removeItem('flowsignal_tab_signed_out');
+        return;
+      }
+    } catch (_error) {}
+
+    try {
+      const owner = JSON.parse(localStorage.getItem(`flowsignal_tab_admin_session:${tabId}`) || 'null');
+      if (owner?.token) {
+        sessionStorage.setItem(TAB_ROLE_KEY, 'admin');
+        localStorage.setItem('flowsignal_session_token', String(owner.token));
+        sessionStorage.removeItem('flowsignal_public_home_mode');
+        sessionStorage.removeItem('flowsignal_tab_signed_out');
+      }
+    } catch (_error) {}
+  }
+
+  recoverThisTabBeforeRouteGate();
   const customerSessionToken = String(sessionStorage.getItem('flowsignal_user_session_token') || '').trim();
   const ownerRequested = earlyParams.get('owner') === '1';
   const legacyRole = String(sessionStorage.getItem('flowsignal_tab_role') || localStorage.getItem('flowsignal_role') || '').toLowerCase();
