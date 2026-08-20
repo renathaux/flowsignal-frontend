@@ -1,0 +1,137 @@
+name: One-off background dashboard pause patch
+
+on:
+  push:
+    branches:
+      - fix/background-dashboard-pause
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: fix/background-dashboard-pause
+
+      - name: Apply frontend background pause patch
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('Frontend/startup.js')
+          workflow = Path('.github/workflows/one-off-background-dashboard-pause.yml')
+          text = path.read_text()
+
+          marker = "  const legacyRole = String(sessionStorage.getItem('flowsignal_tab_role') || localStorage.getItem('flowsignal_role') || '').toLowerCase();\n"
+          insert = r'''
+
+  // Browser-only background suspension. The Render/cTrader engine is server-owned
+  // and continues normally; this only stops hidden dashboard tabs from polling,
+  // animating, or speaking while another FlowSignal page/tab is active.
+  if (isAppRoute && !window.__FLOWSIGNAL_BACKGROUND_PAUSE_INSTALLED) {
+    const nativeSetInterval = window.setInterval.bind(window);
+    const runtimeSuspended = () => Boolean(document.hidden || window.__FLOWSIGNAL_FRONTEND_SUSPENDED);
+
+    window.__FLOWSIGNAL_FRONTEND_SUSPENDED = Boolean(document.hidden);
+    window.__FLOWSIGNAL_BACKGROUND_PAUSE_INSTALLED = true;
+
+    window.setInterval = function (callback, delay, ...args) {
+      if (typeof callback !== 'function') {
+        return nativeSetInterval(callback, delay, ...args);
+      }
+      return nativeSetInterval(function () {
+        if (runtimeSuspended()) return;
+        return callback.apply(this, args);
+      }, delay);
+    };
+
+    try {
+      const synth = window.speechSynthesis;
+      if (synth && typeof synth.speak === 'function' && !synth.speak.__flowSignalVisibilityGuard) {
+        const nativeSpeak = synth.speak.bind(synth);
+        const guardedSpeak = function (utterance) {
+          if (runtimeSuspended()) return;
+          return nativeSpeak(utterance);
+        };
+        guardedSpeak.__flowSignalVisibilityGuard = true;
+        synth.speak = guardedSpeak;
+      }
+    } catch (_error) {}
+
+    const updateFrontendVisibility = () => {
+      const hidden = Boolean(document.hidden);
+      window.__FLOWSIGNAL_FRONTEND_SUSPENDED = hidden;
+      document.body?.classList.toggle('flowsignal-background-paused', hidden);
+      if (hidden) {
+        try { window.speechSynthesis?.cancel?.(); } catch (_error) {}
+      }
+      document.dispatchEvent(new CustomEvent(
+        hidden ? 'flowsignal:frontend-paused' : 'flowsignal:frontend-resumed',
+        { detail: { hidden, serverTradingContinues: true } }
+      ));
+    };
+
+    document.addEventListener('visibilitychange', updateFrontendVisibility, true);
+    window.addEventListener('pagehide', () => {
+      window.__FLOWSIGNAL_FRONTEND_SUSPENDED = true;
+      try { window.speechSynthesis?.cancel?.(); } catch (_error) {}
+    }, true);
+    window.addEventListener('pageshow', updateFrontendVisibility, true);
+    updateFrontendVisibility();
+  }
+'''
+
+          if '__FLOWSIGNAL_BACKGROUND_PAUSE_INSTALLED' not in text:
+              if marker not in text:
+                  raise SystemExit('startup insertion marker missing')
+              text = text.replace(marker, marker + insert, 1)
+
+          old_owner = "        owner.onclick = () => { window.location.href = '/app?owner=1'; };"
+          new_owner = "        owner.onclick = () => { window.location.href = '/owner.html'; };"
+          if old_owner in text:
+              text = text.replace(old_owner, new_owner, 1)
+
+          path.write_text(text)
+          workflow.unlink()
+          PY
+
+      - name: Verify frontend patch
+        shell: bash
+        run: |
+          node --check Frontend/startup.js
+          python - <<'PY'
+          from pathlib import Path
+          text = Path('Frontend/startup.js').read_text()
+          required = [
+              '__FLOWSIGNAL_BACKGROUND_PAUSE_INSTALLED',
+              "document.addEventListener('visibilitychange'",
+              'window.speechSynthesis?.cancel?.()',
+              "window.location.href = '/owner.html'",
+              "serverTradingContinues: true",
+          ]
+          missing = [item for item in required if item not in text]
+          if missing:
+              raise SystemExit(f'missing expected safety markers: {missing}')
+          if "window.location.href = '/app?owner=1'" in text:
+              raise SystemExit('legacy owner app-first route still present')
+          print('background-dashboard-pause verification PASS')
+          PY
+
+      - name: Commit verified patch
+        if: github.event_name == 'pull_request'
+        shell: bash
+        run: |
+          git config user.name "FlowSignal Safety Bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add Frontend/startup.js .github/workflows/one-off-background-dashboard-pause.yml
+          git commit -m "Pause hidden dashboard runtime and voice"
+          git push origin HEAD:fix/background-dashboard-pause
