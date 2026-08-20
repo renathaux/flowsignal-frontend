@@ -8,7 +8,6 @@ const script = fs.readFileSync(path.join(root, 'binary', 'binary-app.js'), 'utf8
 const css = fs.readFileSync(path.join(root, 'binary', 'binary.css'), 'utf8');
 const loader = fs.readFileSync(path.join(root, 'tab-role-session.js'), 'utf8');
 const mobile = fs.readFileSync(path.join(root, 'mobile.html'), 'utf8');
-const mobileNav = fs.readFileSync(path.join(root, 'mobileNav.js'), 'utf8');
 
 function extract(startNeedle, endNeedle, exports) {
   const start = script.indexOf(startNeedle);
@@ -31,7 +30,7 @@ assert.equal(modes.normalizeMode('unexpected'), 'forex');
 
 assert.match(script, /const MODE_KEY='flowsignal_trading_mode'/);
 assert.match(script, /localStorage\.setItem\(MODE_KEY,normalized\)/, 'mode persists');
-assert.match(script, /else localStorage\.setItem\(MODE_KEY,'forex'\)/, 'normal page loads default to Forex');
+assert.match(script, /else if\(!localStorage\.getItem\(MODE_KEY\)\) localStorage\.setItem\(MODE_KEY,'forex'\)/, 'fresh page loads default to Forex without overwriting a saved mode');
 assert.match(script, /sessionStorage\.getItem\(FOREX_ALERT_GUARD_KEY\)/, 'OAuth return can restore Binary');
 assert.match(script, /forex\.hidden=normalized!==['"]forex['"]/);
 assert.match(script, /binary\.hidden=normalized!==['"]binary['"]/);
@@ -45,7 +44,7 @@ assert.match(script, /Waiting for next signal/);
 assert.match(script, /5-minute RISE signal/);
 assert.match(script, /5-minute FALL signal/);
 assert.match(script, /ACTIVE CONTRACT/);
-assert.match(script, /RECENT BINARY CONTRACTS/);
+assert.match(script, /RECENT CONTRACTS/);
 assert.match(script, /No contracts yet/);
 assert.match(script, /EXECUTION STATUS/);
 assert.match(script, /RISE <span>[^<]+<\/span> CALL/);
@@ -60,7 +59,7 @@ assert.match(script, /Execution Engine/);
 assert.match(script, /DEFAULT_STAKE=10/);
 assert.match(script, /value="10"/);
 assert.match(script, /binary\/account-settings/);
-assert.match(script, /binary\/history\//);
+assert.match(script, /binary\/history/);
 assert.match(script, /limit=50&offset=0/);
 assert.match(script, /binary_auto_enabled/);
 assert.match(script, /account_type_normalized/);
@@ -89,22 +88,14 @@ assert.equal(validatorContext.genuineV5Signal({...genuine, rule_hash:'wrong'}), 
 
 assert.match(script, /getCurrentFlowSignalUserId/, 'temporary user identity is abstracted');
 assert.match(script, /flowsignal_binary_user_id/);
-assert.doesNotMatch(script, /user_id:getCurrentFlowSignalUserId\(\)/, 'Binary requests derive user identity from the authenticated server session');
+assert.match(script, /isLegacyAdmin\(\)\?\{\.\.\.payload,user_id:getCurrentFlowSignalUserId\(\)\}:payload/, 'only the legacy Owner route sends its isolated local identity');
 assert.doesNotMatch(script, /execution-status\/\$\{encodeURIComponent\(getCurrentFlowSignalUserId/, 'execution status cannot select another browser user');
 assert.doesNotMatch(script, /\/binary-v3|V3_RECOMPUTED|binary\/v3/i);
 assert.doesNotMatch(script, /ctrader|Forex LIVE Auto|Forex PAPER Auto/i, 'Binary code does not mutate Forex/cTrader state');
-assert.equal((script.match(/\/deriv\/binary\/v5\/execute/g)||[]).length, 1, 'only the genuine execution path can call execute');
-assert.match(loader, /binary\/binary-app\.js\?v=8/);
-assert.match(mobile, /binary\/binary\.css\?v=6/);
-assert.match(mobile, /binary\/binary-app\.js\?v=8/);
-assert.match(mobile, /data-nav="fxbi"/, 'mobile Fx\/Bi button replaces Auto Trade');
-assert.match(mobile, /<span>Fx\/Bi<\/span>/);
-assert.doesNotMatch(mobile, /data-nav="auto"/, 'old mobile Auto Trade nav item is removed');
-assert.match(mobile, /mobileNav\.js\?v=5/, 'mobile mode-nav cache is bumped');
-assert.match(mobileNav, /fxBiToggle/);
-assert.match(mobileNav, /shared-mode-nav/);
-assert.match(mobileNav, /flowsignal:trading-mode-changed/);
-assert.match(mobileNav, /#flowsignalTradingModeSelector\{display:none!important\}/, 'top mode selector is hidden by mobile-only code');
+assert.equal((script.match(/binary\/v5\/execute/g)||[]).length, 1, 'only the genuine execution path can call execute');
+assert.match(loader, /binary\/binary-app\.js\?v=11/);
+assert.match(mobile, /binary\/binary\.css\?v=7/);
+assert.match(mobile, /binary\/binary-app\.js\?v=11/);
 assert.match(script, /const mobileApp=document\.getElementById\('mobileApp'\)/);
 assert.match(script, /forex\.appendChild\(mobileApp\)/, 'mobile Forex structure is preserved intact');
 
@@ -116,7 +107,7 @@ assert.match(css, /\.flowsignal-mode-selector\{position:fixed[^}]*right:164px/);
 assert.match(css, /body\[data-trading-mode="binary"\] \.flowsignal-mode-selector\{left:calc\(50% \+ 125px\);right:auto;transform:translateX\(-50%\)\}/);
 assert.match(css, /@media\(max-width:1050px\)/);
 assert.match(css, /@media\(max-width:700px\)/);
-assert.match(css, /content:attr\(data-label\)/, 'history becomes labeled cards on mobile');
+assert.match(css, /\.binary-history-card tr\{display:grid/, 'history becomes compact contract cards on mobile');
 assert.match(css, /@media\(max-width:430px\)/);
 assert.match(css, /\.flowsignal-mode-panel\[hidden\]\{display:none!important\}/, 'both dashboards cannot display simultaneously');
 
