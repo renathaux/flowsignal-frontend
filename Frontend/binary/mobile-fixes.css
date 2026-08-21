@@ -99,11 +99,15 @@
   }
 
   body.mobile-only .binary-mobile-account-switch::after {
-    content:"V";
+    content:"⌃";
     position:absolute;
-    right:12px;
-    top:50%;
-    transform:translateY(-50%);
+    top:0;
+    right:5px;
+    bottom:0;
+    width:28px;
+    display:grid;
+    place-items:center;
+    transform:rotate(180deg);
     color:#aebbd0;
     font-size:16px;
     font-weight:900;
@@ -191,9 +195,20 @@
     border:0;
     background:transparent;
     color:#aebbd0;
-    font-size:18px;
+    font-size:0;
     font-weight:900;
     line-height:18px;
+  }
+
+  body.mobile-only .binary-stake-steppers button::before {
+    content:"⌃";
+    display:block;
+    font-size:18px;
+    line-height:18px;
+  }
+
+  body.mobile-only #binaryStakeDecrease::before {
+    transform:rotate(180deg);
   }
 
   body.mobile-only .binary-mobile-stats-card {
