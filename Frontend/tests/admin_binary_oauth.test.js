@@ -14,6 +14,6 @@ assert.match(callback, /location\.replace\('\/app\.html\?deriv=connected'\)/, 'O
 assert.match(callback, /flowsignal_trading_mode','binary'/, 'OAuth preserves Binary mode');
 assert.match(binary, /else if\(!localStorage\.getItem\(MODE_KEY\)\) localStorage\.setItem\(MODE_KEY,'forex'\)/, 'reload preserves the selected trading mode');
 assert.match(binary, /binaryAutoToggle'\)\?\.addEventListener\('change',async\(\)=>/, 'Binary Auto persists immediately when toggled');
-assert.match(roleSession, /binary\/binary-app\.js\?v=12/, 'Binary bundle cache is bumped');
+assert.match(roleSession, /binary\/binary-app\.js\?v=21/, 'Binary bundle cache is bumped');
 
 console.log('admin Binary OAuth routing checks passed');

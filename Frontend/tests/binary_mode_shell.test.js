@@ -76,9 +76,9 @@ const validatorContext = {};
 vm.runInNewContext(`${script.slice(constantsStart, script.indexOf('let mounted', constantsStart))}${script.slice(validatorStart, validatorEnd)}this.genuineV5Signal=genuineV5Signal;`, validatorContext);
 const genuine = {
   signal: 'RISE',
-  strategy_version: 'DERIV_BINARY_V5_NOISY_REVERSAL_FROZEN_1',
-  rule_hash: 'fab52bb80f7f4dd9150adb2f90d7e090816915ff70e6b368518e7fb39444b249',
-  signal_id: 'DERIV_BINARY_V5_NOISY_REVERSAL_FROZEN_1:frxEURUSD:1787097600:RISE',
+  strategy_version: 'DERIV_BINARY_SIMPLE_5M_1',
+  rule_hash: '755ea79159b49281b0671846d0883ec34702efa55c2cf397aafac47058f8e3cb',
+  signal_id: 'DERIV_BINARY_SIMPLE_5M_1:frxEURUSD:1787097600:RISE',
 };
 assert.equal(validatorContext.genuineV5Signal(genuine), true);
 assert.equal(validatorContext.genuineV5Signal({...genuine, signal:'FALL'}), false, 'direction mismatch is blocked');
@@ -93,9 +93,14 @@ assert.doesNotMatch(script, /execution-status\/\$\{encodeURIComponent\(getCurren
 assert.doesNotMatch(script, /\/binary-v3|V3_RECOMPUTED|binary\/v3/i);
 assert.doesNotMatch(script, /ctrader|Forex LIVE Auto|Forex PAPER Auto/i, 'Binary code does not mutate Forex/cTrader state');
 assert.equal((script.match(/binary\/v5\/execute/g)||[]).length, 1, 'only the genuine execution path can call execute');
-assert.match(loader, /binary\/binary-app\.js\?v=12/);
-assert.match(mobile, /binary\/binary\.css\?v=8/);
-assert.match(mobile, /binary\/binary-app\.js\?v=12/);
+assert.match(loader, /binary\/binary-app\.js\?v=21/);
+assert.match(mobile, /binary\/binary\.css\?v=10/);
+assert.match(mobile, /binary\/binary-app\.js\?v=21/);
+assert.match(script, /purchasedToday=items\.filter\(record=>confirmedContract\(record\)/, 'only confirmed contract IDs count as trades');
+assert.match(script, /settledToday=purchasedToday\.filter/, 'wins, losses and P\/L use settled purchases only');
+assert.match(script, /result=failed\?'EXECUTION FAILED'/, 'failed attempts remain visible but clearly labeled');
+assert.match(script, /running&&confirmedContract\(running\)\?running:null/, 'live card requires a confirmed contract ID');
+assert.match(script, /entry===null\?'--'/, 'missing broker prices render as dashes');
 assert.match(script, /const mobileApp=document\.getElementById\('mobileApp'\)/);
 assert.match(script, /forex\.appendChild\(mobileApp\)/, 'mobile Forex structure is preserved intact');
 

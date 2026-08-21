@@ -14,7 +14,7 @@ assert.match(css, /#binaryAccountCard\{grid-column:1\/-1;grid-row:1/, 'mobile st
 assert.match(css, /\.binary-contract-card\{grid-column:1\/-1;grid-row:3/, 'live contract follows the account controls');
 assert.match(css, /\.binary-mobile-stats-card\{grid-column:1\/-1;grid-row:4;display:block/, 'today stats are visible on mobile');
 assert.match(app, /id="binaryTodayTrades"/, 'today trade totals are rendered');
-assert.match(app, /todayItems\.reduce/, 'today profit is calculated from real contract history');
+assert.match(app, /settledToday\.reduce/, 'today profit is calculated from settled purchased contracts only');
 assert.match(app, /id="binaryLifeBar"/, 'live contract includes the entry/current-price position bar');
 assert.match(app, /--binary-current-position/, 'life bar position is driven by the broker price snapshot');
 assert.match(mobile, /data-nav="mode"[^>]*aria-label="Switch Forex or Binary mode"/, 'mobile bottom navigation exposes the Fx/Bi switch');
