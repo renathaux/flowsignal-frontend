@@ -65,8 +65,11 @@ assert.match(script, /binary_auto_enabled/);
 assert.match(script, /account_type_normalized/);
 assert.match(script, /formatMoney\(account\?\.balance,currency\)/);
 assert.match(script, /REAL BINARY EXECUTION DISABLED/);
-assert.match(script, /5 MIN/);
-assert.match(script, /No SL \/ TP/);
+assert.match(script, /Signal timeframe: <strong>5 MIN<\/strong>/);
+assert.match(script, /id="binaryDurationMinutes"[^>]*min="1"[^>]*max="60"[^>]*value="15"/);
+assert.match(script, /duration_minutes:duration/, 'saved account duration is sent to the backend');
+assert.match(script, /Number\.isInteger\(duration\).*duration<1\|\|duration>60/, 'duration is strictly validated before save');
+assert.match(script, /Trading is not offered for this duration/, 'unsupported durations have a customer-friendly error');
 assert.doesNotMatch(script, /id="[^\"]*(?:stopLoss|takeProfit|riskReward|bosCheck|emaCheck|smcCheck)[^\"]*"/i);
 
 const constantsStart = script.indexOf("const STRATEGY_VERSION=");
@@ -93,9 +96,9 @@ assert.doesNotMatch(script, /execution-status\/\$\{encodeURIComponent\(getCurren
 assert.doesNotMatch(script, /\/binary-v3|V3_RECOMPUTED|binary\/v3/i);
 assert.doesNotMatch(script, /ctrader|Forex LIVE Auto|Forex PAPER Auto/i, 'Binary code does not mutate Forex/cTrader state');
 assert.equal((script.match(/binary\/v5\/execute/g)||[]).length, 1, 'only the genuine execution path can call execute');
-assert.match(loader, /binary\/binary-app\.js\?v=21/);
-assert.match(mobile, /binary\/binary\.css\?v=10/);
-assert.match(mobile, /binary\/binary-app\.js\?v=21/);
+assert.match(loader, /binary\/binary-app\.js\?v=22/);
+assert.match(mobile, /binary\/binary\.css\?v=11/);
+assert.match(mobile, /binary\/binary-app\.js\?v=22/);
 assert.match(script, /purchasedToday=items\.filter\(record=>confirmedContract\(record\)/, 'only confirmed contract IDs count as trades');
 assert.match(script, /settledToday=purchasedToday\.filter/, 'wins, losses and P\/L use settled purchases only');
 assert.match(script, /result=failed\?'EXECUTION FAILED'/, 'failed attempts remain visible but clearly labeled');

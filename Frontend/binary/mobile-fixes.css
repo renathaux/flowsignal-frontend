@@ -207,6 +207,65 @@
     line-height:18px;
   }
 
+  body.mobile-only .binary-duration-card {
+    position:relative;
+    padding-right:25px;
+  }
+
+  body.mobile-only .binary-duration-control {
+    margin:6px 0 3px;
+    gap:3px;
+  }
+
+  body.mobile-only .binary-duration-control > input {
+    width:32px;
+    height:22px;
+    padding:1px;
+    border:0;
+    background:transparent;
+    font-size:13px;
+    text-align:left;
+    -moz-appearance:textfield;
+  }
+
+  body.mobile-only .binary-duration-control > input::-webkit-inner-spin-button,
+  body.mobile-only .binary-duration-control > input::-webkit-outer-spin-button {
+    margin:0;
+    -webkit-appearance:none;
+  }
+
+  body.mobile-only .binary-duration-control > span {
+    font-size:9px;
+  }
+
+  body.mobile-only .binary-duration-steppers {
+    position:absolute;
+    top:22px;
+    right:6px;
+    bottom:7px;
+    justify-content:space-between;
+  }
+
+  body.mobile-only .binary-duration-steppers button {
+    width:18px;
+    height:18px;
+    padding:0;
+    font-size:16px;
+    line-height:18px;
+  }
+
+  body.mobile-only .binary-duration-card p {
+    margin-top:1px;
+    font-size:6px;
+    white-space:nowrap;
+  }
+
+  body.mobile-only .binary-duration-card p strong {
+    display:inline;
+    margin:0;
+    font-size:inherit;
+  }
+
   body.mobile-only #binaryStakeDecrease::before {
     transform:rotate(180deg);
   }
