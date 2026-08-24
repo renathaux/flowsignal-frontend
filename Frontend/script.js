@@ -2353,7 +2353,14 @@ let isAdminUnlocked = false;
 const ADMIN_CODE = "nathaux123";
 
 function isAdminAccount() {
-  return localStorage.getItem("flowsignal_role") === "admin";
+  const tabRole = String(
+    window.FlowSignalTabRole?.get?.()
+      || window.FlowSignalAuth?.user?.role
+      || sessionStorage.getItem("flowsignal_tab_role")
+      || localStorage.getItem("flowsignal_role")
+      || ""
+  ).toLowerCase();
+  return tabRole === "admin";
 }
 
 function applyRoleVisibility() {
@@ -2449,6 +2456,10 @@ function updatePnlVisibility() {
     livePnlCardRow.classList.toggle("hidden", !showPnl);
   }
 }
+
+// Authentication is restored asynchronously by tab-role-session.js. Expose
+// this refresh so the Owner desktop P/L strip is reapplied after that restore.
+window.updatePnlVisibility = updatePnlVisibility;
 
 function renderUserLiveAutoStatus() {
   const existing = document.getElementById("userLiveAutoStatus");
