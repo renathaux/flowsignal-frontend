@@ -12489,6 +12489,50 @@ function closeTradeLevelConfirmation({ restore = false, reset = false } = {}) {
   if (restore) drawTradeVisualLevels();
 }
 
+function tradeLevelMatchesBrokerReadback(order, changedLevel, requestedPrice, symbol) {
+  if (!order || !Number.isFinite(Number(requestedPrice))) return false;
+
+  const userLevels = order.user_modified_levels && typeof order.user_modified_levels === "object"
+    ? order.user_modified_levels
+    : {};
+  const candidates = changedLevel === "sl"
+    ? [order.current_sl, order.sl, userLevels.sl]
+    : changedLevel === "tp1"
+      ? [order.tp1, order.take_profit_1, userLevels.tp1]
+      : [order.tp2, order.take_profit_2, order.take_profit, userLevels.tp2];
+  const tolerance = getTradeLevelPriceStep(symbol) / 2;
+
+  return candidates.some((candidate) => (
+    Number.isFinite(Number(candidate)) &&
+    Math.abs(Number(candidate) - Number(requestedPrice)) <= tolerance
+  ));
+}
+
+async function verifyTradeLevelBrokerReadback(symbol, positionId, changedLevel, requestedPrice) {
+  try {
+    const response = await fetch(`${BASE_URL}/dashboard-feed`, {
+      timeoutMs: 12000,
+      suppressErrorPanel: true,
+    });
+    if (!response.ok) return null;
+
+    const feed = await response.json();
+    const activeOrders = feed?._meta?.live_active_orders || {};
+    const order = activeOrders[symbol];
+    const orderPositionId = order?.position_id || order?.broker_position_id;
+    if (!order || String(orderPositionId) !== String(positionId)) return null;
+
+    return tradeLevelMatchesBrokerReadback(
+      order,
+      changedLevel,
+      requestedPrice,
+      symbol
+    ) ? order : null;
+  } catch (_error) {
+    return null;
+  }
+}
+
 async function applyDraggedTradeLevelChange() {
   if (!isAdminAccount()) return;
 
@@ -12527,6 +12571,14 @@ async function applyDraggedTradeLevelChange() {
   applyButton.disabled = true;
   applyButton.textContent = "APPLYING…";
   errorBox?.classList.add("hidden");
+  const confirmationDelay = window.setTimeout(() => {
+    if (!errorBox) return;
+    errorBox.textContent = "Waiting for cTrader confirmation…";
+    errorBox.style.color = "#93c5fd";
+    errorBox.classList.remove("hidden");
+  }, 2500);
+
+  let confirmedOrder = null;
 
   try {
     const response = await fetch(`${BASE_URL}/modify-live-position-levels`, {
@@ -12552,10 +12604,11 @@ async function applyDraggedTradeLevelChange() {
       throw new Error(result.reason || "The broker rejected this change");
     }
 
-    activeLiveOrders[dragSymbol] = {
+    confirmedOrder = {
       ...trade,
       ...(result.active_order || {}),
     };
+    activeLiveOrders[dragSymbol] = confirmedOrder;
     lastKnownTradeLevels[`${dragSymbol}:${tradeId}`] = {
       entry: levels.entry,
       current_sl: levels.current_sl,
@@ -12563,17 +12616,43 @@ async function applyDraggedTradeLevelChange() {
       tp2: levels.tp2,
     };
     console.log("backendUpdate", "success", dragSymbol, tradeId, state.changedLevel);
-    closeTradeLevelConfirmation({ restore: false, reset: true });
-    drawTradeVisualLevels();
   } catch (error) {
-    console.error("backendUpdate", "fail", dragSymbol, tradeId, state.changedLevel, error.message);
-    if (errorBox) {
-      errorBox.textContent = error.message;
-      errorBox.classList.remove("hidden");
+    confirmedOrder = await verifyTradeLevelBrokerReadback(
+      dragSymbol,
+      trade.position_id || trade.broker_position_id,
+      state.changedLevel,
+      price
+    );
+    if (confirmedOrder) {
+      activeLiveOrders[dragSymbol] = { ...trade, ...confirmedOrder };
+      console.log("backendUpdate", "confirmed_by_readback", dragSymbol, tradeId, state.changedLevel);
+    } else {
+      console.error("backendUpdate", "fail", dragSymbol, tradeId, state.changedLevel, error.message);
+      if (errorBox) {
+        errorBox.style.removeProperty("color");
+        errorBox.textContent = error.message;
+        errorBox.classList.remove("hidden");
+      }
     }
   } finally {
-    applyButton.disabled = false;
-    applyButton.textContent = "YES";
+    window.clearTimeout(confirmationDelay);
+    if (confirmedOrder) {
+      applyButton.textContent = "APPLIED ✓";
+      if (errorBox) {
+        errorBox.textContent = "Confirmed by cTrader";
+        errorBox.style.color = "#22c55e";
+        errorBox.classList.remove("hidden");
+      }
+      await new Promise((resolve) => window.setTimeout(resolve, 650));
+      closeTradeLevelConfirmation({ restore: false, reset: true });
+      drawTradeVisualLevels();
+      applyButton.disabled = false;
+      applyButton.textContent = "YES";
+    } else {
+      applyButton.disabled = false;
+      applyButton.textContent = "YES";
+    }
+    errorBox?.style.removeProperty("color");
   }
 }
 

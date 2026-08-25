@@ -16,8 +16,16 @@ assert.ok(
   "owner bearer credentials accompany chart SL/TP amendments",
 );
 assert.ok(
-  html.includes('script.js?v=119'),
+  html.includes('script.js?v=120'),
   "dashboard loads the authenticated amendment bundle with a fresh cache key",
+);
+assert.ok(
+  amendment.includes("verifyTradeLevelBrokerReadback("),
+  "ambiguous/slow responses verify the requested level against broker readback",
+);
+assert.ok(
+  amendment.includes('applyButton.textContent = "APPLIED ✓"'),
+  "the owner receives an explicit broker-confirmed completion state",
 );
 
 console.log("trade level auth tests passed");
