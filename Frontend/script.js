@@ -12522,7 +12522,10 @@ async function applyDraggedTradeLevelChange() {
   try {
     const response = await fetch(`${BASE_URL}/modify-live-position-levels`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        ...newsModeAuthHeaders(),
+      },
       timeoutMs: 45000,
       suppressErrorPanel: true,
       body: JSON.stringify({

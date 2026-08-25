@@ -14,7 +14,7 @@ assert.ok(
   dashboard.includes('let currentChartTimeframe = "15m"') &&
     liveCandles.includes('timeframe: "15m"') &&
     html.includes('id="chartOverlayTitle">EURUSD · 15m') &&
-    html.includes('script.js?v=117'),
+    html.includes('script.js?v=118'),
   "desktop chart and live-candle state default to 15m",
 );
 
