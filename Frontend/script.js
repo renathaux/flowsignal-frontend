@@ -11912,7 +11912,7 @@ let frozenCandlesCache = null;
 // Keep enough history for visual analysis without asking Lightweight Charts and
 // the optional SMC overlay to repaint the full 5,000-row 15m payload on every
 // frame. This is presentation-only; strategy/backend candle history is intact.
-const CHART_DISPLAY_CANDLE_LIMIT = 750;
+const CHART_DISPLAY_CANDLE_LIMIT = 300;
 
 function normalizeTradeChartSymbol(symbol) {
   return String(symbol || "").toUpperCase();
