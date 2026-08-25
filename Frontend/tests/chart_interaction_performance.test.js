@@ -14,7 +14,7 @@ assert.ok(
   dashboard.includes('let currentChartTimeframe = "15m"') &&
     liveCandles.includes('timeframe: "15m"') &&
     html.includes('id="chartOverlayTitle">EURUSD · 15m') &&
-    html.includes('script.js?v=116'),
+    html.includes('script.js?v=117'),
   "desktop chart and live-candle state default to 15m",
 );
 
@@ -67,6 +67,12 @@ assert.ok(
     liveCandles.includes("pollMs: 500") &&
     liveCandles.includes("Math.max(500, Number(pollMs))"),
   "chart recreation does not multiply resize listeners and live polling is bounded",
+);
+
+assert.ok(
+  dashboard.includes("fullUiTranslationObserver.observe(document.body") &&
+    !/fullUiTranslationObserver\.observe\(document\.body,[\s\S]{0,160}characterData\s*:\s*true/.test(dashboard),
+  "live clocks and prices do not trigger the full-interface translator",
 );
 
 console.log("chart interaction performance checks passed");

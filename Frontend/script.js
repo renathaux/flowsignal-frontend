@@ -943,19 +943,14 @@ function translateFullInterface(lang) {
   if (!fullUiTranslationObserver && document.body) {
     fullUiTranslationObserver = new MutationObserver((mutations) => {
       mutations.forEach((mutation) => {
-        if (mutation.type === "characterData") {
-          translateUiTextNode(mutation.target, currentLang);
-        } else {
-          mutation.addedNodes.forEach((node) => {
-            translateUiSubtree(node, currentLang);
-            translateUiAttributes(currentLang, node);
-          });
-        }
+        mutation.addedNodes.forEach((node) => {
+          translateUiSubtree(node, currentLang);
+          translateUiAttributes(currentLang, node);
+        });
       });
     });
     fullUiTranslationObserver.observe(document.body, {
       childList: true,
-      characterData: true,
       subtree: true,
     });
   }
