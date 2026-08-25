@@ -5347,6 +5347,49 @@ function getLiveAugmentedCandles(candles, symbol, timeframe, fallbackPrice = nul
   return list;
 }
 
+function preserveFormingCandleShape(candles, previousCandles, timeframe) {
+  const next = Array.isArray(candles) ? candles : [];
+  const previous = Array.isArray(previousCandles) ? previousCandles : [];
+  if (!next.length || !previous.length || MARKET_IS_CLOSED) return next;
+
+  const timeframeSeconds = getTimeframeSeconds(timeframe);
+  const currentBucket = Math.floor(Date.now() / 1000 / timeframeSeconds)
+    * timeframeSeconds;
+  const latest = next[next.length - 1];
+  const prior = previous[previous.length - 1];
+  if (Number(latest?.time) !== currentBucket) return next;
+
+  const incomingOpen = Number(latest.open);
+  const incomingHigh = Number(latest.high);
+  const incomingLow = Number(latest.low);
+  const incomingClose = Number(latest.close);
+  const priorClose = Number(prior?.close);
+  const sameBucket = Number(prior?.time) === currentBucket;
+  const incomingIsFlat = [incomingHigh, incomingLow, incomingClose]
+    .every((value) => Number.isFinite(value) && value === incomingOpen);
+
+  const preservedOpen = sameBucket
+    ? Number(prior.open)
+    : (incomingIsFlat && Number.isFinite(priorClose) ? priorClose : incomingOpen);
+  const candidates = [incomingOpen, incomingHigh, incomingLow, incomingClose];
+  if (sameBucket) {
+    candidates.push(Number(prior.high), Number(prior.low), Number(prior.close));
+  } else if (incomingIsFlat) {
+    candidates.push(priorClose);
+  }
+  const valid = candidates.filter(Number.isFinite);
+  if (!Number.isFinite(preservedOpen) || !valid.length) return next;
+
+  next[next.length - 1] = {
+    ...latest,
+    open: preservedOpen,
+    high: Math.max(...valid),
+    low: Math.min(...valid),
+    close: incomingClose,
+  };
+  return next;
+}
+
 function updateCard(symbol, data) {
   const cardPrefix = getCardPrefix(symbol);
   let signal = getVisibleSignal(data);
@@ -13027,6 +13070,38 @@ function drawTradeVisualLevels() {
   }
 
   renderDraggableTradeLevels(trade, levels);
+  ensureTradeLevelsVisible(levels);
+}
+
+function ensureTradeLevelsVisible(levels) {
+  if (!chart || !candleSeries) return;
+
+  const prices = [levels?.entry, levels?.current_sl, levels?.tp1, levels?.tp2]
+    .map(Number)
+    .filter(Number.isFinite);
+  if (!prices.length) return;
+
+  window.requestAnimationFrame(() => {
+    const container = document.getElementById("chartContainer");
+    const height = Number(container?.clientHeight || 0);
+    if (!height) return;
+
+    const margin = 18;
+    const hasHiddenLevel = prices.some((price) => {
+      const coordinate = candleSeries.priceToCoordinate(price);
+      return !Number.isFinite(coordinate)
+        || coordinate < margin
+        || coordinate > height - margin;
+    });
+    if (!hasHiddenLevel) return;
+
+    try {
+      chart.priceScale("right").applyOptions({ autoScale: true });
+      scheduleTradeLevelReposition();
+    } catch (error) {
+      console.warn("Trade level auto-fit unavailable");
+    }
+  });
 }
 
 function drawStructureLine(data) {
@@ -13138,6 +13213,11 @@ function renderChartFromPanel(rawData, symbol = currentChartSymbol, timeframe = 
       symbol,
       timeframe,
       panelPlan.price || panelPlan.current_price || panelPlan.entry_price
+    );
+    candles = preserveFormingCandleShape(
+      candles,
+      lastChartData[symbol]?.[timeframe],
+      timeframe
     );
     if (!candles.length) {
       updateChartOverlay(symbol, timeframe, []);

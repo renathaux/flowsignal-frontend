@@ -16,6 +16,10 @@ assert.ok(
   "SL, TP1, and broker TP are rendered as real chart price lines",
 );
 assert.ok(renderer.includes("axisLabelVisible: true"), "trade prices remain visible on the price axis");
-assert.ok(html.includes('script.js?v=120'), "new trade-level renderer bypasses stale cache");
+assert.ok(
+  dashboard.includes('chart.priceScale("right").applyOptions({ autoScale: true })'),
+  "confirmed off-screen SL/TP levels restore price autoscale so both targets are visible",
+);
+assert.ok(html.includes('script.js?v=121'), "new trade-level renderer bypasses stale cache");
 
 console.log("trade level price-line tests passed");

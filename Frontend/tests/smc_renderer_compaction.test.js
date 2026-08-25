@@ -11,6 +11,10 @@ const context = { window: {}, Date, Math, Number, String, Array };
 vm.runInNewContext(source, context);
 
 const compact = context.window.FlowSignalCompactSmcEvents;
+assert.ok(
+  !source.match(/render\(structure\).*this\.addCurrentStructure\(structure,settings\)/),
+  "renderer does not draw the long current-structure high/low projection bars",
+);
 const events = [
   { event_type: "CHOCH", direction: "BULLISH", broken_level: 4600 },
   { event_type: "BOS", direction: "BULLISH", broken_level: 4610 },
