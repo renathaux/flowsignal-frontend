@@ -20,9 +20,20 @@ assert.ok(
 
 const startup = fs.readFileSync(path.join(frontend, "startup.js"), "utf8");
 assert.ok(
-  html.includes('startup.js?v=7') &&
+  html.includes('startup.js?v=8') &&
     startup.includes('live-candle-controller.js?v=4'),
   "updated chart assets use fresh production cache keys",
+);
+
+const signalDisplay = fs.readFileSync(
+  path.join(frontend, "signal-display-state.js"),
+  "utf8",
+);
+assert.ok(
+  startup.includes('signal-display-state.js?v=3') &&
+    signalDisplay.includes("if (signalEl.textContent !== label)") &&
+    signalDisplay.includes("if (status && status.textContent !== value)"),
+  "signal display observer writes are idempotent and cannot self-trigger continuously",
 );
 
 assert.ok(

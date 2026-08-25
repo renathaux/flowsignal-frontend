@@ -198,12 +198,18 @@
 
   function applySignalElement(signalEl, noteEl, entry) {
     if (!signalEl || !entry) return;
-    signalEl.textContent = displayLabel(entry);
-    signalEl.dataset.executionState = entry.signal === 'WAIT' ? 'wait' : 'signal';
+    const label = displayLabel(entry);
+    const executionState = entry.signal === 'WAIT' ? 'wait' : 'signal';
+    if (signalEl.textContent !== label) signalEl.textContent = label;
+    if (signalEl.dataset.executionState !== executionState) {
+      signalEl.dataset.executionState = executionState;
+    }
     if (noteEl) {
       const note = displayNote(entry);
-      noteEl.textContent = note;
-      noteEl.classList.toggle('hidden', !note);
+      if (noteEl.textContent !== note) noteEl.textContent = note;
+      if (noteEl.classList.contains('hidden') === Boolean(note)) {
+        noteEl.classList.toggle('hidden', !note);
+      }
     }
   }
 
@@ -231,7 +237,7 @@
     if (!row) return;
     const leaves = Array.from(row.querySelectorAll('*')).filter((el) => el.children.length === 0 && el !== label);
     const status = leaves[leaves.length - 1] || row.lastElementChild;
-    if (status) status.textContent = value;
+    if (status && status.textContent !== value) status.textContent = value;
   }
 
   function resetEntryStrategyChecksForWaitSignals() {
