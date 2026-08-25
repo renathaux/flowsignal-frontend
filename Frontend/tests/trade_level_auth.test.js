@@ -16,7 +16,7 @@ assert.ok(
   "owner bearer credentials accompany chart SL/TP amendments",
 );
 assert.ok(
-  html.includes('script.js?v=118'),
+  html.includes('script.js?v=119'),
   "dashboard loads the authenticated amendment bundle with a fresh cache key",
 );
 

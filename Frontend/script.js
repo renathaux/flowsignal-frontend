@@ -12232,9 +12232,18 @@ function addTradeVisualLine(price, title, color, options = {}) {
     tradeVisualPriceLines[executionSymbol] = {};
   }
 
+  const line = candleSeries.createPriceLine({
+    price: numericPrice,
+    color,
+    lineWidth: Number(options.lineWidth || 2),
+    lineStyle: options.lineStyle ?? LightweightCharts.LineStyle.Solid,
+    axisLabelVisible: true,
+    title,
+  });
+
   tradeVisualPriceLines[executionSymbol][lineType] = {
     id,
-    line: null,
+    line,
     lineType,
     tradeId,
     price: numericPrice,
