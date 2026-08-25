@@ -59,10 +59,11 @@ body.menu-drawer-open[data-active-settings-page] > #mainApp > #sideMenu,body.men
 #flowsignalForexMode[hidden],#flowsignalBinaryMode[hidden]{display:none!important;visibility:hidden!important;pointer-events:none!important}
 body[data-trading-mode="forex"] #flowsignalBinaryMode,body[data-trading-mode="binary"] #flowsignalForexMode{display:none!important;visibility:hidden!important;pointer-events:none!important}
 @media(min-width:701px){
+  #flowsignalTradingModeSelector{position:fixed!important;top:9px!important;z-index:2000100!important}
   html:has(body[data-trading-mode="binary"]),body[data-trading-mode="binary"]{height:100%;overflow:hidden!important;background:#020914}
   body[data-trading-mode="binary"] #mainApp{display:none!important;visibility:hidden!important;pointer-events:none!important}
   body[data-trading-mode="binary"] #flowsignalBinaryMode{position:fixed;inset:0;z-index:800;display:block!important;visibility:visible!important;overflow:auto;background:#020914}
-  body[data-trading-mode="binary"] #flowsignalTradingModeSelector{z-index:950}
+  body[data-trading-mode="binary"] #flowsignalTradingModeSelector{z-index:2000100!important}
 }
 @media(max-width:700px){
   html:has(body[data-trading-mode="binary"]),body[data-trading-mode="binary"]{height:100%;overflow:hidden!important}

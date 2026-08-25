@@ -30,7 +30,7 @@
   function loadTabRoleSession() {
     if (window.FlowSignalTabRole || document.querySelector('script[data-flow-tab-role]')) return;
     const script = document.createElement("script");
-    script.src = "tab-role-session.js?v=9";
+    script.src = "tab-role-session.js?v=10";
     script.dataset.flowTabRole = "true";
     script.async = false;
     document.body.appendChild(script);
