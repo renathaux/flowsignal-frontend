@@ -11909,6 +11909,10 @@ function hideChartAttributionMark() {
 let MARKET_IS_CLOSED = false;
 let frozenChart = {};
 let frozenCandlesCache = null;
+// Keep enough history for visual analysis without asking Lightweight Charts and
+// the optional SMC overlay to repaint the full 5,000-row 15m payload on every
+// frame. This is presentation-only; strategy/backend candle history is intact.
+const CHART_DISPLAY_CANDLE_LIMIT = 750;
 
 function normalizeTradeChartSymbol(symbol) {
   return String(symbol || "").toUpperCase();
@@ -12015,17 +12019,6 @@ function initChart() {
   }
 });
 
-  if (container.dataset.tradeLevelZoomBound !== "true") {
-    container.dataset.tradeLevelZoomBound = "true";
-    container.addEventListener("wheel", scheduleTradeLevelReposition, {
-      passive: true,
-    });
-    container.addEventListener("pointermove", (event) => {
-      if (event.buttons) scheduleTradeLevelReposition();
-    });
-    container.addEventListener("pointerup", scheduleTradeLevelReposition);
-  }
-
   try {
     chart.timeScale().subscribeVisibleLogicalRangeChange(
       scheduleTradeLevelReposition
@@ -12107,7 +12100,7 @@ function getChartCandles(rawData, symbol = currentChartSymbol, timeframe = curre
     return true;
   });
 
-  return cleaned.slice(-5000);
+  return cleaned.slice(-CHART_DISPLAY_CANDLE_LIMIT);
 }
 
 function updateChartOverlay(symbol, timeframe, candles) {
@@ -12410,6 +12403,9 @@ let tradeLevelRepositionFrame = null;
 let tradeLevelRepositionTrailingTimer = null;
 
 function scheduleTradeLevelReposition() {
+  const layer = document.getElementById("tradeLevelDragLayer");
+  if (!layer?.querySelector(".trade-level-drag-line")) return;
+
   // Pan and zoom can emit dozens of visible-range events per frame. Keep only
   // one paint-time update plus one trailing correction after interaction ends.
   if (tradeLevelRepositionFrame === null) {
@@ -13181,7 +13177,7 @@ function forceChartRenderFromLatest(symbol = currentChartSymbol, timeframe = cur
    latestRawPanelData?.[symbol]?.price
      || latestRawPanelData?.[symbol]?.current_price
      || latestRawPanelData?.[symbol]?.entry_price
- ).slice(-5000);
+ ).slice(-CHART_DISPLAY_CANDLE_LIMIT);
   if (!candles.length) {
     console.warn(`No candles available for ${symbol}`);
     return;

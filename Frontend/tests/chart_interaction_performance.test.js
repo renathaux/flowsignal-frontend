@@ -14,7 +14,7 @@ assert.ok(
   dashboard.includes('let currentChartTimeframe = "15m"') &&
     liveCandles.includes('timeframe: "15m"') &&
     html.includes('id="chartOverlayTitle">EURUSD · 15m') &&
-    html.includes('script.js?v=114'),
+    html.includes('script.js?v=115'),
   "desktop chart and live-candle state default to 15m",
 );
 
@@ -26,8 +26,17 @@ assert.ok(
 );
 
 assert.ok(
+  dashboard.includes("const CHART_DISPLAY_CANDLE_LIMIT = 750") &&
+    dashboard.includes("cleaned.slice(-CHART_DISPLAY_CANDLE_LIMIT)") &&
+    !dashboard.includes("cleaned.slice(-5000)"),
+  "the 5,000-row 15m payload is capped before chart and SMC rendering",
+);
+
+assert.ok(
   dashboard.includes("if (tradeLevelRepositionFrame === null)") &&
+    dashboard.includes('if (!layer?.querySelector(".trade-level-drag-line")) return') &&
     dashboard.includes("window.clearTimeout(tradeLevelRepositionTrailingTimer)") &&
+    !dashboard.includes('container.addEventListener("wheel", scheduleTradeLevelReposition') &&
     !dashboard.includes("window.setTimeout(repositionTradeLevelDragLines, 40)") &&
     !dashboard.includes("window.setTimeout(repositionTradeLevelDragLines, 120)"),
   "pan and zoom redraw work is coalesced instead of queued per range event",
