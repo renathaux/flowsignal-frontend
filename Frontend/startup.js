@@ -287,7 +287,7 @@
 
   if (document.readyState === "loading") {
     if (window.matchMedia("(min-width: 701px)").matches) {
-      document.write('<link rel="stylesheet" href="desktop.css?v=2" media="(min-width: 701px)">');
+      document.write('<link rel="stylesheet" href="desktop.css?v=3" media="(min-width: 701px)">');
     }
     if (!window.FlowSignalLiveCandles) {
       document.write('<script src="chart/live-candles/live-candle-controller.js?v=4"><\/script>');

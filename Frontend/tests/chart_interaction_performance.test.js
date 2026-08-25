@@ -20,9 +20,19 @@ assert.ok(
 
 const startup = fs.readFileSync(path.join(frontend, "startup.js"), "utf8");
 assert.ok(
-  html.includes('startup.js?v=10') &&
+  html.includes('startup.js?v=11') &&
     startup.includes('live-candle-controller.js?v=4'),
   "updated chart assets use fresh production cache keys",
+);
+
+const desktopCss = fs.readFileSync(path.join(frontend, "desktop.css"), "utf8");
+assert.ok(
+  html.includes('desktop.css?v=3') &&
+    startup.includes('desktop.css?v=3') &&
+    desktopCss.includes("body.desktop-chart-fullscreen-open .history-section") &&
+    desktopCss.includes(".chart-section:fullscreen>.history-section") &&
+    desktopCss.includes("body.fit-mode.desktop-chart-fullscreen-open .chart-panel .chart-section>.chart-box"),
+  "desktop full-screen reserves the viewport for the chart and hides signal history",
 );
 
 const tabRole = fs.readFileSync(path.join(frontend, "tab-role-session.js"), "utf8");
