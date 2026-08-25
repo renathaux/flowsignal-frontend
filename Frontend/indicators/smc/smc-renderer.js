@@ -9,6 +9,22 @@
   function safeRemove(chart,series){try{if(chart&&series&&typeof chart.removeSeries==="function")chart.removeSeries(series);}catch(_){}}
   function midTime(a,b){return Math.max(a,Math.floor(a+(b-a)/2));}
   function lineStyle(style){return style==="dashed"?2:style==="dotted"?1:0;}
+  function compactStructureEvents(events){
+    const compacted=[];
+    (Array.isArray(events)?events:[]).forEach(event=>{
+      const type=String(event?.event_type||"").toUpperCase();
+      const direction=String(event?.direction||"").toUpperCase();
+      const previous=compacted[compacted.length-1];
+      const previousType=String(previous?.event_type||"").toUpperCase();
+      const previousDirection=String(previous?.direction||"").toUpperCase();
+      if(type==="BOS"&&previousType==="BOS"&&direction&&direction===previousDirection){
+        compacted[compacted.length-1]=event;
+      }else{
+        compacted.push(event);
+      }
+    });
+    return compacted;
+  }
   function fallback(){return {bos:{show:true,color:"#c7cbd1",width:1,style:"solid"},choch:{show:true,color:"#f0c419",width:1,style:"solid"},structureHigh:{show:true,color:"#2962ff",width:1,style:"solid"},structureLow:{show:true,color:"#2962ff",width:1,style:"solid"},fibs:{"0.786":{show:true,color:"#64b5f6",width:1,style:"solid"},"0.705":{show:true,color:"#f23645",width:1,style:"solid"},"0.618":{show:true,color:"#089981",width:1,style:"solid"},"0.5":{show:true,color:"#4caf50",width:1,style:"solid"},"0.382":{show:true,color:"#81c784",width:1,style:"solid"}}};}
   class SmcRenderer{
     constructor(){this.chart=null;this.candleSeries=null;this.series=[];this.enabled=false;this.lastStructure=null;}
@@ -24,7 +40,8 @@
     addBreak(event,settings){const price=Number(event?.broken_level),start=epoch(event?.broken_swing_timestamp),end=epoch(event?.timestamp);if(![price,start,end].every(Number.isFinite))return;const isChoch=String(event?.event_type||"").toUpperCase()==="CHOCH";const isBullish=String(event?.direction||"").toUpperCase()==="BULLISH";this.addHorizontal({start,end,price,cfg:isChoch?settings.choch:settings.bos,label:isChoch?"CHoCH":"BOS",labelPosition:isBullish?"aboveBar":"belowBar"});}
     addCurrentStructure(structure,settings){const c=structure?.current_structure;if(!c)return;const end=epoch(c.end_timestamp),hs=epoch(c.high_start_timestamp),ls=epoch(c.low_start_timestamp),high=Number(c.high),low=Number(c.low);if([hs,end,high].every(Number.isFinite))this.addHorizontal({start:hs,end,price:high,cfg:settings.structureHigh||fallback().structureHigh,label:"Structure High",labelPosition:"aboveBar"});if([ls,end,low].every(Number.isFinite))this.addHorizontal({start:ls,end,price:low,cfg:settings.structureLow||fallback().structureLow,label:"Structure Low",labelPosition:"belowBar"});}
     addFibs(structure,settings){const end=epoch(structure?.current_structure?.end_timestamp);if(!Number.isFinite(end))return;(Array.isArray(structure?.fib_levels)?structure.fib_levels:[]).forEach(level=>{const key=String(Number(level?.value)),price=Number(level?.price),start=epoch(level?.start_timestamp),cfg=settings.fibs?.[key];if(cfg&&[price,start].every(Number.isFinite))this.addHorizontal({start,end,price,cfg,label:key,labelPosition:"aboveBar"});});}
-    render(structure){this.lastStructure=structure||null;const viewport=this.captureViewport();this.clear();if(!this.enabled||!this.chart||!this.candleSeries||!structure){this.restoreViewport(viewport);return;}const settings=this.cfg();(Array.isArray(structure.events)?structure.events:[]).slice(-10).forEach(e=>this.addBreak(e,settings));this.addCurrentStructure(structure,settings);this.addFibs(structure,settings);this.restoreViewport(viewport);window.requestAnimationFrame(()=>this.restoreViewport(viewport));}
+    render(structure){this.lastStructure=structure||null;const viewport=this.captureViewport();this.clear();if(!this.enabled||!this.chart||!this.candleSeries||!structure){this.restoreViewport(viewport);return;}const settings=this.cfg();compactStructureEvents(structure.events).slice(-10).forEach(e=>this.addBreak(e,settings));this.addCurrentStructure(structure,settings);this.addFibs(structure,settings);this.restoreViewport(viewport);window.requestAnimationFrame(()=>this.restoreViewport(viewport));}
   }
   window.FlowSignalSmcRenderer=new SmcRenderer();
+  window.FlowSignalCompactSmcEvents=compactStructureEvents;
 })();
