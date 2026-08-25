@@ -58,6 +58,12 @@ body.menu-drawer-open[data-active-settings-page] > #mainApp > #sideMenu,body.men
 /* The mobile Binary surface is an isolated, single-viewport application. */
 #flowsignalForexMode[hidden],#flowsignalBinaryMode[hidden]{display:none!important;visibility:hidden!important;pointer-events:none!important}
 body[data-trading-mode="forex"] #flowsignalBinaryMode,body[data-trading-mode="binary"] #flowsignalForexMode{display:none!important;visibility:hidden!important;pointer-events:none!important}
+@media(min-width:701px){
+  html:has(body[data-trading-mode="binary"]),body[data-trading-mode="binary"]{height:100%;overflow:hidden!important;background:#020914}
+  body[data-trading-mode="binary"] #mainApp{display:none!important;visibility:hidden!important;pointer-events:none!important}
+  body[data-trading-mode="binary"] #flowsignalBinaryMode{position:fixed;inset:0;z-index:800;display:block!important;visibility:visible!important;overflow:auto;background:#020914}
+  body[data-trading-mode="binary"] #flowsignalTradingModeSelector{z-index:950}
+}
 @media(max-width:700px){
   html:has(body[data-trading-mode="binary"]),body[data-trading-mode="binary"]{height:100%;overflow:hidden!important}
   body[data-trading-mode="binary"] #flowsignalBinaryMode{position:fixed;inset:0;z-index:850;display:block!important;overflow:hidden}

@@ -96,9 +96,11 @@ assert.doesNotMatch(script, /execution-status\/\$\{encodeURIComponent\(getCurren
 assert.doesNotMatch(script, /\/binary-v3|V3_RECOMPUTED|binary\/v3/i);
 assert.doesNotMatch(script, /ctrader|Forex LIVE Auto|Forex PAPER Auto/i, 'Binary code does not mutate Forex/cTrader state');
 assert.equal((script.match(/binary\/v5\/execute/g)||[]).length, 1, 'only the genuine execution path can call execute');
-assert.match(loader, /binary\/binary-app\.js\?v=22/);
-assert.match(mobile, /binary\/binary\.css\?v=11/);
-assert.match(mobile, /binary\/binary-app\.js\?v=22/);
+assert.match(loader, /binary\/binary-app\.js\?v=23/);
+assert.match(mobile, /binary\/binary\.css\?v=12/);
+assert.match(mobile, /binary\/binary-app\.js\?v=23/);
+assert.match(css, /body\[data-trading-mode="binary"\] #mainApp\{display:none!important/, 'desktop Forex app is force-hidden in Binary mode');
+assert.match(css, /#flowsignalBinaryMode\{position:fixed;inset:0;z-index:800/, 'desktop Binary mode owns the full viewport');
 assert.match(script, /purchasedToday=items\.filter\(record=>confirmedContract\(record\)/, 'only confirmed contract IDs count as trades');
 assert.match(script, /settledToday=purchasedToday\.filter/, 'wins, losses and P\/L use settled purchases only');
 assert.match(script, /result=failed\?'EXECUTION FAILED'/, 'failed attempts remain visible but clearly labeled');
