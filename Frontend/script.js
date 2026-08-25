@@ -25,7 +25,7 @@ const NEWS_PROTECTION_AFTER_MS = 15 * 60 * 1000;
 // These values are needed by early role guards before chart setup begins.
 // Keep them initialized before any top-level UI initializer can call clearTradeLines().
 let currentChartSymbol = "EURUSD";
-let currentChartTimeframe = "5m";
+let currentChartTimeframe = "15m";
 let chartModuleInitialized = false;
 // ==============================
 // 🌍 LANGUAGE SYSTEM
@@ -12034,15 +12034,19 @@ function initChart() {
     console.warn("Chart level zoom subscription unavailable");
   }
 
-  window.addEventListener("resize", () => {
-  if (chart && container) {
-    chart.applyOptions({
-      width: container.clientWidth || 800,
-      height: Math.max(container.clientHeight || 420, 320)
+  if (!window.__flowSignalChartResizeBound) {
+    window.__flowSignalChartResizeBound = true;
+    window.addEventListener("resize", () => {
+      const activeContainer = document.getElementById("chartContainer");
+      if (chart && activeContainer) {
+        chart.applyOptions({
+          width: activeContainer.clientWidth || 800,
+          height: Math.max(activeContainer.clientHeight || 420, 320)
+        });
+        scheduleTradeLevelReposition();
+      }
     });
-    scheduleTradeLevelReposition();
   }
-});
 }
 
 const chartLibraryScript = document.querySelector("script[data-flow-chart-library]");
@@ -12402,10 +12406,24 @@ function repositionTradeLevelDragLines() {
   });
 }
 
+let tradeLevelRepositionFrame = null;
+let tradeLevelRepositionTrailingTimer = null;
+
 function scheduleTradeLevelReposition() {
-  window.requestAnimationFrame(repositionTradeLevelDragLines);
-  window.setTimeout(repositionTradeLevelDragLines, 40);
-  window.setTimeout(repositionTradeLevelDragLines, 120);
+  // Pan and zoom can emit dozens of visible-range events per frame. Keep only
+  // one paint-time update plus one trailing correction after interaction ends.
+  if (tradeLevelRepositionFrame === null) {
+    tradeLevelRepositionFrame = window.requestAnimationFrame(() => {
+      tradeLevelRepositionFrame = null;
+      repositionTradeLevelDragLines();
+    });
+  }
+
+  window.clearTimeout(tradeLevelRepositionTrailingTimer);
+  tradeLevelRepositionTrailingTimer = window.setTimeout(() => {
+    tradeLevelRepositionTrailingTimer = null;
+    repositionTradeLevelDragLines();
+  }, 80);
 }
 
 function openTradeLevelConfirmation() {

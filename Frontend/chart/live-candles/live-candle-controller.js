@@ -42,10 +42,10 @@
   const state = {
     series: null,
     symbol: "EURUSD",
-    timeframe: "5m",
+    timeframe: "15m",
     candle: null,
     endpoint: "",
-    pollMs: 250,
+    pollMs: 500,
     timer: null,
     requestInFlight: false,
     lastTickTimestamp: 0,
@@ -177,7 +177,7 @@
     },
     start({ endpoint, pollMs } = {}) {
       if (endpoint) state.endpoint = String(endpoint);
-      if (Number.isFinite(Number(pollMs))) state.pollMs = Math.max(250, Number(pollMs));
+      if (Number.isFinite(Number(pollMs))) state.pollMs = Math.max(500, Number(pollMs));
       if (!state.endpoint) return false;
       state.running = true;
       schedulePoll(0);
