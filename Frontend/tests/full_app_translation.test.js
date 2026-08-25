@@ -4,7 +4,7 @@ const path = require("node:path");
 const vm = require("node:vm");
 
 const scriptPath = path.join(__dirname, "..", "script.js");
-const htmlPath = path.join(__dirname, "..", "index.html");
+const htmlPath = path.join(__dirname, "..", "app.html");
 const source = fs.readFileSync(scriptPath, "utf8");
 const html = fs.readFileSync(htmlPath, "utf8");
 const start = source.indexOf("const FULL_UI_TRANSLATIONS");
@@ -52,6 +52,6 @@ assert.equal(context.canTranslate("Current mode: BLOCK ONLY"), true);
 assert.ok(source.includes("translateFullInterface(lang);"), "language changes translate the full app");
 assert.ok(source.includes("new MutationObserver"), "dynamic UI refreshes remain translated");
 assert.ok(source.includes("document.documentElement.lang = safeLang"), "document language follows selection");
-assert.ok(html.includes('script.js?v=112'), "browser cache is busted for the notification reliability release");
+assert.ok(html.includes('script.js?v=117'), "browser cache is busted for the latest dashboard release");
 
 console.log("full app translation tests passed");
