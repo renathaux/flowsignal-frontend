@@ -20,9 +20,17 @@ assert.ok(
 
 const startup = fs.readFileSync(path.join(frontend, "startup.js"), "utf8");
 assert.ok(
-  html.includes('startup.js?v=8') &&
+  html.includes('startup.js?v=9') &&
     startup.includes('live-candle-controller.js?v=4'),
   "updated chart assets use fresh production cache keys",
+);
+
+const tabRole = fs.readFileSync(path.join(frontend, "tab-role-session.js"), "utf8");
+assert.ok(
+  startup.includes('tab-role-session.js?v=11') &&
+    tabRole.includes(".observe(dashboard, { childList: true, subtree: true })") &&
+    !tabRole.includes("attributeFilter: ['class', 'style', 'hidden', 'aria-hidden']"),
+  "desktop layout observer does not retrigger itself from its own style writes",
 );
 
 const signalDisplay = fs.readFileSync(

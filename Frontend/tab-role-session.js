@@ -211,7 +211,11 @@
         ensureDesktopAnalysisLayout();
         if (getTabRole() === 'user') ensureUserAnalysisVisibility();
       });
-    }).observe(dashboard, { childList: true, subtree: true, attributes: true, attributeFilter: ['class', 'style', 'hidden', 'aria-hidden'] });
+    // Layout helpers write class/style attributes themselves. Observing those
+    // same attributes creates a perpetual observer -> rAF -> style-write loop
+    // that competes with chart drag and zoom. Newly inserted dashboard nodes
+    // are sufficient to trigger layout reconciliation.
+    }).observe(dashboard, { childList: true, subtree: true });
   }
 
   function refreshRoleUi() {
