@@ -299,13 +299,13 @@
     document.write('<script src="indicators/smc/smc-chart-bridge.js?v=6"><\/script>');
     document.write('<script src="indicators/smc/smc-local-engine.js?v=4"><\/script>');
     document.write('<script src="indicators/smc/smc-local-visual.js?v=6"><\/script>');
-    document.write('<script src="signal-display-state.js?v=3"><\/script>');
+    document.write('<script src="signal-display-state.js?v=4"><\/script>');
   }
 
   function loadTabRoleSession() {
     if (window.FlowSignalTabRole || document.querySelector('script[data-flow-tab-role-session]')) return;
     const script = document.createElement("script");
-    script.src = "tab-role-session.js?v=11";
+    script.src = "tab-role-session.js?v=12";
     script.dataset.flowTabRoleSession = "true";
     script.async = false;
     document.body.appendChild(script);

@@ -195,29 +195,6 @@
     syncCurrentStrategyPresentation();
   }
 
-  function attachDashboardObserver() {
-    if (!supportedDesktop) return;
-    const dashboard = document.querySelector('.dashboard-grid') || document.getElementById('mainApp');
-    if (!dashboard || dashboard.dataset.flowSignalUserAnalysisObserver === 'true') return;
-    dashboard.dataset.flowSignalUserAnalysisObserver = 'true';
-    let scheduled = false;
-    new MutationObserver(() => {
-      if (scheduled) return;
-      scheduled = true;
-      requestAnimationFrame(() => {
-        scheduled = false;
-        applyChromeReadability();
-        ensureSafariInsightVisibility();
-        ensureDesktopAnalysisLayout();
-        if (getTabRole() === 'user') ensureUserAnalysisVisibility();
-      });
-    // Layout helpers write class/style attributes themselves. Observing those
-    // same attributes creates a perpetual observer -> rAF -> style-write loop
-    // that competes with chart drag and zoom. Newly inserted dashboard nodes
-    // are sufficient to trigger layout reconciliation.
-    }).observe(dashboard, { childList: true, subtree: true });
-  }
-
   function refreshRoleUi() {
     const role = getTabRole();
     if (!role) return;
@@ -228,7 +205,6 @@
     ensureSafariInsightVisibility();
     ensureDesktopAnalysisLayout();
     if (supportedDesktop) ensureUserAnalysisVisibility();
-    attachDashboardObserver();
   }
 
   document.addEventListener('flowsignal:authenticated', () => {
@@ -241,15 +217,6 @@
     setTimeout(refreshRoleUi, 0);
     setTimeout(refreshRoleUi, 300);
   }, { once: true });
-
-  if (supportedDesktop) {
-    setInterval(() => {
-      applyChromeReadability();
-      ensureSafariInsightVisibility();
-      ensureDesktopAnalysisLayout();
-      if (getTabRole() === 'user') ensureUserAnalysisVisibility();
-    }, 3000);
-  }
 
   refreshRoleUi();
   loadUserAuth();

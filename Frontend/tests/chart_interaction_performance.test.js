@@ -20,17 +20,17 @@ assert.ok(
 
 const startup = fs.readFileSync(path.join(frontend, "startup.js"), "utf8");
 assert.ok(
-  html.includes('startup.js?v=9') &&
+  html.includes('startup.js?v=10') &&
     startup.includes('live-candle-controller.js?v=4'),
   "updated chart assets use fresh production cache keys",
 );
 
 const tabRole = fs.readFileSync(path.join(frontend, "tab-role-session.js"), "utf8");
 assert.ok(
-  startup.includes('tab-role-session.js?v=11') &&
-    tabRole.includes(".observe(dashboard, { childList: true, subtree: true })") &&
-    !tabRole.includes("attributeFilter: ['class', 'style', 'hidden', 'aria-hidden']"),
-  "desktop layout observer does not retrigger itself from its own style writes",
+  startup.includes('tab-role-session.js?v=12') &&
+    !tabRole.includes("new MutationObserver") &&
+    !tabRole.includes("setInterval(() =>"),
+  "desktop role layout runs on lifecycle events rather than global polling",
 );
 
 const signalDisplay = fs.readFileSync(
@@ -38,10 +38,11 @@ const signalDisplay = fs.readFileSync(
   "utf8",
 );
 assert.ok(
-  startup.includes('signal-display-state.js?v=3') &&
+  startup.includes('signal-display-state.js?v=4') &&
     signalDisplay.includes("if (signalEl.textContent !== label)") &&
-    signalDisplay.includes("if (status && status.textContent !== value)"),
-  "signal display observer writes are idempotent and cannot self-trigger continuously",
+    signalDisplay.includes("if (status && status.textContent !== value)") &&
+    !signalDisplay.includes("new MutationObserver"),
+  "signal display renders from data responses without rescanning the page on every mutation",
 );
 
 assert.ok(

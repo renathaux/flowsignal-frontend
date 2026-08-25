@@ -316,8 +316,10 @@
     window.playAlert = guardedPlayAlert;
   }
 
-  const observer = new MutationObserver(() => window.requestAnimationFrame(render));
-  const start = () => { observer.observe(document.body, { subtree: true, childList: true, characterData: true }); installAlertGuard(); render(); };
+  // Signal state is rendered after each intercepted dashboard response below.
+  // A body-wide MutationObserver made every price/countdown/text update scan the
+  // entire document, continuously competing with scroll, drag, and zoom.
+  const start = () => { installAlertGuard(); render(); };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start, { once: true }); else start();
   window.addEventListener('load', installAlertGuard, { once: true });
 
