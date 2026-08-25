@@ -13077,6 +13077,7 @@ function ensureTradeLevelsVisible(levels) {
   if (!chart || !candleSeries) return;
 
   const prices = [levels?.entry, levels?.current_sl, levels?.tp1, levels?.tp2]
+    .filter((value) => value !== null && value !== undefined && value !== "")
     .map(Number)
     .filter(Number.isFinite);
   if (!prices.length) return;
