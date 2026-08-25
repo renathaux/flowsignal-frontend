@@ -16,6 +16,7 @@
     lastError: null,
     localReady: false,
     localCandleCount: 0,
+    pointSize: null,
   };
 
   function renderer() { return window.FlowSignalSmcRenderer || null; }
@@ -59,7 +60,12 @@
     const candles = Array.isArray(detail?.candles) ? detail.candles : [];
     if (candles.length < 10) return false;
 
-    const structure = engine.analyze(candles, { leftBars: 2, rightBars: 2 });
+    const structure = engine.analyze(candles, {
+      leftBars: 2,
+      rightBars: 2,
+      timeframe,
+      pointSize: state.pointSize,
+    });
     structure.symbol = symbol;
     structure.timeframe = timeframe;
     structure.source = "browser_closed_chart_candles";
@@ -77,6 +83,8 @@
     mount({ chart, candleSeries, symbol, timeframe } = {}) {
       if (symbol) state.symbol = String(symbol).toUpperCase();
       if (timeframe) state.timeframe = String(timeframe).toLowerCase();
+      const minMove = Number(candleSeries?.options?.()?.priceFormat?.minMove);
+      state.pointSize = Number.isFinite(minMove) && minMove > 0 ? minMove : state.pointSize;
       state.mounted = Boolean(renderer()?.mount({ chart, candleSeries }));
       renderer()?.setEnabled(state.enabled);
       if (state.latest) renderer()?.render(state.latest);

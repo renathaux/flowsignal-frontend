@@ -8,6 +8,59 @@
 
   const LOOKBACK = 10;
   const FIB_LEVELS = [0.786, 0.705, 0.618, 0.5, 0.382];
+  const FIFTEEN_MINUTE_STRUCTURE_POINTS = 100;
+
+  function normalizedTimeframe(value) {
+    return String(value || "").trim().toLowerCase();
+  }
+
+  function structuralPointSize(options = {}) {
+    const value = Number(options.pointSize ?? options.tickSize ?? options.minMove);
+    return Number.isFinite(value) && value > 0 ? value : null;
+  }
+
+  function createStructureAcceptance(options = {}) {
+    const timeframe = normalizedTimeframe(options.timeframe);
+    const pointSize = structuralPointSize(options);
+    const minimumDistance = timeframe === "15m" && pointSize
+      ? FIFTEEN_MINUTE_STRUCTURE_POINTS * pointSize
+      : 0;
+    let lastAcceptedLevel = null;
+    let direction = 0;
+
+    return {
+      evaluate(candidateLevel, newDirection) {
+        const level = Number(candidateLevel);
+        const previousDirection = direction;
+        const distance = lastAcceptedLevel == null ? null : Math.abs(level - lastAcceptedLevel);
+        const accepted = Number.isFinite(level) && (
+          minimumDistance === 0
+          || lastAcceptedLevel == null
+          || distance + (pointSize * 1e-7) >= minimumDistance
+        );
+        const eventType = previousDirection === newDirection ? "BOS" : "CHOCH";
+
+        if (accepted) {
+          lastAcceptedLevel = level;
+          direction = newDirection;
+        }
+
+        return {
+          accepted,
+          eventType,
+          previousDirection,
+          newDirection,
+          candidateLevel: level,
+          lastAcceptedLevel,
+          distance,
+          minimumDistance,
+        };
+      },
+      getDirection: () => direction,
+      getLastAcceptedLevel: () => lastAcceptedLevel,
+      getMinimumDistance: () => minimumDistance,
+    };
+  }
 
   function normalizeCandles(rows) {
     if (!Array.isArray(rows)) return [];
@@ -94,8 +147,10 @@
     let structureLow = candles[0].low;
     let structureHighStartIndex = 0;
     let structureLowStartIndex = 0;
-    // Pine mapping: 1=bearish, 2=bullish, 0=unset.
+    // Pine mapping: 1=bearish, 2=bullish, 0=unset. On 15m this tracks only
+    // accepted structural events; rejected internal breaks cannot flip it.
     let structureDirection = 0;
+    const structureAcceptance = createStructureAcceptance(options);
     const events = [];
 
     for (let i = 1; i < candles.length; i += 1) {
@@ -128,41 +183,43 @@
       ) || (structureDirection === 1 && highBreakPrice > structureHigh);
 
       if (lowBroken) {
-        const eventType = structureDirection === 1 ? "BOS" : "CHOCH";
-        events.push({
-          event_type: eventType,
-          direction: "BEARISH",
-          timestamp: candle.time,
-          close: candle.close,
-          broken_swing_timestamp: candles[structureLowStartIndex].time,
-          broken_level: structureLow,
-          structure_start_index: structureLowStartIndex,
-          break_index: i,
-          previous_direction: structureDirection,
-          new_direction: 1,
-        });
-
-        structureDirection = 1;
+        const acceptance = structureAcceptance.evaluate(structureLow, 1);
+        if (acceptance.accepted) {
+          events.push({
+            event_type: acceptance.eventType,
+            direction: "BEARISH",
+            timestamp: candle.time,
+            close: candle.close,
+            broken_swing_timestamp: candles[structureLowStartIndex].time,
+            broken_level: structureLow,
+            structure_start_index: structureLowStartIndex,
+            break_index: i,
+            previous_direction: acceptance.previousDirection,
+            new_direction: 1,
+          });
+          structureDirection = acceptance.newDirection;
+        }
         structureHighStartIndex = structureHighestIndex(candles, i, LOOKBACK);
         structureLowStartIndex = i;
         structureHigh = candles[structureHighStartIndex].high;
         structureLow = candle.low;
       } else if (highBroken) {
-        const eventType = structureDirection === 2 ? "BOS" : "CHOCH";
-        events.push({
-          event_type: eventType,
-          direction: "BULLISH",
-          timestamp: candle.time,
-          close: candle.close,
-          broken_swing_timestamp: candles[structureHighStartIndex].time,
-          broken_level: structureHigh,
-          structure_start_index: structureHighStartIndex,
-          break_index: i,
-          previous_direction: structureDirection,
-          new_direction: 2,
-        });
-
-        structureDirection = 2;
+        const acceptance = structureAcceptance.evaluate(structureHigh, 2);
+        if (acceptance.accepted) {
+          events.push({
+            event_type: acceptance.eventType,
+            direction: "BULLISH",
+            timestamp: candle.time,
+            close: candle.close,
+            broken_swing_timestamp: candles[structureHighStartIndex].time,
+            broken_level: structureHigh,
+            structure_start_index: structureHighStartIndex,
+            break_index: i,
+            previous_direction: acceptance.previousDirection,
+            new_direction: 2,
+          });
+          structureDirection = acceptance.newDirection;
+        }
         structureHighStartIndex = i;
         structureLowStartIndex = structureLowestIndex(candles, i, LOOKBACK);
         structureHigh = candle.high;
@@ -220,9 +277,15 @@
         fib_values: FIB_LEVELS,
         fvg: false,
         closed_candles_only: true,
+        timeframe: normalizedTimeframe(options.timeframe) || null,
+        point_size: structuralPointSize(options),
+        minimum_structure_points: normalizedTimeframe(options.timeframe) === "15m"
+          ? FIFTEEN_MINUTE_STRUCTURE_POINTS
+          : 0,
+        last_accepted_structure_level: structureAcceptance.getLastAcceptedLevel(),
       },
     };
   }
 
-  window.FlowSignalSmcLocalEngine = { analyze, normalizeCandles };
+  window.FlowSignalSmcLocalEngine = { analyze, normalizeCandles, createStructureAcceptance };
 })();

@@ -25,7 +25,11 @@
   function analyze(rows) {
     const engine = window.FlowSignalSmcLocalEngine;
     if (!engine || typeof engine.analyze !== "function") return null;
-    return engine.analyze(rows);
+    const minMove = Number(currentSeries()?.options?.()?.priceFormat?.minMove);
+    return engine.analyze(rows, {
+      timeframe: currentTimeframe(),
+      pointSize: Number.isFinite(minMove) && minMove > 0 ? minMove : null,
+    });
   }
   function candleSignature(rows, contextKey) {
     if (!rows.length) return `${contextKey}:0`;
