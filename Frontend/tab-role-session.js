@@ -49,6 +49,16 @@
     document.body.appendChild(script);
   }
 
+  function loadBinarySessionRecovery() {
+    if (document.querySelector('script[data-flowsignal-binary-session-recovery]')) return;
+    const script = document.createElement('script');
+    script.src = 'binary/binary-session-recovery.js?v=1';
+    script.async = true;
+    script.dataset.flowsignalBinarySessionRecovery = 'true';
+    script.addEventListener('error', () => console.warn('BINARY_SESSION_RECOVERY_LOAD_FAILED'));
+    document.body.appendChild(script);
+  }
+
   function installSafariSpeechNormalizer() {
     if (!safariDesktop || !window.speechSynthesis || typeof SpeechSynthesisUtterance === 'undefined') return;
     if (window.speechSynthesis.__flowSignalSafariVoicePatched) return;
@@ -221,6 +231,7 @@
   refreshRoleUi();
   loadUserAuth();
   loadBinaryMiniApp();
+  loadBinarySessionRecovery();
 
   window.FlowSignalTabRole = {
     get: getTabRole,
