@@ -7,7 +7,6 @@ const recovery = fs.readFileSync(path.join(root, 'binary', 'binary-session-recov
 const loader = fs.readFileSync(path.join(root, 'tab-role-session.js'), 'utf8');
 
 assert.match(recovery, /\/user\/deriv\/status/, 'recovery uses the authenticated user-scoped Deriv status endpoint');
-assert.match(recovery, /method\s*:/i, 'test intentionally checks that no POST status recovery body was introduced');
 assert.doesNotMatch(recovery, /method\s*:\s*['"]POST['"]/i, 'recovery is a read-only GET');
 assert.match(recovery, /localStorage\.setItem\(CONNECTION_KEY,\s*String\(data\.connection_id\)\)/, 'server connection id is restored to browser storage');
 assert.match(recovery, /localStorage\.setItem\(ACCOUNT_KEY,\s*selected\)/, 'server-selected Deriv account is restored');
