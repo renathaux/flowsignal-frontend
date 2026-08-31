@@ -11947,10 +11947,20 @@ function hideChartAttributionMark() {
 let MARKET_IS_CLOSED = false;
 let frozenChart = {};
 let frozenCandlesCache = null;
-// Keep enough history for visual analysis without asking Lightweight Charts and
-// the optional SMC overlay to repaint the full 5,000-row 15m payload on every
-// frame. This is presentation-only; strategy/backend candle history is intact.
-const CHART_DISPLAY_CANDLE_LIMIT = 300;
+// Keep roughly one calendar month of trading history for each supported
+// timeframe. The limits count market candles (weekends do not create bars), so
+// they cover about 22 trading days without asking the chart for unused rows.
+// This is presentation-only; strategy/backend candle history is unchanged.
+const MONTHLY_CHART_CANDLE_LIMITS = Object.freeze({
+  "5m": 6500,
+  "15m": 2200,
+  "1h": 550,
+});
+
+function getMonthlyChartCandleLimit(timeframe = currentChartTimeframe) {
+  return MONTHLY_CHART_CANDLE_LIMITS[String(timeframe || "15m").toLowerCase()]
+    || MONTHLY_CHART_CANDLE_LIMITS["15m"];
+}
 
 function normalizeTradeChartSymbol(symbol) {
   return String(symbol || "").toUpperCase();
@@ -12138,7 +12148,7 @@ function getChartCandles(rawData, symbol = currentChartSymbol, timeframe = curre
     return true;
   });
 
-  return cleaned.slice(-CHART_DISPLAY_CANDLE_LIMIT);
+  return cleaned.slice(-getMonthlyChartCandleLimit(timeframe));
 }
 
 function updateChartOverlay(symbol, timeframe, candles) {
@@ -13344,7 +13354,7 @@ function forceChartRenderFromLatest(symbol = currentChartSymbol, timeframe = cur
    latestRawPanelData?.[symbol]?.price
      || latestRawPanelData?.[symbol]?.current_price
      || latestRawPanelData?.[symbol]?.entry_price
- ).slice(-CHART_DISPLAY_CANDLE_LIMIT);
+ ).slice(-getMonthlyChartCandleLimit(timeframe));
   if (!candles.length) {
     console.warn(`No candles available for ${symbol}`);
     return;

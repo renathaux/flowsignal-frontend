@@ -14,7 +14,7 @@ assert.ok(
   dashboard.includes('let currentChartTimeframe = "15m"') &&
     liveCandles.includes('timeframe: "15m"') &&
     html.includes('id="chartOverlayTitle">EURUSD · 15m') &&
-    html.includes('script.js?v=121'),
+    html.includes('script.js?v=122'),
   "desktop chart and live-candle state default to 15m",
 );
 
@@ -56,10 +56,13 @@ assert.ok(
 );
 
 assert.ok(
-  dashboard.includes("const CHART_DISPLAY_CANDLE_LIMIT = 300") &&
-    dashboard.includes("cleaned.slice(-CHART_DISPLAY_CANDLE_LIMIT)") &&
+  dashboard.includes("const MONTHLY_CHART_CANDLE_LIMITS = Object.freeze") &&
+    dashboard.includes('"5m": 6500') &&
+    dashboard.includes('"15m": 2200') &&
+    dashboard.includes('"1h": 550') &&
+    dashboard.includes("cleaned.slice(-getMonthlyChartCandleLimit(timeframe))") &&
     !dashboard.includes("cleaned.slice(-5000)"),
-  "the 5,000-row 15m payload is capped before chart and SMC rendering",
+  "the chart keeps about one month per timeframe without using an unbounded payload",
 );
 
 assert.ok(
