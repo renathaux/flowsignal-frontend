@@ -22,17 +22,17 @@ assert.equal(result.accepted, true, "the first structural event establishes the 
 assert.equal(result.eventType, "CHOCH");
 
 result = eurusd.evaluate(1.10099, 1);
-assert.equal(result.accepted, false, "99 EURUSD points is internal structure");
-assert.equal(eurusd.getLastAcceptedLevel(), 1.1, "a rejected event cannot move the reference");
-assert.equal(eurusd.getDirection(), 2, "a rejected opposite break cannot flip trend");
+assert.equal(result.accepted, true, "99 EURUSD points remains visible structure");
+assert.equal(eurusd.getLastAcceptedLevel(), 1.10099, "the indicator follows the latest swing");
+assert.equal(eurusd.getDirection(), 1, "the indicator is no longer execution-filtered");
 
 result = eurusd.evaluate(1.10075, 1);
-assert.equal(result.accepted, false, "another sub-threshold event remains internal");
-assert.equal(eurusd.getLastAcceptedLevel(), 1.1, "multiple rejections keep the accepted reference");
+assert.equal(result.accepted, true, "another sub-100-point event remains visible");
+assert.equal(eurusd.getLastAcceptedLevel(), 1.10075);
 
 result = eurusd.evaluate(1.101, 1);
 assert.equal(result.accepted, true, "exactly 100 EURUSD points is accepted");
-assert.equal(result.eventType, "CHOCH", "the later valid opposite break is still CHoCH");
+assert.equal(result.eventType, "BOS", "classification follows the visible structure state");
 assert.equal(eurusd.getDirection(), 1);
 
 result = eurusd.evaluate(1.10201, 1);
@@ -41,7 +41,7 @@ assert.equal(result.eventType, "BOS", "same-direction continuation remains BOS")
 
 const gold = gate("15m", 0.01);
 gold.evaluate(2500, 1);
-assert.equal(gold.evaluate(2500.99, 2).accepted, false, "99 XAUUSD points is rejected using its tick size");
+assert.equal(gold.evaluate(2500.99, 2).accepted, true, "99 XAUUSD points remains visible");
 assert.equal(gold.evaluate(2501, 2).accepted, true, "100 XAUUSD points is accepted using its tick size");
 
 for (const timeframe of ["5m", "30m", "1h", "4h"]) {
@@ -56,6 +56,6 @@ for (const timeframe of ["5m", "30m", "1h", "4h"]) {
 
 assert.match(source, /structureAcceptance\.evaluate\(structureLow, 1\)/);
 assert.match(source, /structureAcceptance\.evaluate\(structureHigh, 2\)/);
-assert.match(source, /if \(acceptance\.accepted\) \{[\s\S]*?events\.push/);
+assert.match(source, /const accepted = Number\.isFinite\(level\)/);
 
 console.log("15m SMC structural-distance checks passed");
