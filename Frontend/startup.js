@@ -294,7 +294,7 @@
     }
     document.write('<link rel="stylesheet" href="indicators/smc/smc.css?v=4">');
     document.write('<script src="indicators/smc/smc-settings.js?v=8"><\/script>');
-    document.write('<script src="indicators/smc/smc-renderer.js?v=13"><\/script>');
+    document.write('<script src="indicators/smc/smc-renderer.js?v=14"><\/script>');
     document.write('<script src="indicators/smc/smc-indicator.js?v=5"><\/script>');
     document.write('<script src="indicators/smc/smc-chart-bridge.js?v=6"><\/script>');
     document.write('<script src="indicators/smc/smc-local-engine.js?v=5"><\/script>');

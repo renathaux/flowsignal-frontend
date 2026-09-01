@@ -20,7 +20,7 @@ assert.ok(
 
 const startup = fs.readFileSync(path.join(frontend, "startup.js"), "utf8");
 assert.ok(
-  html.includes('startup.js?v=13') &&
+  html.includes('startup.js?v=14') &&
     startup.includes('live-candle-controller.js?v=4'),
   "updated chart assets use fresh production cache keys",
 );
