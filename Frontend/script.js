@@ -10437,6 +10437,7 @@ const alreadyHasChart =
 
 if (chartCandles.length && (!marketClosed || !alreadyHasChart)) {
   renderChartFromPanel(rawData, currentChartSymbol, currentChartTimeframe);
+  void ensureTwoMonthChartHistory(currentChartSymbol, currentChartTimeframe);
 } else if (marketClosed) {
   console.log("🧊 Market closed: chart frozen");
 } else {
@@ -11947,15 +11948,17 @@ function hideChartAttributionMark() {
 let MARKET_IS_CLOSED = false;
 let frozenChart = {};
 let frozenCandlesCache = null;
-// Keep roughly one calendar month of trading history for each supported
+// Keep roughly two calendar months of trading history for each supported
 // timeframe. The limits count market candles (weekends do not create bars), so
-// they cover about 22 trading days without asking the chart for unused rows.
+// they cover about 44 trading days without asking the chart for unused rows.
 // This is presentation-only; strategy/backend candle history is unchanged.
 const MONTHLY_CHART_CANDLE_LIMITS = Object.freeze({
-  "5m": 6500,
-  "15m": 2200,
-  "1h": 550,
+  "5m": 13000,
+  "15m": 4400,
+  "1h": 1100,
 });
+const twoMonthChartHistory = Object.create(null);
+const twoMonthChartHistoryRequests = Object.create(null);
 
 function getMonthlyChartCandleLimit(timeframe = currentChartTimeframe) {
   return MONTHLY_CHART_CANDLE_LIMITS[String(timeframe || "15m").toLowerCase()]
@@ -12121,7 +12124,17 @@ chartLibraryScript?.addEventListener("error", () => {
 // ==============================
 
 function getChartCandles(rawData, symbol = currentChartSymbol, timeframe = currentChartTimeframe) {
-  const candles = rawData?.candles?.[symbol]?.[timeframe] || [];
+  const liveCandles = rawData?.candles?.[symbol]?.[timeframe] || [];
+  const history = twoMonthChartHistory[`${symbol}_${timeframe}`] || [];
+  const mergedByTime = new Map();
+  [...history, ...liveCandles].forEach((candle) => {
+    if (Number.isFinite(Number(candle?.time))) {
+      mergedByTime.set(Number(candle.time), candle);
+    }
+  });
+  const candles = Array.from(mergedByTime.values()).sort(
+    (left, right) => Number(left.time) - Number(right.time)
+  );
 
   const cleaned = candles.filter((c) => {
     const o = Number(c.open);
@@ -12149,6 +12162,61 @@ function getChartCandles(rawData, symbol = currentChartSymbol, timeframe = curre
   });
 
   return cleaned.slice(-getMonthlyChartCandleLimit(timeframe));
+}
+
+async function ensureTwoMonthChartHistory(
+  symbol = currentChartSymbol,
+  timeframe = currentChartTimeframe
+) {
+  const normalizedSymbol = normalizeTradeChartSymbol(symbol);
+  const normalizedTimeframe = String(timeframe || "15m").toLowerCase();
+  const key = `${normalizedSymbol}_${normalizedTimeframe}`;
+  if (twoMonthChartHistory[key]?.length) return twoMonthChartHistory[key];
+  if (twoMonthChartHistoryRequests[key]) return twoMonthChartHistoryRequests[key];
+
+  twoMonthChartHistoryRequests[key] = (async () => {
+    const url = new URL(`${BASE_URL}/chart/candles-history`);
+    url.searchParams.set("symbol", normalizedSymbol);
+    url.searchParams.set("timeframe", normalizedTimeframe);
+    url.searchParams.set("days", "62");
+    const response = await fetch(url.toString(), {
+      cache: "no-store",
+      suppressErrorPanel: true,
+      timeoutMs: 45000,
+    });
+    if (!response.ok) throw new Error(`Two-month chart history HTTP ${response.status}`);
+    const payload = await response.json();
+    const candles = (Array.isArray(payload?.candles) ? payload.candles : [])
+      .map((candle) => ({
+        time: Math.floor(new Date(candle.timestamp).getTime() / 1000),
+        open: Number(candle.open),
+        high: Number(candle.high),
+        low: Number(candle.low),
+        close: Number(candle.close),
+        volume: Number(candle.volume || 0),
+      }))
+      .filter((candle) => (
+        Number.isFinite(candle.time)
+        && Number.isFinite(candle.open)
+        && Number.isFinite(candle.high)
+        && Number.isFinite(candle.low)
+        && Number.isFinite(candle.close)
+      ));
+    twoMonthChartHistory[key] = candles;
+    if (
+      normalizedSymbol === currentChartSymbol
+      && normalizedTimeframe === currentChartTimeframe
+    ) {
+      forceChartRenderFromLatest(normalizedSymbol, normalizedTimeframe);
+    }
+    return candles;
+  })().catch((error) => {
+    console.warn("Two-month chart history unavailable; using live chart window", error);
+    return [];
+  }).finally(() => {
+    delete twoMonthChartHistoryRequests[key];
+  });
+  return twoMonthChartHistoryRequests[key];
 }
 
 function updateChartOverlay(symbol, timeframe, candles) {
@@ -13401,6 +13469,7 @@ function switchChart(symbol, timeframe = currentChartTimeframe) {
   fetchV2Shadow(currentChartSymbol);
 
   initChart(); // 🔥 FORCE NEW PRECISION
+  void ensureTwoMonthChartHistory(currentChartSymbol, currentChartTimeframe);
 
   try {
     const hasCandles = latestRawPanelData?.candles?.[currentChartSymbol]?.[timeframe]?.length;
@@ -13429,6 +13498,7 @@ window.switchChart = switchChart;
 function switchTimeframe(timeframe) {
   closeTradeLevelConfirmation({ restore: false, reset: true });
   currentChartTimeframe = timeframe;
+  void ensureTwoMonthChartHistory(currentChartSymbol, currentChartTimeframe);
 
   try {
     const hasCandles = latestRawPanelData?.candles?.[currentChartSymbol]?.[timeframe]?.length;
