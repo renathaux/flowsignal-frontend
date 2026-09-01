@@ -12181,6 +12181,7 @@ async function ensureTwoMonthChartHistory(
     url.searchParams.set("days", "62");
     const response = await fetch(url.toString(), {
       cache: "no-store",
+      headers: getAuthHeaders(),
       suppressErrorPanel: true,
       timeoutMs: 45000,
     });

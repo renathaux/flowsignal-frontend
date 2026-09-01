@@ -11,6 +11,7 @@ assert.match(script, /"15m": 4400/);
 assert.match(script, /"1h": 1100/);
 assert.match(script, /\/chart\/candles-history/);
 assert.match(script, /url\.searchParams\.set\("days", "62"\)/);
+assert.match(script, /headers: getAuthHeaders\(\)/);
 assert.match(script, /\[\.\.\.history, \.\.\.liveCandles\]/);
 assert.ok(html.includes('script.js?v=123'), "two-month chart loader busts the old cache");
 
