@@ -8,7 +8,6 @@
 
   const LOOKBACK = 10;
   const FIB_LEVELS = [0.786, 0.705, 0.618, 0.5, 0.382];
-  const FIFTEEN_MINUTE_STRUCTURE_POINTS = 100;
 
   function normalizedTimeframe(value) {
     return String(value || "").trim().toLowerCase();
@@ -22,9 +21,7 @@
   function createStructureAcceptance(options = {}) {
     const timeframe = normalizedTimeframe(options.timeframe);
     const pointSize = structuralPointSize(options);
-    const minimumDistance = timeframe === "15m" && pointSize
-      ? FIFTEEN_MINUTE_STRUCTURE_POINTS * pointSize
-      : 0;
+    const minimumDistance = 0;
     let lastAcceptedLevel = null;
     let direction = 0;
 
@@ -33,11 +30,7 @@
         const level = Number(candidateLevel);
         const previousDirection = direction;
         const distance = lastAcceptedLevel == null ? null : Math.abs(level - lastAcceptedLevel);
-        const accepted = Number.isFinite(level) && (
-          minimumDistance === 0
-          || lastAcceptedLevel == null
-          || distance + (pointSize * 1e-7) >= minimumDistance
-        );
+        const accepted = Number.isFinite(level);
         const eventType = previousDirection === newDirection ? "BOS" : "CHOCH";
 
         if (accepted) {
@@ -147,8 +140,8 @@
     let structureLow = candles[0].low;
     let structureHighStartIndex = 0;
     let structureLowStartIndex = 0;
-    // Pine mapping: 1=bearish, 2=bullish, 0=unset. On 15m this tracks only
-    // accepted structural events; rejected internal breaks cannot flip it.
+    // Pine mapping: 1=bearish, 2=bullish, 0=unset. Visual structure follows
+    // the source swing state; execution eligibility is evaluated separately.
     let structureDirection = 0;
     const structureAcceptance = createStructureAcceptance(options);
     const events = [];
@@ -279,9 +272,7 @@
         closed_candles_only: true,
         timeframe: normalizedTimeframe(options.timeframe) || null,
         point_size: structuralPointSize(options),
-        minimum_structure_points: normalizedTimeframe(options.timeframe) === "15m"
-          ? FIFTEEN_MINUTE_STRUCTURE_POINTS
-          : 0,
+        minimum_structure_points: 0,
         last_accepted_structure_level: structureAcceptance.getLastAcceptedLevel(),
       },
     };
