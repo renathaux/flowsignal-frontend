@@ -10,10 +10,10 @@ const source = fs.readFileSync(
 const context = { window: {}, Date, Math, Number, String, Array };
 vm.runInNewContext(source, context);
 
-const compact = context.window.FlowSignalCompactSmcEvents;
+const displayedEvents = context.window.FlowSignalStructureEvents;
 assert.ok(
-  !source.match(/render\(structure\).*this\.addCurrentStructure\(structure,settings\)/),
-  "renderer does not draw the long current-structure high/low projection bars",
+  source.match(/render\(structure\).*this\.addCurrentStructure\(structure,settings\)/),
+  "renderer draws TradingView's current structure high and low",
 );
 const events = [
   { event_type: "CHOCH", direction: "BULLISH", broken_level: 4600 },
@@ -25,11 +25,22 @@ const events = [
   { event_type: "BOS", direction: "BEARISH", broken_level: 4595 },
 ];
 
-const result = compact(events);
+const result = displayedEvents(events);
 assert.deepEqual(
   JSON.parse(JSON.stringify(result)),
-  [events[0], events[3], events[4], events[6]],
-  "renderer keeps CHoCH boundaries and only the latest BOS in each continuation leg",
+  events,
+  "renderer preserves Pine's accepted BOS and CHoCH sequence",
 );
 
-console.log("SMC renderer event compaction checks passed");
+const twelveEvents = Array.from({ length: 12 }, (_, index) => ({
+  event_type: index % 3 === 0 ? "CHOCH" : "BOS",
+  direction: index % 2 ? "BULLISH" : "BEARISH",
+  broken_level: 4300 + index,
+}));
+assert.deepEqual(
+  JSON.parse(JSON.stringify(displayedEvents(twelveEvents))),
+  twelveEvents.slice(-10),
+  "renderer matches Pine's default structHistoryNbr of ten",
+);
+
+console.log("SMC renderer TradingView parity checks passed");
