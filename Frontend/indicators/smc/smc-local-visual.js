@@ -73,6 +73,40 @@
         }
         return result;
       };
+
+      // The main chart advances with series.update(), not setData(). Keep the
+      // forming candle locally, but only recompute after a new candle begins;
+      // at that point the previous candle is closed and analyze() will exclude
+      // the new forming candle. This avoids both a stale overlay and intrabar
+      // SMC repainting/work on every price tick.
+      if (typeof series.update === "function") {
+        const originalUpdate = series.update.bind(series);
+        series.update = function(candle) {
+          const previousLastTime = lastCandles.length
+            ? Number(lastCandles[lastCandles.length - 1]?.time)
+            : null;
+          const result = originalUpdate(candle);
+          const normalized = normalize([candle]);
+          const next = normalized[0];
+          if (!next) return result;
+
+          const lastIndex = lastCandles.length - 1;
+          const existingIndex = lastCandles[lastIndex]?.time === next.time
+            ? lastIndex
+            : lastCandles.findIndex((item) => item.time === next.time);
+          if (existingIndex >= 0) {
+            lastCandles[existingIndex] = next;
+          } else {
+            lastCandles.push(next);
+            lastCandles.sort((a, b) => a.time - b.time);
+          }
+
+          if (previousLastTime != null && next.time > previousLastTime) {
+            window.setTimeout(() => apply(false), 0);
+          }
+          return result;
+        };
+      }
       series.__flowSmcLocalVisualWrapped = true;
     }
     wrappedSeries = series;
