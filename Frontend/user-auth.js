@@ -8,10 +8,7 @@
   const AUTH_BACKEND=IS_LOCAL?LOCAL_BACKEND:DIRECT_BACKEND;
   const CSRF_KEY='flowsignal_csrf_token';
   const USER_SESSION_KEY='flowsignal_user_session_token';
-  const OAUTH_USER_KEY='flowsignal_deriv_oauth_user_id';
-  const LEGACY_BINARY_USER_KEY='flowsignal_binary_user_id';
   const LEGACY_SESSION_TOKEN_KEY='flowsignal_session_token';
-  const TRADING_MODE_KEY='flowsignal_trading_mode';
   const PUBLIC_HOME_KEY='flowsignal_public_home_mode';
   const TAB_SIGNED_OUT_KEY='flowsignal_tab_signed_out';
   const TAB_ROLE_KEY='flowsignal_tab_role';
@@ -82,7 +79,7 @@
     if(document.getElementById('flowsignalPublicHomeStyle'))return;
     const style=document.createElement('style');
     style.id='flowsignalPublicHomeStyle';
-    style.textContent='body.flowsignal-public-home #mainApp,body.flowsignal-public-home #smartExplain,body.flowsignal-public-home #assistantModal,body.flowsignal-public-home #tradeModal,body.flowsignal-public-home #adminModal,body.flowsignal-public-home #feedbackModal,body.flowsignal-public-home #statsModal,body.flowsignal-public-home #settingsModal,body.flowsignal-public-home #newsModeConfirmModal,body.flowsignal-public-home #brokerAccountsModal,body.flowsignal-public-home #paperModal,body.flowsignal-public-home #flowsignalTradingModeSelector{display:none!important;visibility:hidden!important;pointer-events:none!important}';
+    style.textContent='body.flowsignal-public-home #mainApp,body.flowsignal-public-home #smartExplain,body.flowsignal-public-home #assistantModal,body.flowsignal-public-home #tradeModal,body.flowsignal-public-home #adminModal,body.flowsignal-public-home #feedbackModal,body.flowsignal-public-home #statsModal,body.flowsignal-public-home #settingsModal,body.flowsignal-public-home #newsModeConfirmModal,body.flowsignal-public-home #brokerAccountsModal,body.flowsignal-public-home #paperModal{display:none!important;visibility:hidden!important;pointer-events:none!important}';
     document.head.appendChild(style);
   }
   function setPublicHome(enabled){
@@ -114,7 +111,7 @@
   }
   function isCustomerRequest(raw){
     const path=logicalBackendPath(raw);
-    return path.startsWith('/user/')||path.startsWith('/deriv/')||path==='/auth/session'||path==='/auth/me'||path==='/auth/logout';
+    return path.startsWith('/user/')||path==='/auth/session'||path==='/auth/me'||path==='/auth/logout';
   }
   function customerUrl(raw){
     const parsed=new URL(raw,location.href);
@@ -122,11 +119,6 @@
     let logicalPath=parsed.pathname;
     if(!IS_LOCAL&&parsed.origin===location.origin&&logicalPath.startsWith('/api/proxy'))logicalPath=logicalPath.slice('/api/proxy'.length)||'/';
     if(parsed.origin===new URL(DIRECT_BACKEND).origin||(!IS_LOCAL&&parsed.origin===location.origin)){
-      let match=logicalPath.match(/^\/deriv\/binary\/account-settings\/[^/]+\/([^/]+)$/);
-      if(match)logicalPath=`/deriv/binary/account-settings/${match[1]}`;
-      match=logicalPath.match(/^\/deriv\/binary\/execution-status\/[^/]+\/([^/]+)$/);
-      if(match)logicalPath=`/deriv/binary/execution-status/${match[1]}`;
-      if(logicalPath.startsWith('/deriv/'))logicalPath=`/user${logicalPath}`;
       if(!IS_LOCAL)return `${location.origin}/api/proxy${logicalPath}${parsed.search}`;
       parsed.pathname=logicalPath;
     }
@@ -156,7 +148,6 @@
       if(ownerToken)options.headers.set('Authorization',`Bearer ${ownerToken}`);
     }
     if(options.body)options.body=cleanBody(options.body);
-    if(sessionUser?.id&&url.includes('/user/deriv/config'))sessionStorage.setItem(OAUTH_USER_KEY,sessionUser.id);
     const response=await nativeFetch(url,options);
     if(response.status===401&&token&&customerRequest&&logicalBackendPath(raw)!=='/auth/session'){
       sessionStorage.removeItem(USER_SESSION_KEY);sessionStorage.removeItem(CSRF_KEY);sessionStorage.removeItem(TAB_ROLE_KEY);
@@ -186,30 +177,13 @@
   function enterFullUserDashboard(user){
     if(!user||String(user.role||'user').toLowerCase()!=='user')return;
     showApp();
-    if(!localStorage.getItem(TRADING_MODE_KEY))localStorage.setItem(TRADING_MODE_KEY,'forex');
-    let attempts=0;
-    const reveal=()=>{
-      attempts+=1;
-      const selector=document.getElementById('flowsignalTradingModeSelector');
-      const forex=document.getElementById('flowsignalForexMode');
-      const binary=document.getElementById('flowsignalBinaryMode');
-      if(selector){selector.hidden=false;selector.removeAttribute('hidden');selector.setAttribute('aria-hidden','false');selector.style.removeProperty('display');selector.style.removeProperty('visibility');}
-      if(selector&&forex&&binary){
-        const mode=String(localStorage.getItem(TRADING_MODE_KEY)||'forex').toLowerCase()==='binary'?'binary':'forex';
-        selector.querySelector(`[data-trading-mode="${mode}"]`)?.click();
-        document.dispatchEvent(new CustomEvent('flowsignal:user-dashboard-ready',{detail:{user,mode}}));
-        return;
-      }
-      if(attempts<50)setTimeout(reveal,100);
-    };
-    reveal();
+    document.dispatchEvent(new CustomEvent('flowsignal:user-dashboard-ready',{detail:{user}}));
   }
   function applyUser(user){
     sessionUser=user||null;
     if(!user)return;
     sessionStorage.removeItem(TAB_SIGNED_OUT_KEY);
     sessionStorage.removeItem(PUBLIC_HOME_KEY);
-    sessionStorage.setItem(LEGACY_BINARY_USER_KEY,user.id);
     sessionStorage.setItem(TAB_ROLE_KEY,user.role||'user');
     document.body.dataset.userRole=user.role||'user';
     document.dispatchEvent(new CustomEvent('flowsignal:authenticated',{detail:{user}}));
@@ -240,7 +214,6 @@
       if(data?.authenticated&&data?.user){csrfToken=String(data.csrf_token||'');sessionStorage.setItem(CSRF_KEY,csrfToken);applyUser(data.user);return data.user;}
     }catch(_error){}
     sessionStorage.removeItem(USER_SESSION_KEY);
-    sessionStorage.removeItem(LEGACY_BINARY_USER_KEY);
     sessionStorage.removeItem(TAB_ROLE_KEY);
     sessionUser=null;csrfToken='';sessionStorage.removeItem(CSRF_KEY);
     if(location.pathname.startsWith('/app')) location.replace('/account.html?expired=1');
@@ -258,7 +231,6 @@
     window.name='';
     sessionStorage.setItem(TAB_SIGNED_OUT_KEY,'1');
     sessionStorage.removeItem(USER_SESSION_KEY);
-    sessionStorage.removeItem(LEGACY_BINARY_USER_KEY);
     sessionStorage.removeItem(CSRF_KEY);
     sessionStorage.removeItem(TAB_ROLE_KEY);
     sessionStorage.removeItem(PUBLIC_HOME_KEY);
@@ -270,7 +242,6 @@
     if(tabId)localStorage.removeItem(`flowsignal_tab_admin_session:${tabId}`);
     window.name='';
     sessionStorage.removeItem(USER_SESSION_KEY);
-    sessionStorage.removeItem(LEGACY_BINARY_USER_KEY);
     sessionStorage.removeItem(CSRF_KEY);
     sessionStorage.removeItem(TAB_ROLE_KEY);
     sessionStorage.removeItem(PUBLIC_HOME_KEY);
@@ -296,7 +267,7 @@
   }
 
   document.addEventListener('click',event=>{
-    const target=event.target?.closest?.('#logoutBtn,#binaryLogoutBtn');
+    const target=event.target?.closest?.('#logoutBtn');
     if(!target)return;
     const role=String(sessionUser?.role||tabRole()||'').toLowerCase();
     if(role!=='user'&&role!=='admin')return;

@@ -5,23 +5,6 @@ module.exports = async function handler(req, res) {
     const pathParts = Array.isArray(req.query?.path)
       ? req.query.path
       : String(req.query?.path || '').split('/').filter(Boolean);
-
-    // Binary/Deriv has been retired. Stop old cached clients at Vercel so they
-    // cannot reach the backend or consume Neon bandwidth.
-    const normalizedPath = '/' + pathParts.join('/');
-    if (
-      normalizedPath === '/deriv' || normalizedPath.startsWith('/deriv/') ||
-      normalizedPath === '/user/deriv' || normalizedPath.startsWith('/user/deriv/')
-    ) {
-      res.setHeader('Cache-Control', 'no-store, max-age=0');
-      return res.status(410).json({
-        ok: false,
-        detail: 'BINARY_FEATURE_DISABLED',
-        feature: 'binary',
-        backend_forwarded: false,
-      });
-    }
-
     const upstreamUrl = new URL('/' + pathParts.map(encodeURIComponent).join('/'), BACKEND_ORIGIN);
 
     for (const [key, value] of Object.entries(req.query || {})) {

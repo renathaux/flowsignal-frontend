@@ -207,15 +207,7 @@
     else if(activePanel==="auto") renderAutoTrade();
   }
 
-  function toggleTradingMode(){
-    closeSheets();
-    const current=window.FlowSignalBinary?.currentMode?.()||localStorage.getItem("flowsignal_trading_mode")||"forex";
-    const next=String(current).toLowerCase()==="binary"?"forex":"binary";
-    if(window.FlowSignalBinary?.setMode) window.FlowSignalBinary.setMode(next);
-    else{localStorage.setItem("flowsignal_trading_mode",next);location.reload();}
-  }
-
-  const actions={mode:toggleTradingMode,home:closeSheets,isch:ischDetail,fundamental:fundamentalDetail,history:historyDetail,auto:autoTradeDetail};
+  const actions={home:closeSheets,isch:ischDetail,fundamental:fundamentalDetail,history:historyDetail,auto:autoTradeDetail};
   document.querySelectorAll(".bottom-nav button").forEach(button=>{
     button.onclick=()=>{
       document.querySelectorAll(".bottom-nav button").forEach(x=>x.classList.remove("active"));
