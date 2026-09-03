@@ -4,11 +4,10 @@
   const base = window.location.hostname === "127.0.0.1" || window.location.hostname === "localhost"
     ? "http://127.0.0.1:8001"
     : "https://flowsignal-backend-3.onrender.com";
-  const DISPLAY_KEY = "flowsignal_smc_overlay_v2";
+  const DISPLAY_KEY = "flowsignal_smc_overlay";
 
   const state = {
-    // New default is ON. The v2 key intentionally starts a fresh visual
-    // preference so existing users receive the new default once.
+    // The indicator display defaults to ON unless the user explicitly turns it off.
     enabled: localStorage.getItem(DISPLAY_KEY) !== "0",
     symbol: "EURUSD",
     timeframe: "5m",
