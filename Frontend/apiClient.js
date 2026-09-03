@@ -1,10 +1,126 @@
 (function () {
   const state = { lastApiCalled: null, statusCode: null, errorMessage: null };
   const DEFAULT_TIMEOUT_MS = 12000;
+  const TAB_WINDOW_PREFIX = "flowsignal-tab:";
+  const TAB_ROLE_KEY = "flowsignal_tab_role";
+  const OWNER_SESSION_KEY = "flowsignal_session_token";
+  const OWNER_MUTATION_PATHS = new Set([
+    "/market-data-source",
+    "/paper-auto-toggle",
+    "/live-auto-toggle",
+    "/execute-trade",
+    "/execute-live-order",
+    "/connect-ctrader",
+    "/refresh-ctrader-accounts",
+    "/set-active-ctrader-account",
+    "/forget-ctrader-account",
+    "/disconnect-ctrader",
+    "/close-live-trade",
+    "/modify-live-position-levels",
+    "/ctrader/disconnect",
+    "/ctrader/accounts/refresh",
+    "/ctrader/accounts/active",
+    "/ctrader/accounts/forget",
+    "/ctrader/accounts/clear",
+  ]);
+
+  function requestUrl(input) {
+    try {
+      const raw = typeof input === "string" || input instanceof URL
+        ? String(input)
+        : input instanceof Request
+          ? input.url
+          : input?.url;
+      return raw ? new URL(raw, window.location.href) : null;
+    } catch (_error) {
+      return null;
+    }
+  }
+
+  function currentTabRole() {
+    return String(
+      sessionStorage.getItem(TAB_ROLE_KEY)
+      || localStorage.getItem("flowsignal_role")
+      || ""
+    ).toLowerCase();
+  }
+
+  function ownerTabToken() {
+    if (currentTabRole() !== "admin") return "";
+    const current = String(window.name || "");
+    if (!current.startsWith(TAB_WINDOW_PREFIX)) return "";
+    const tabId = current.slice(TAB_WINDOW_PREFIX.length);
+    if (!tabId) return "";
+    try {
+      const saved = JSON.parse(
+        localStorage.getItem(`flowsignal_tab_admin_session:${tabId}`) || "null"
+      );
+      return String(saved?.token || "").trim();
+    } catch (_error) {
+      return "";
+    }
+  }
+
+  function isOwnerMutation(url, method) {
+    if (!url) return false;
+    if (OWNER_MUTATION_PATHS.has(url.pathname)) return true;
+    const writeMethod = ["POST", "PUT", "PATCH", "DELETE"].includes(String(method || "GET").toUpperCase());
+    return writeMethod && (
+      url.pathname.startsWith("/settings/")
+      || url.pathname.startsWith("/strategy/settings")
+    );
+  }
+
+  function applyOwnerAuthorization(input, requestInit) {
+    const token = ownerTabToken();
+    if (!token) return requestInit;
+    const url = requestUrl(input);
+    const method = String(
+      requestInit?.method
+      || (input instanceof Request ? input.method : "GET")
+      || "GET"
+    ).toUpperCase();
+    if (!isOwnerMutation(url, method)) return requestInit;
+
+    const headers = new Headers(input instanceof Request ? input.headers : undefined);
+    new Headers(requestInit.headers || {}).forEach((value, key) => headers.set(key, value));
+    headers.set("Authorization", `Bearer ${token}`);
+    requestInit.headers = headers;
+
+    // Keep legacy code from accidentally using a customer/access-code token
+    // after a backend restart. The per-tab owner token is the authority here.
+    localStorage.setItem(OWNER_SESSION_KEY, token);
+    return requestInit;
+  }
+
+  function adminAccessCodeSessionResponse(input) {
+    const url = requestUrl(input);
+    const token = ownerTabToken();
+    if (!token || url?.pathname !== "/session/access-code") return null;
+
+    // Admin tabs must never silently downgrade themselves to an access-code
+    // user session after a 401. Reuse the owner token and let true expiry be
+    // handled as owner re-authentication instead.
+    localStorage.setItem(OWNER_SESSION_KEY, token);
+    return new Response(JSON.stringify({
+      ok: true,
+      token,
+      role: "admin",
+      auth_method: "owner_tab_session",
+    }), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+
+  const startupOwnerToken = ownerTabToken();
+  if (startupOwnerToken) {
+    localStorage.setItem(OWNER_SESSION_KEY, startupOwnerToken);
+  }
 
   function requestWithTimeout(input, init = {}) {
     const timeoutMs = Number(init.timeoutMs || DEFAULT_TIMEOUT_MS);
-    const requestInit = { ...init };
+    const requestInit = applyOwnerAuthorization(input, { ...init });
     delete requestInit.timeoutMs;
     delete requestInit.suppressErrorPanel;
     if (!Number.isFinite(timeoutMs) || timeoutMs <= 0) return window.FlowSignalApi.nativeFetch(input, requestInit);
@@ -57,6 +173,9 @@
 
   async function apiFetch(input, init) {
     const url = typeof input === "string" ? input : input?.url;
+    const ownerAccessCodeResponse = adminAccessCodeSessionResponse(input);
+    if (ownerAccessCodeResponse) return ownerAccessCodeResponse;
+
     const suppressErrorPanel = Boolean(
       init?.suppressErrorPanel
       || String(url || "").includes("/news-impact")
