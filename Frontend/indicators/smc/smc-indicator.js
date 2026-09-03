@@ -4,9 +4,12 @@
   const base = window.location.hostname === "127.0.0.1" || window.location.hostname === "localhost"
     ? "http://127.0.0.1:8001"
     : "https://flowsignal-backend-3.onrender.com";
+  const DISPLAY_KEY = "flowsignal_smc_overlay_v2";
 
   const state = {
-    enabled: localStorage.getItem("flowsignal_smc_overlay") === "1",
+    // New default is ON. The v2 key intentionally starts a fresh visual
+    // preference so existing users receive the new default once.
+    enabled: localStorage.getItem(DISPLAY_KEY) !== "0",
     symbol: "EURUSD",
     timeframe: "5m",
     latest: null,
@@ -30,7 +33,6 @@
 
   async function loadStructure() {
     if (!state.enabled || state.requestInFlight) return;
-    if (state.localReady) { schedule(); return; }
     state.requestInFlight = true;
     try {
       const url = new URL(`${base}/chart/smc-structure`);
@@ -52,31 +54,16 @@
   }
 
   function applyLocalCandles(detail) {
-    const engine = window.FlowSignalSmcLocalEngine;
-    if (!engine || typeof engine.analyze !== "function") return false;
+    // Chart candles are still counted for diagnostics, but the browser no
+    // longer calculates a competing BOS/CHoCH model. The renderer uses the
+    // backend SMC engine, which is also the strategy authority.
     const symbol = String(detail?.symbol || state.symbol).toUpperCase();
     const timeframe = String(detail?.timeframe || state.timeframe).toLowerCase();
     if (symbol !== state.symbol || timeframe !== state.timeframe) return false;
     const candles = Array.isArray(detail?.candles) ? detail.candles : [];
-    if (candles.length < 10) return false;
-
-    const structure = engine.analyze(candles, {
-      leftBars: 2,
-      rightBars: 2,
-      timeframe,
-      pointSize: state.pointSize,
-    });
-    structure.symbol = symbol;
-    structure.timeframe = timeframe;
-    structure.source = "browser_closed_chart_candles";
-    structure.observation_only = true;
-    structure.affects_strategy = false;
-
-    state.localReady = true;
     state.localCandleCount = candles.length;
-    state.lastError = null;
-    api.applyStructure(structure);
-    return true;
+    state.localReady = false;
+    return false;
   }
 
   const api = {
@@ -87,7 +74,7 @@
       state.pointSize = Number.isFinite(minMove) && minMove > 0 ? minMove : state.pointSize;
       state.mounted = Boolean(renderer()?.mount({ chart, candleSeries }));
       renderer()?.setEnabled(state.enabled);
-      if (state.latest) renderer()?.render(state.latest);
+      if (state.latest && state.enabled) renderer()?.render(state.latest);
       if (state.enabled) schedule(0);
       return state.mounted;
     },
@@ -109,8 +96,10 @@
     },
 
     setEnabled(enabled) {
+      // DISPLAY ONLY. This never sends a setting to the backend and therefore
+      // cannot disable server-side SMC BOS/CHoCH analysis or trading logic.
       state.enabled = Boolean(enabled);
-      localStorage.setItem("flowsignal_smc_overlay", state.enabled ? "1" : "0");
+      localStorage.setItem(DISPLAY_KEY, state.enabled ? "1" : "0");
       renderer()?.setEnabled(state.enabled);
       if (state.enabled) {
         if (state.latest) renderer()?.render(state.latest);
@@ -119,6 +108,7 @@
       } else {
         window.clearTimeout(state.timer);
         state.timer = null;
+        renderer()?.clear?.();
       }
       emit("flowsignal:smc-toggle", this.getState());
     },
@@ -151,11 +141,13 @@
         mounted: state.mounted,
         bias: state.latest?.bias || "NEUTRAL",
         closedCandleCount: state.latest?.closed_candle_count || 0,
-        localReady: state.localReady,
+        localReady: false,
         localCandleCount: state.localCandleCount,
-        source: state.latest?.source || null,
+        source: state.latest?.source || "backend_smc_indicator",
         lastError: state.lastError,
-        affectsStrategy: false,
+        affectsStrategy: state.timeframe === "15m",
+        backendUsesIndicator: true,
+        displayOnlyToggle: true,
       };
     },
   };
@@ -169,9 +161,9 @@
     const detail = event.detail || {};
     if (detail.symbol !== state.symbol || detail.timeframe !== state.timeframe) return;
     const candleTime = Number(detail.candle?.time);
-    if (!Number.isFinite(candleTime)) return;
+    if (!Number.isFinite(candleTime) || !state.enabled) return;
     const lastSeen = Number(state.latest?._visual_live_bucket || 0);
-    if (candleTime !== lastSeen && state.enabled && !state.localReady) {
+    if (candleTime !== lastSeen) {
       if (state.latest) state.latest._visual_live_bucket = candleTime;
       schedule(250);
     }
