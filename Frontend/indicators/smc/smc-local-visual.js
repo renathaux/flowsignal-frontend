@@ -1,144 +1,39 @@
 (function () {
   "use strict";
 
-  let wrappedSeries = null;
-  let lastCandles = [];
-  let lastContextKey = "";
-  let lastAppliedSignature = "";
-
-  function currentSeries() {
-    try { return typeof candleSeries !== "undefined" ? candleSeries : null; } catch (_) { return null; }
-  }
-  function currentSymbol() {
-    try { return String(typeof currentChartSymbol !== "undefined" && currentChartSymbol ? currentChartSymbol : "EURUSD").toUpperCase(); }
-    catch (_) { return "EURUSD"; }
-  }
-  function currentTimeframe() {
-    try { return String(typeof currentChartTimeframe !== "undefined" && currentChartTimeframe ? currentChartTimeframe : "5m").toLowerCase(); }
-    catch (_) { return "5m"; }
-  }
-  function normalize(rows) {
-    if (!Array.isArray(rows)) return [];
-    return rows.map((c) => ({ time:Number(c?.time), open:Number(c?.open), high:Number(c?.high), low:Number(c?.low), close:Number(c?.close) }))
-      .filter((c) => [c.time,c.open,c.high,c.low,c.close].every(Number.isFinite)).sort((a,b) => a.time-b.time);
-  }
-  function analyze(rows) {
-    const engine = window.FlowSignalSmcLocalEngine;
-    if (!engine || typeof engine.analyze !== "function") return null;
-    const minMove = Number(currentSeries()?.options?.()?.priceFormat?.minMove);
-    return engine.analyze(rows, {
-      timeframe: currentTimeframe(),
-      pointSize: Number.isFinite(minMove) && minMove > 0 ? minMove : null,
-    });
-  }
-  function candleSignature(rows, contextKey) {
-    if (!rows.length) return `${contextKey}:0`;
-    const last = rows[rows.length - 1];
-    const prev = rows.length > 1 ? rows[rows.length - 2] : last;
-    return `${contextKey}:${rows.length}:${prev.time}:${prev.close}:${last.time}:${last.open}:${last.high}:${last.low}:${last.close}`;
-  }
-  function apply(force = false) {
-    const smc = window.FlowSignalSMC;
-    if (!smc?.getState?.().enabled || lastCandles.length < 15) return false;
-    const key = `${currentSymbol()}:${currentTimeframe()}`;
-    const signature = candleSignature(lastCandles, key);
-    if (!force && signature === lastAppliedSignature) return false;
-    lastContextKey = key;
-    try {
-      const structure = analyze(lastCandles);
-      if (!structure) return false;
-      structure.symbol = currentSymbol();
-      structure.timeframe = currentTimeframe();
-      smc.setContext?.({ symbol:currentSymbol(), timeframe:currentTimeframe() });
-      smc.applyStructure?.(structure);
-      lastAppliedSignature = signature;
-      return true;
-    } catch (error) {
-      console.warn("FLOW_SMC_LOCAL_VISUAL_ERROR", error);
-      return false;
-    }
-  }
+  // Compatibility shim only. BOS/CHoCH is now calculated by the authoritative
+  // backend SMC engine. Keeping this object avoids breaking older startup code,
+  // but it must never generate or render a second browser-side structure model.
   function wrap() {
-    const series = currentSeries();
-    if (!series || typeof series.setData !== "function") return false;
-    if (series === wrappedSeries && series.__flowSmcLocalVisualWrapped) return true;
-    if (!series.__flowSmcLocalVisualWrapped) {
-      const original = series.setData.bind(series);
-      series.setData = function(candles) {
-        const result = original(candles);
-        const normalized = normalize(candles);
-        if (normalized.length) {
-          lastCandles = normalized;
-          window.setTimeout(() => apply(false), 0);
-        }
-        return result;
-      };
-
-      // The main chart advances with series.update(), not setData(). Keep the
-      // forming candle locally, but only recompute after a new candle begins;
-      // at that point the previous candle is closed and analyze() will exclude
-      // the new forming candle. This avoids both a stale overlay and intrabar
-      // SMC repainting/work on every price tick.
-      if (typeof series.update === "function") {
-        const originalUpdate = series.update.bind(series);
-        series.update = function(candle) {
-          const previousLastTime = lastCandles.length
-            ? Number(lastCandles[lastCandles.length - 1]?.time)
-            : null;
-          const result = originalUpdate(candle);
-          const normalized = normalize([candle]);
-          const next = normalized[0];
-          if (!next) return result;
-
-          const lastIndex = lastCandles.length - 1;
-          const existingIndex = lastCandles[lastIndex]?.time === next.time
-            ? lastIndex
-            : lastCandles.findIndex((item) => item.time === next.time);
-          if (existingIndex >= 0) {
-            lastCandles[existingIndex] = next;
-          } else {
-            lastCandles.push(next);
-            lastCandles.sort((a, b) => a.time - b.time);
-          }
-
-          if (previousLastTime != null && next.time > previousLastTime) {
-            window.setTimeout(() => apply(false), 0);
-          }
-          return result;
-        };
-      }
-      series.__flowSmcLocalVisualWrapped = true;
-    }
-    wrappedSeries = series;
     return true;
   }
-  function tick() {
-    const previousSeries = wrappedSeries;
-    const previousKey = lastContextKey;
-    wrap();
-    const nextKey = `${currentSymbol()}:${currentTimeframe()}`;
-    const contextChanged = nextKey !== previousKey || wrappedSeries !== previousSeries;
-    apply(contextChanged);
+
+  function apply() {
+    window.FlowSignalSMC?.refresh?.();
+    return false;
   }
 
-  window.addEventListener("load", () => { tick(); setTimeout(tick,250); setTimeout(tick,1000); });
-  window.addEventListener("flowsignal:smc-toggle", () => setTimeout(() => apply(true), 0));
-  window.addEventListener("flowsignal:chart-context", () => setTimeout(() => { lastAppliedSignature = ""; tick(); }, 0));
-
-  // Keep a light attachment check only. It no longer redraws unchanged SMC every second.
-  const timer = setInterval(() => {
-    const before = wrappedSeries;
-    wrap();
-    if (wrappedSeries !== before) {
-      lastAppliedSignature = "";
-      apply(true);
+  window.addEventListener("flowsignal:smc-toggle", () => {
+    if (window.FlowSignalSMC?.getState?.().enabled) {
+      window.setTimeout(() => window.FlowSignalSMC?.refresh?.(), 0);
     }
-  }, 2000);
+  });
 
-  window.addEventListener("beforeunload", () => clearInterval(timer), { once:true });
+  window.addEventListener("flowsignal:chart-context", () => {
+    if (window.FlowSignalSMC?.getState?.().enabled) {
+      window.setTimeout(() => window.FlowSignalSMC?.refresh?.(), 0);
+    }
+  });
+
   window.FlowSignalSmcLocalVisual = {
     wrap,
     apply,
-    getState: () => ({ candles:lastCandles.length, symbol:currentSymbol(), timeframe:currentTimeframe(), wrapped:Boolean(wrappedSeries), engine:"ludogh68_structure_port_no_fvg", signature:lastAppliedSignature })
+    getState: () => ({
+      candles: 0,
+      wrapped: false,
+      engine: "backend_smc_indicator_authority",
+      observationOnly: false,
+      browserCalculationDisabled: true,
+    }),
   };
 })();
