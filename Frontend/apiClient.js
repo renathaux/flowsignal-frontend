@@ -4,6 +4,11 @@
   const TAB_WINDOW_PREFIX = "flowsignal-tab:";
   const TAB_ROLE_KEY = "flowsignal_tab_role";
   const OWNER_SESSION_KEY = "flowsignal_session_token";
+  const OWNER_AUTH_ERRORS = new Set([
+    "OWNER_SESSION_EXPIRED",
+    "OWNER_SESSION_REQUIRED",
+    "ADMIN_FOREX_MUTATION_REQUIRED",
+  ]);
   const OWNER_MUTATION_PATHS = new Set([
     "/market-data-source",
     "/paper-auto-toggle",
@@ -45,11 +50,15 @@
     ).toLowerCase();
   }
 
-  function ownerTabToken() {
-    if (currentTabRole() !== "admin") return "";
+  function currentTabId() {
     const current = String(window.name || "");
     if (!current.startsWith(TAB_WINDOW_PREFIX)) return "";
-    const tabId = current.slice(TAB_WINDOW_PREFIX.length);
+    return current.slice(TAB_WINDOW_PREFIX.length);
+  }
+
+  function ownerTabToken() {
+    if (currentTabRole() !== "admin") return "";
+    const tabId = currentTabId();
     if (!tabId) return "";
     try {
       const saved = JSON.parse(
@@ -111,6 +120,42 @@
       status: 200,
       headers: { "Content-Type": "application/json" },
     });
+  }
+
+  function clearExpiredOwnerSession() {
+    const tabId = currentTabId();
+    if (tabId) localStorage.removeItem(`flowsignal_tab_admin_session:${tabId}`);
+    localStorage.removeItem(OWNER_SESSION_KEY);
+    sessionStorage.removeItem(TAB_ROLE_KEY);
+  }
+
+  async function redirectExpiredOwnerMutation(input, init, response) {
+    if (currentTabRole() !== "admin") return false;
+    const url = requestUrl(input);
+    const method = String(
+      init?.method
+      || (input instanceof Request ? input.method : "GET")
+      || "GET"
+    ).toUpperCase();
+    if (!isOwnerMutation(url, method) || ![401, 403].includes(response.status)) return false;
+
+    let reason = "";
+    try {
+      const payload = await response.clone().json();
+      reason = String(payload?.reason || payload?.detail || "").trim().toUpperCase();
+    } catch (_error) {}
+    if (!OWNER_AUTH_ERRORS.has(reason)) return false;
+
+    clearExpiredOwnerSession();
+    window.FlowSignalStartup?.record?.("owner_session_reauthentication_required", {
+      path: url?.pathname || "",
+      status: response.status,
+      reason,
+    });
+    window.setTimeout(() => {
+      window.location.replace("/owner.html?reason=session-expired");
+    }, 0);
+    return true;
   }
 
   const startupOwnerToken = ownerTabToken();
@@ -188,6 +233,7 @@
     if (!suppressErrorPanel) state.lastApiCalled = url || "unknown";
     try {
       const response = await requestWithTimeout(input, init);
+      await redirectExpiredOwnerMutation(input, init, response);
       if (suppressErrorPanel) return response;
       state.statusCode = response.status;
       if (!response.ok) {
