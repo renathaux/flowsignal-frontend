@@ -1,0 +1,132 @@
+name: Add general display switches once
+
+on:
+  push:
+    paths:
+      - '.github/workflows/general-display-switches-once.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  update-general-display-settings:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Add Daily P/L and trade level switches
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          app = Path('Frontend/app.html')
+          script = Path('Frontend/script.js')
+          style = Path('Frontend/style.css')
+
+          app_text = app.read_text()
+          script_text = script.read_text()
+          style_text = style.read_text()
+
+          def replace_once(text, old, new, label):
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f'{label}: expected 1 match, found {count}')
+              return text.replace(old, new, 1)
+
+          app_text = replace_once(
+              app_text,
+              '        <label><input type="checkbox" data-dashboard-pref="showWeeklyPnl"> Show Weekly P/L</label>',
+              '        <label><input type="checkbox" data-dashboard-pref="showDailyPnl"> Show Daily P/L</label>\n'
+              '        <label><input type="checkbox" data-dashboard-pref="showWeeklyPnl"> Show Weekly P/L</label>',
+              'general daily pnl toggle',
+          )
+
+          app_text = replace_once(
+              app_text,
+              '        <label><input type="checkbox" data-dashboard-pref="showOpenTradesCounter"> Show Open Trades Counter</label>',
+              '        <label><input type="checkbox" data-dashboard-pref="showOpenTradesCounter"> Show Open Trades Counter</label>\n'
+              '        <label><input type="checkbox" data-dashboard-pref="showTradeLevels"> Show Trade Levels (Entry / SL / TP)</label>',
+              'general trade levels toggle',
+          )
+
+          script_text = replace_once(
+              script_text,
+              'const DEFAULT_DASHBOARD_PREFS = {\n  showWeeklyPnl: true,',
+              'const DEFAULT_DASHBOARD_PREFS = {\n  showDailyPnl: true,\n  showWeeklyPnl: true,',
+              'daily pnl default',
+          )
+
+          script_text = replace_once(
+              script_text,
+              '  showManualTradeButtons: false,\n  showOpenTradesCounter: true,',
+              '  showManualTradeButtons: false,\n  showOpenTradesCounter: true,\n  showTradeLevels: true,',
+              'trade levels default',
+          )
+
+          script_text = replace_once(
+              script_text,
+              '  const phoneView = isCompactPhoneView();\n  document.body.classList.toggle("hide-weekly-pnl", !prefs.showWeeklyPnl);',
+              '  const phoneView = isCompactPhoneView();\n  document.body.classList.toggle("hide-daily-pnl", !prefs.showDailyPnl);\n  document.body.classList.toggle("hide-weekly-pnl", !prefs.showWeeklyPnl);',
+              'daily pnl preference application',
+          )
+
+          script_text = replace_once(
+              script_text,
+              '  document.body.classList.toggle("hide-open-trades-counter", !prefs.showOpenTradesCounter);\n  document.body.classList.toggle("hide-confidence-ui", !prefs.showConfidence);',
+              '  document.body.classList.toggle("hide-open-trades-counter", !prefs.showOpenTradesCounter);\n  document.body.classList.toggle("hide-trade-levels", !prefs.showTradeLevels);\n  document.body.classList.toggle("hide-confidence-ui", !prefs.showConfidence);',
+              'trade levels body preference',
+          )
+
+          script_text = replace_once(
+              script_text,
+              '  document.body.classList.toggle("hide-broker-info-ui", !prefs.showBrokerInfo);\n\n  document.querySelectorAll("[data-dashboard-pref]").forEach((input) => {',
+              '  document.body.classList.toggle("hide-broker-info-ui", !prefs.showBrokerInfo);\n\n  if (prefs.showTradeLevels === false && chartModuleInitialized) {\n    clearTradeLines("EURUSD");\n    clearTradeLines("XAUUSD");\n    clearTradeLevelDragLayer({ force: true });\n  }\n\n  document.querySelectorAll("[data-dashboard-pref]").forEach((input) => {',
+              'immediate trade level hide',
+          )
+
+          script_text = replace_once(
+              script_text,
+              'function drawTradeVisualLevels() {\n  if (chartLevelDragState.active || chartLevelDragState.pending) return;\n\n  clearTradeVisualLevels();',
+              'function drawTradeVisualLevels() {\n  if (chartLevelDragState.active || chartLevelDragState.pending) return;\n\n  const dashboardPrefs = loadLocalObject(DASHBOARD_PREFS_KEY, DEFAULT_DASHBOARD_PREFS);\n  if (dashboardPrefs.showTradeLevels === false) {\n    clearTradeLines("EURUSD");\n    clearTradeLines("XAUUSD");\n    clearTradeLevelDragLayer({ force: true });\n    return;\n  }\n\n  clearTradeVisualLevels();',
+              'trade level redraw guard',
+          )
+
+          script_text = replace_once(
+              script_text,
+              '    saveLocalObject(DASHBOARD_PREFS_KEY, prefs);\n    applyDashboardPreferences();\n  });\n});',
+              '    saveLocalObject(DASHBOARD_PREFS_KEY, prefs);\n    applyDashboardPreferences();\n    if (input.dataset.dashboardPref === "showTradeLevels" && input.checked) {\n      drawTradeVisualLevels();\n    }\n  });\n});',
+              'trade level toggle redraw',
+          )
+
+          style_text = replace_once(
+              style_text,
+              'body.hide-weekly-pnl .performance-weekly,',
+              'body.hide-daily-pnl .performance-daily,\nbody.hide-weekly-pnl .performance-weekly,',
+              'daily pnl css hide',
+          )
+
+          app.write_text(app_text)
+          script.write_text(script_text)
+          style.write_text(style_text)
+          PY
+
+      - name: Verify changes
+        run: |
+          grep -q 'data-dashboard-pref="showDailyPnl"' Frontend/app.html
+          grep -q 'data-dashboard-pref="showTradeLevels"' Frontend/app.html
+          grep -q 'showDailyPnl: true' Frontend/script.js
+          grep -q 'showTradeLevels: true' Frontend/script.js
+          grep -q 'dashboardPrefs.showTradeLevels === false' Frontend/script.js
+          grep -q 'hide-daily-pnl .performance-daily' Frontend/style.css
+
+      - name: Commit changes and remove workflow
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add Frontend/app.html Frontend/script.js Frontend/style.css
+          git rm .github/workflows/general-display-switches-once.yml
+          git commit -m 'Add General switches for Daily P/L and trade levels'
+          git push origin main
