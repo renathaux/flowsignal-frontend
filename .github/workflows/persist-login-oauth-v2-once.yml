@@ -1,0 +1,29 @@
+name: Run login persistence fix once
+
+on:
+  push:
+    paths:
+      - '.github/workflows/persist-login-oauth-v2-once.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Apply fix
+        run: python .github/fix_persist_login_oauth.py
+      - name: Commit
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add Frontend/startup.js Frontend/user-auth.js Frontend/account.html Frontend/app.html
+          git rm .github/fix_persist_login_oauth.py
+          git rm .github/workflows/persist-login-oauth-v2-once.yml
+          git rm .github/workflows/persist-login-oauth-once.yml
+          git commit -m "Persist customer login across OAuth"
+          git push
