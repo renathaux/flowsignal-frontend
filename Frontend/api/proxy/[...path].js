@@ -1,4 +1,4 @@
-const BACKEND_ORIGIN = 'https://flowsignal-backend-3.onrender.com';
+const BACKEND_ORIGIN = 'https://api.nathauxfx.com';
 
 module.exports = async function handler(req, res) {
   try {
