@@ -3,7 +3,7 @@ name: Add automatic light and dark theme
 on:
   push:
     paths:
-      - '.github/workflows/auto-light-dark-theme-once.yml'
+      - .github/workflows/auto-light-dark-theme-once.yml
 
 permissions:
   contents: write
@@ -14,21 +14,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Add adaptive public-site theme
+        shell: bash
         run: |
-          python - <<'PY'
-          from pathlib import Path
-          p = Path('Frontend/style.css')
-          css = p.read_text()
-          marker = '/* NathauxFX automatic device theme */'
-          if marker not in css:
-              css += r'''
+          if ! grep -q "NathauxFX automatic device theme" Frontend/style.css; then
+            cat >> Frontend/style.css <<'EOF'
 
 /* NathauxFX automatic device theme */
-/* Dark mode remains the existing default. Light mode follows the user's OS/browser preference. */
+/* Dark is the existing default. Light follows the user's OS/browser preference. */
 @media (prefers-color-scheme: light) {
-  html {
-    color-scheme: light;
-  }
+  html { color-scheme: light; }
 
   body:has(.landing-page:not(.hidden)) {
     background: #f7f9fc !important;
@@ -51,15 +45,11 @@ jobs:
 
   .landing-logo,
   .landing-logo span:last-child,
-  .hero-left h1 {
-    color: #0f172a !important;
-  }
+  .hero-left h1 { color: #0f172a !important; }
 
   .landing-links a,
   .mobile-footer a,
-  .legal-links a {
-    color: #2563eb !important;
-  }
+  .legal-links a { color: #2563eb !important; }
 
   .landing-login-btn,
   .hero-secondary,
@@ -89,17 +79,10 @@ jobs:
   }
 
   .hero-left h1 span,
-  .hero-stats strong {
-    color: #2563eb !important;
-  }
+  .hero-stats strong { color: #2563eb !important; }
 
-  .hero-left > p {
-    color: #526177 !important;
-  }
-
-  .hero-badges {
-    color: #334155 !important;
-  }
+  .hero-left > p { color: #526177 !important; }
+  .hero-badges { color: #334155 !important; }
 
   .hero-dashboard-img {
     border-color: rgba(148, 163, 184, 0.35) !important;
@@ -115,9 +98,7 @@ jobs:
   }
 
   .hero-stats span,
-  .trusted-text {
-    color: #64748b !important;
-  }
+  .trusted-text { color: #64748b !important; }
 
   .trust-card {
     background:
@@ -127,40 +108,25 @@ jobs:
     box-shadow: 0 18px 46px rgba(15, 23, 42, 0.07) !important;
   }
 
-  .trust-card h2 {
-    color: #0f172a !important;
-  }
+  .trust-card h2 { color: #0f172a !important; }
 
   .trust-card p,
-  .risk-note {
-    color: #526177 !important;
-  }
+  .risk-note { color: #526177 !important; }
 
   .trust-point {
     background: #f8fafc !important;
     border-color: #e2e8f0 !important;
   }
 
-  .trust-point strong {
-    color: #2563eb !important;
-  }
-
-  .trust-point span {
-    color: #64748b !important;
-  }
-
-  .risk-note {
-    border-top-color: #e2e8f0 !important;
-  }
-
-  .mobile-footer {
-    border-top-color: rgba(148, 163, 184, 0.24) !important;
-  }
+  .trust-point strong { color: #2563eb !important; }
+  .trust-point span { color: #64748b !important; }
+  .risk-note { border-top-color: #e2e8f0 !important; }
+  .mobile-footer { border-top-color: rgba(148, 163, 184, 0.24) !important; }
 }
-'''
-              p.write_text(css)
-          PY
-      - name: Commit and remove one-time workflow
+EOF
+          fi
+      - name: Commit theme and remove workflow
+        shell: bash
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
