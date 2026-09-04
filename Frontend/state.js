@@ -27,6 +27,25 @@
     }));
   }
 
+  function hideV2ShadowCard() {
+    const card = document.getElementById("v2-shadow-card");
+    if (!card) return;
+    card.style.setProperty("display", "none", "important");
+    card.setAttribute("aria-hidden", "true");
+  }
+
+  function removeV2ShadowCard() {
+    // script.js is parsed after state.js and owns the V2 shadow polling function.
+    // Disable future shadow refreshes before removing the card so later symbol
+    // changes and the 60-second poll cannot try to render into deleted elements.
+    if (typeof window.fetchV2Shadow === "function") {
+      window.fetchV2Shadow = async function () {
+        return null;
+      };
+    }
+    document.getElementById("v2-shadow-card")?.remove();
+  }
+
   function loadTabRoleSession() {
     if (window.FlowSignalTabRole || document.querySelector('script[data-flow-tab-role]')) return;
     const script = document.createElement("script");
@@ -35,6 +54,11 @@
     script.async = false;
     document.body.appendChild(script);
   }
+
+  // The V2 shadow comparison card is no longer part of the dashboard UI.
+  // Hide it immediately to prevent a flash, then remove it once all scripts load.
+  hideV2ShadowCard();
+  window.addEventListener("load", removeV2ShadowCard, { once: true });
 
   // script.js owns the legacy login handlers and is parsed after this file.
   // Load the per-tab role adapter only after the page has finished loading so
