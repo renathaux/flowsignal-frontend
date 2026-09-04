@@ -3,14 +3,29 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>NathauxFX</title>
-  <meta name="description" content="NathauxFX is a trading analysis and automated trading platform for EURUSD and Gold, with market structure, technical signals, fundamental insights, risk management, cTrader integration, and email signal sharing.">
+  <title>NathauxFX | Trading Analysis & Automation Software</title>
+  <meta name="description" content="NathauxFX is trading analysis and automation software for EURUSD and Gold, combining market structure, technical signals, fundamental insights, risk controls, cTrader execution through users' own broker accounts, and email signal sharing.">
+  <meta name="robots" content="index,follow,max-image-preview:large">
+  <link rel="canonical" href="https://nathauxfx.com/">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="NathauxFX | Trading Analysis & Automation Software">
+  <meta property="og:description" content="Analyze EURUSD and Gold, use risk controls, connect your own cTrader broker account for user-authorized automation, and share signals by email.">
+  <meta property="og:url" content="https://nathauxfx.com/">
+  <meta property="og:site_name" content="NathauxFX">
   <link rel="stylesheet" href="style.css?v=61">
   <link rel="stylesheet" href="desktop.css?v=1" media="(min-width: 701px)">
   <link rel="stylesheet" href="phone.css?v=49" media="(max-width: 700px)">
   <style>
     html,body{margin:0;min-height:100%;background:#020812}
     body{overflow-x:hidden}
+    .trust-section{max-width:1180px;margin:22px auto 0;padding:0 24px 34px;color:#dbe7f7}
+    .trust-card{border:1px solid #1e3d63;background:linear-gradient(180deg,rgba(9,25,45,.96),rgba(5,16,31,.96));border-radius:18px;padding:24px 26px;box-shadow:0 18px 55px rgba(0,0,0,.24)}
+    .trust-card h2{margin:0 0 10px;color:#fff;font-size:24px}.trust-card p{margin:8px 0;line-height:1.65;color:#b8c7da;font-size:15px}
+    .trust-points{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-top:18px}
+    .trust-point{border:1px solid #183654;background:#061425;border-radius:13px;padding:15px}.trust-point strong{display:block;color:#4d91ff;font-size:15px;margin-bottom:6px}.trust-point span{font-size:13px;line-height:1.5;color:#aebfd4}
+    .legal-links{display:flex;flex-wrap:wrap;gap:16px;justify-content:center;margin-top:20px;font-size:13px}.legal-links a{color:#8db7ff;text-decoration:none}.legal-links a:hover{text-decoration:underline}
+    .risk-note{margin-top:16px!important;padding-top:16px;border-top:1px solid #17324e;font-size:13px!important;color:#91a5bd!important}
+    @media(max-width:800px){.trust-points{grid-template-columns:1fr 1fr}.trust-section{padding:0 15px 28px}}@media(max-width:520px){.trust-points{grid-template-columns:1fr}.trust-card{padding:20px}.legal-links{gap:12px}}
   </style>
 </head>
 <body>
@@ -32,29 +47,45 @@
 
     <section class="hero-section">
       <div class="hero-left">
-        <div class="hero-pill"><span>● LIVE</span> Real-time signals • Smart money concepts • Built for traders</div>
+        <div class="hero-pill"><span>● LIVE</span> Real-time analysis • Risk controls • Built for traders</div>
         <h1>Smarter Signals.<br><span>Stronger Trades.</span></h1>
-        <p>NathauxFX combines real-time market structure, technical signals, fundamental insights, automated trading, and risk management tools to help traders identify setups, execute trades through cTrader, and receive or share trading signals by email.</p>
+        <p>NathauxFX is trading analysis and automation software for EURUSD and Gold. It combines market structure, technical signals, fundamental insights, risk controls, cTrader execution through your own connected broker account, and email signal sharing.</p>
         <div class="hero-actions">
-          <button id="heroSignupBtn" class="hero-primary" type="button">Start Trading Now →</button>
-          <button class="hero-secondary" type="button">View Features</button>
+          <button id="heroSignupBtn" class="hero-primary" type="button">Explore Platform →</button>
+          <button id="featuresBtn" class="hero-secondary" type="button">How It Works</button>
         </div>
-        <div class="hero-badges"><span>⚡ Real-time Alerts</span><span>◎ High Accuracy</span><span>🛡 Risk Managed</span></div>
+        <div class="hero-badges"><span>⚡ Real-time Alerts</span><span>◎ Rule-Based Analysis</span><span>🛡 Risk Controls</span></div>
       </div>
-      <div class="hero-right"><img src="dashboard-preview.png" class="hero-dashboard-img" alt="NathauxFX Dashboard"></div>
+      <div class="hero-right"><img src="dashboard-preview.png" class="hero-dashboard-img" alt="NathauxFX trading dashboard"></div>
     </section>
 
-    <section class="hero-stats">
-      <div><strong>15K+</strong><span>Active Traders</span></div>
-      <div><strong>98.6%</strong><span>Signal Accuracy</span></div>
-      <div><strong>24/7</strong><span>Real-time Alerts</span></div>
-      <div><strong>Risk</strong><span>Managed Signals</span></div>
+    <section class="hero-stats" aria-label="Platform principles">
+      <div><strong>Your Broker</strong><span>Funds stay in your brokerage account</span></div>
+      <div><strong>cTrader</strong><span>User-authorized trade execution</span></div>
+      <div><strong>Email</strong><span>Signal sharing and alerts</span></div>
+      <div><strong>Risk</strong><span>No guaranteed profits or returns</span></div>
     </section>
-    <div class="trusted-text">Built for real traders • No fake metrics • No hype</div>
+
+    <section id="trust" class="trust-section">
+      <div class="trust-card">
+        <h2>Trading software — not a broker</h2>
+        <p>NathauxFX is an independent software platform for market analysis, signals, risk management and optional trade automation. NathauxFX does not act as a broker and does not accept trading deposits or hold brokerage funds.</p>
+        <p>When automation is enabled, orders are sent to the user's own connected cTrader brokerage account under the permissions the user authorizes. Trading decisions, broker selection and account funding remain under the user's control.</p>
+        <div class="trust-points">
+          <div class="trust-point"><strong>No custody of trading funds</strong><span>Brokerage funds remain with the user's chosen broker.</span></div>
+          <div class="trust-point"><strong>No profit guarantees</strong><span>Markets involve risk and losses are possible.</span></div>
+          <div class="trust-point"><strong>User-controlled automation</strong><span>Automation can be enabled or disabled by the account user.</span></div>
+          <div class="trust-point"><strong>Transparent purpose</strong><span>Analysis, alerts, risk tools, cTrader integration and signal sharing.</span></div>
+        </div>
+        <p class="risk-note">Risk disclosure: Forex and leveraged trading can result in substantial losses. NathauxFX provides software tools and information; it does not guarantee performance, returns or successful trades.</p>
+        <div class="legal-links">
+          <a href="/about.html">About</a><a href="/how-it-works.html">How It Works</a><a href="/risk-disclosure.html">Risk Disclosure</a><a href="/terms.html">Terms</a><a href="/privacy.html">Privacy</a><a href="mailto:renathauxfx@outlook.com">Contact</a>
+        </div>
+      </div>
+    </section>
+
     <div class="mobile-footer">
-      <a href="mailto:renathauxfx@outlook.com">Contact</a>
-      <a href="mailto:flowsignal.contact@gmail.com">Support</a>
-      <a href="https://www.facebook.com/profile.php?id=61569229928465" target="_blank" rel="noopener">Facebook</a>
+      <a href="mailto:renathauxfx@outlook.com">Contact</a><a href="mailto:flowsignal.contact@gmail.com">Support</a><a href="/risk-disclosure.html">Risk</a><a href="/privacy.html">Privacy</a>
     </div>
   </div>
   <script>
@@ -65,6 +96,7 @@
       document.getElementById('loginBtn').onclick=()=>location.href='/account.html?mode=login';
       document.getElementById('signupBtn').onclick=()=>location.href='/account.html?mode=signup';
       document.getElementById('heroSignupBtn').onclick=()=>location.href='/account.html?mode=signup';
+      document.getElementById('featuresBtn').onclick=()=>location.href='/how-it-works.html';
       document.getElementById('ownerBtn').onclick=()=>{
         sessionStorage.removeItem('flowsignal_tab_signed_out');
         sessionStorage.removeItem('flowsignal_public_home_mode');
