@@ -322,3 +322,99 @@ body.fit-mode:has(#landingPage:not(.hidden)) {
     min-height: 0 !important;
   }
 }
+
+/* Final public card alignment.
+   On desktop the trust card sits on the left and the platform/risk card sits on the right.
+   The risk disclosure and legal links remain inside the platform card, and the old
+   duplicate black mobile footer is hidden. */
+#landingPage > .mobile-footer {
+  display: none !important;
+}
+
+@media (min-width: 1000px) {
+  #landingPage.landing-pro {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1.16fr) minmax(420px, .84fr) !important;
+    grid-template-rows: auto auto auto !important;
+    grid-template-areas:
+      "nav nav"
+      "hero hero"
+      "trust stats" !important;
+    column-gap: 22px !important;
+    row-gap: 0 !important;
+    align-items: stretch !important;
+  }
+
+  #landingPage > .landing-nav {
+    grid-area: nav !important;
+  }
+
+  #landingPage > .hero-section {
+    grid-area: hero !important;
+  }
+
+  #landingPage > .trust-section {
+    grid-area: trust !important;
+    width: 100% !important;
+    max-width: none !important;
+    margin: 22px 0 34px !important;
+    padding: 0 !important;
+    align-self: stretch !important;
+  }
+
+  #landingPage > .trust-section > .trust-card {
+    height: 100% !important;
+  }
+
+  #landingPage > .hero-stats {
+    grid-area: stats !important;
+    flex: none !important;
+    width: 100% !important;
+    max-width: none !important;
+    height: auto !important;
+    min-height: 0 !important;
+    margin: 22px 0 34px !important;
+    padding: 16px 16px 18px !important;
+    align-self: stretch !important;
+    align-content: start !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    overflow: hidden !important;
+  }
+
+  #landingPage > .hero-stats > div:not(.legal-links) {
+    min-height: 82px !important;
+    justify-content: center !important;
+    text-align: center !important;
+  }
+
+  #landingPage > .hero-stats > .risk-note {
+    grid-column: 1 / -1 !important;
+    width: auto !important;
+    margin: 12px 8px 0 !important;
+    padding: 16px 2px 0 !important;
+    text-align: left !important;
+    line-height: 1.55 !important;
+  }
+
+  #landingPage > .hero-stats > .legal-links {
+    grid-column: 1 / -1 !important;
+    margin: 14px 8px 0 !important;
+    padding: 0 2px 2px !important;
+    border-right: 0 !important;
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: wrap !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 10px 14px !important;
+  }
+}
+
+@media (max-width: 999px) {
+  #landingPage > .hero-stats {
+    flex: 0 0 auto !important;
+    height: auto !important;
+    min-height: 0 !important;
+    overflow: visible !important;
+  }
+}
