@@ -1,0 +1,120 @@
+name: Stack public trust cards
+
+on:
+  push:
+    paths:
+      - .github/workflows/stack-public-cards-once.yml
+
+permissions:
+  contents: write
+
+jobs:
+  stack-cards:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Stack trust and platform cards as full-width rectangles
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('Frontend/theme-auto.css')
+          s = p.read_text()
+          marker = 'NathauxFX stacked rectangle cards'
+          if marker not in s:
+              s += r'''
+
+/* NathauxFX stacked rectangle cards.
+   Keep both trust sections under each other with matching desktop width.
+   Risk disclosure and legal links stay inside the Your Broker / cTrader / Email / Risk card. */
+@media (min-width: 1000px) {
+  #landingPage.landing-pro {
+    display: flex !important;
+    flex-direction: column !important;
+    width: 100% !important;
+    max-width: none !important;
+    height: auto !important;
+    min-height: 100vh !important;
+    grid-template-columns: none !important;
+    grid-template-rows: none !important;
+    grid-template-areas: none !important;
+    column-gap: 0 !important;
+    align-items: stretch !important;
+  }
+
+  #landingPage > .landing-nav,
+  #landingPage > .hero-section {
+    width: 100% !important;
+  }
+
+  #landingPage > .trust-section,
+  #landingPage > .hero-stats {
+    width: min(calc(100% - 48px), 1180px) !important;
+    max-width: 1180px !important;
+    margin-left: auto !important;
+    margin-right: auto !important;
+    align-self: auto !important;
+  }
+
+  #landingPage > .trust-section {
+    margin-top: 22px !important;
+    margin-bottom: 0 !important;
+    padding: 0 !important;
+  }
+
+  #landingPage > .trust-section > .trust-card {
+    height: auto !important;
+  }
+
+  #landingPage > .hero-stats {
+    display: grid !important;
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+    height: auto !important;
+    min-height: 0 !important;
+    margin-top: 22px !important;
+    margin-bottom: 34px !important;
+    padding: 16px 16px 18px !important;
+    overflow: hidden !important;
+    align-content: start !important;
+  }
+
+  #landingPage > .hero-stats > div:not(.legal-links) {
+    min-height: 76px !important;
+    justify-content: center !important;
+    text-align: center !important;
+  }
+
+  #landingPage > .hero-stats > .risk-note {
+    grid-column: 1 / -1 !important;
+    width: auto !important;
+    margin: 12px 8px 0 !important;
+    padding: 16px 2px 0 !important;
+    text-align: left !important;
+    line-height: 1.55 !important;
+  }
+
+  #landingPage > .hero-stats > .legal-links {
+    grid-column: 1 / -1 !important;
+    margin: 14px 8px 0 !important;
+    padding: 0 2px 2px !important;
+    border-right: 0 !important;
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: wrap !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 10px 16px !important;
+  }
+}
+'''
+              p.write_text(s)
+          PY
+      - name: Commit layout fix and remove workflow
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add Frontend/theme-auto.css
+          git rm .github/workflows/stack-public-cards-once.yml
+          git commit -m "Stack public trust cards as full-width rectangles"
+          git push
