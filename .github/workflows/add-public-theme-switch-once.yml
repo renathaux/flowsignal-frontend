@@ -1,0 +1,375 @@
+name: Add public light dark switch
+
+on:
+  push:
+    paths:
+      - .github/workflows/add-public-theme-switch-once.yml
+
+permissions:
+  contents: write
+
+jobs:
+  add-theme-switch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Add shared theme toggle script
+        shell: bash
+        run: |
+          cat > Frontend/theme-toggle.js <<'EOF'
+          (function () {
+            'use strict';
+
+            const THEME_KEY = 'nathauxfx_theme';
+            const systemTheme = window.matchMedia ? window.matchMedia('(prefers-color-scheme: light)') : null;
+
+            function getSavedTheme() {
+              try {
+                const saved = localStorage.getItem(THEME_KEY);
+                return saved === 'light' || saved === 'dark' ? saved : null;
+              } catch (_error) {
+                return null;
+              }
+            }
+
+            function getEffectiveTheme() {
+              const saved = getSavedTheme();
+              if (saved) return saved;
+              return systemTheme && systemTheme.matches ? 'light' : 'dark';
+            }
+
+            function updateButton(theme) {
+              const button = document.getElementById('themeToggle');
+              if (!button) return;
+              const isDark = theme === 'dark';
+              const nextTheme = isDark ? 'light' : 'dark';
+              button.setAttribute('aria-checked', String(isDark));
+              button.setAttribute('aria-label', `Switch to ${nextTheme} mode`);
+              button.title = `Switch to ${nextTheme} mode`;
+            }
+
+            function applyTheme(theme, persist) {
+              document.documentElement.setAttribute('data-theme', theme);
+              if (persist) {
+                try {
+                  localStorage.setItem(THEME_KEY, theme);
+                } catch (_error) {}
+              }
+              updateButton(theme);
+            }
+
+            function initThemeToggle() {
+              applyTheme(getEffectiveTheme(), false);
+
+              const button = document.getElementById('themeToggle');
+              if (button) {
+                button.addEventListener('click', function () {
+                  const current = document.documentElement.getAttribute('data-theme') || getEffectiveTheme();
+                  applyTheme(current === 'dark' ? 'light' : 'dark', true);
+                });
+              }
+
+              if (systemTheme) {
+                const onSystemThemeChange = function (event) {
+                  if (!getSavedTheme()) applyTheme(event.matches ? 'light' : 'dark', false);
+                };
+                if (typeof systemTheme.addEventListener === 'function') {
+                  systemTheme.addEventListener('change', onSystemThemeChange);
+                } else if (typeof systemTheme.addListener === 'function') {
+                  systemTheme.addListener(onSystemThemeChange);
+                }
+              }
+            }
+
+            if (document.readyState === 'loading') {
+              document.addEventListener('DOMContentLoaded', initThemeToggle, { once: true });
+            } else {
+              initThemeToggle();
+            }
+          })();
+          EOF
+
+      - name: Update public light theme and switch styles
+        shell: bash
+        run: |
+          cat > Frontend/theme-auto.css <<'EOF'
+          /* NathauxFX public landing theme.
+             Default follows the device/browser preference until the visitor uses the switch.
+             A manual light/dark choice is remembered in localStorage. */
+
+          :root,
+          html[data-theme="dark"] {
+            color-scheme: dark;
+          }
+
+          html[data-theme="light"] {
+            color-scheme: light;
+          }
+
+          #landingPage .theme-toggle {
+            height: 34px;
+            padding: 0 8px;
+            border: 1px solid #24415f;
+            border-radius: 999px;
+            background: rgba(7, 20, 37, 0.92);
+            color: #dbe7f7;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 5px;
+            cursor: pointer;
+            flex: 0 0 auto;
+            transition: background .2s ease, border-color .2s ease, box-shadow .2s ease;
+          }
+
+          #landingPage .theme-toggle:hover {
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.10);
+          }
+
+          #landingPage .theme-icon {
+            width: 12px;
+            font-size: 12px;
+            line-height: 1;
+            text-align: center;
+            opacity: .62;
+            transition: opacity .2s ease, color .2s ease;
+          }
+
+          #landingPage .theme-toggle-track {
+            position: relative;
+            width: 30px;
+            height: 16px;
+            border-radius: 999px;
+            background: #15304d;
+            box-shadow: inset 0 0 0 1px rgba(148, 163, 184, 0.18);
+          }
+
+          #landingPage .theme-toggle-knob {
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #ffffff;
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
+            transition: transform .22s ease;
+          }
+
+          html[data-theme="dark"] #landingPage .theme-toggle-knob {
+            transform: translateX(14px);
+          }
+
+          html[data-theme="dark"] #landingPage .theme-icon-moon {
+            opacity: 1;
+            color: #ffffff;
+          }
+
+          html[data-theme="light"] #landingPage .theme-toggle {
+            background: rgba(255, 255, 255, 0.94);
+            color: #0f172a;
+            border-color: #cbd5e1;
+            box-shadow: 0 6px 18px rgba(15, 23, 42, 0.05);
+          }
+
+          html[data-theme="light"] #landingPage .theme-toggle-track {
+            background: #dbeafe;
+            box-shadow: inset 0 0 0 1px rgba(37, 99, 235, 0.16);
+          }
+
+          html[data-theme="light"] #landingPage .theme-icon-sun {
+            opacity: 1;
+            color: #d97706;
+          }
+
+          html[data-theme="light"] #landingPage .theme-toggle-knob {
+            transform: translateX(0);
+          }
+
+          html[data-theme="light"] body:has(#landingPage:not(.hidden)),
+          html[data-theme="light"] body.fit-mode:has(#landingPage:not(.hidden)) {
+            background: #f7f9fc !important;
+            color: #0f172a !important;
+          }
+
+          html[data-theme="light"] #landingPage.landing-page,
+          html[data-theme="light"] #landingPage.landing-pro {
+            background:
+              radial-gradient(circle at 72% 36%, rgba(37, 99, 235, 0.08), transparent 34%),
+              linear-gradient(180deg, #ffffff 0%, #f7f9fc 100%) !important;
+            color: #0f172a !important;
+          }
+
+          html[data-theme="light"] #landingPage.landing-pro::after {
+            background: radial-gradient(ellipse at center, rgba(37, 99, 235, 0.14), transparent 58%) !important;
+            opacity: 0.45 !important;
+          }
+
+          html[data-theme="light"] #landingPage .landing-nav {
+            background: rgba(255, 255, 255, 0.82) !important;
+            border-bottom: 1px solid rgba(148, 163, 184, 0.22) !important;
+            backdrop-filter: blur(18px);
+            -webkit-backdrop-filter: blur(18px);
+          }
+
+          html[data-theme="light"] #landingPage .landing-logo,
+          html[data-theme="light"] #landingPage .landing-logo span:last-child,
+          html[data-theme="light"] #landingPage .hero-left h1 {
+            color: #0f172a !important;
+          }
+
+          html[data-theme="light"] #landingPage .landing-links,
+          html[data-theme="light"] #landingPage .hero-badges {
+            color: #334155 !important;
+          }
+
+          html[data-theme="light"] #landingPage .landing-links a,
+          html[data-theme="light"] #landingPage .mobile-footer a,
+          html[data-theme="light"] #landingPage .legal-links a {
+            color: #2563eb !important;
+          }
+
+          html[data-theme="light"] #landingPage #landingLang,
+          html[data-theme="light"] #landingPage .landing-login-btn,
+          html[data-theme="light"] #landingPage .hero-secondary {
+            background: rgba(255, 255, 255, 0.94) !important;
+            border-color: #cbd5e1 !important;
+            color: #0f172a !important;
+            box-shadow: 0 6px 18px rgba(15, 23, 42, 0.05) !important;
+          }
+
+          html[data-theme="light"] #landingPage .landing-login-btn:hover,
+          html[data-theme="light"] #landingPage .hero-secondary:hover {
+            background: #f1f5f9 !important;
+            border-color: #94a3b8 !important;
+          }
+
+          html[data-theme="light"] #landingPage .landing-get-btn,
+          html[data-theme="light"] #landingPage .hero-primary {
+            color: #ffffff !important;
+            box-shadow: 0 14px 30px rgba(37, 99, 235, 0.22) !important;
+          }
+
+          html[data-theme="light"] #landingPage .hero-pill {
+            background: rgba(239, 246, 255, 0.92) !important;
+            border-color: #bfdbfe !important;
+            color: #2563eb !important;
+          }
+
+          html[data-theme="light"] #landingPage .hero-left h1 span,
+          html[data-theme="light"] #landingPage .hero-stats strong {
+            color: #2563eb !important;
+          }
+
+          html[data-theme="light"] #landingPage .hero-left > p {
+            color: #526177 !important;
+          }
+
+          html[data-theme="light"] #landingPage .hero-dashboard-img {
+            border-color: rgba(148, 163, 184, 0.38) !important;
+            box-shadow:
+              0 28px 70px rgba(15, 23, 42, 0.12),
+              0 0 0 1px rgba(255, 255, 255, 0.75) inset !important;
+          }
+
+          html[data-theme="light"] #landingPage .hero-stats {
+            background: rgba(255, 255, 255, 0.94) !important;
+            border-color: #dbe3ee !important;
+            box-shadow: 0 18px 46px rgba(15, 23, 42, 0.08) !important;
+          }
+
+          html[data-theme="light"] #landingPage .hero-stats div {
+            border-right-color: rgba(148, 163, 184, 0.24) !important;
+          }
+
+          html[data-theme="light"] #landingPage .hero-stats span,
+          html[data-theme="light"] #landingPage .trusted-text {
+            color: #64748b !important;
+          }
+
+          html[data-theme="light"] #landingPage .trust-section {
+            color: #334155 !important;
+          }
+
+          html[data-theme="light"] #landingPage .trust-card {
+            background:
+              radial-gradient(circle at 100% 0%, rgba(37, 99, 235, 0.06), transparent 34%),
+              #ffffff !important;
+            border-color: #dbe3ee !important;
+            box-shadow: 0 18px 46px rgba(15, 23, 42, 0.07) !important;
+          }
+
+          html[data-theme="light"] #landingPage .trust-card h2 {
+            color: #0f172a !important;
+          }
+
+          html[data-theme="light"] #landingPage .trust-card p,
+          html[data-theme="light"] #landingPage .risk-note {
+            color: #526177 !important;
+          }
+
+          html[data-theme="light"] #landingPage .trust-point {
+            background: #f8fafc !important;
+            border-color: #e2e8f0 !important;
+          }
+
+          html[data-theme="light"] #landingPage .trust-point strong {
+            color: #2563eb !important;
+          }
+
+          html[data-theme="light"] #landingPage .trust-point span {
+            color: #64748b !important;
+          }
+
+          html[data-theme="light"] #landingPage .risk-note {
+            border-top-color: #e2e8f0 !important;
+          }
+
+          html[data-theme="light"] #landingPage .mobile-footer {
+            border-top-color: rgba(148, 163, 184, 0.24) !important;
+          }
+
+          @media (max-width: 700px) {
+            #landingPage .theme-toggle {
+              height: 32px;
+              padding: 0 7px;
+            }
+          }
+          EOF
+
+      - name: Add switch to public pages
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          pages = [Path('Frontend/index.html'), Path('Frontend/home.html')]
+          old_link = '  <link rel="stylesheet" href="theme-auto.css?v=1">'
+          new_head = '''  <script>\n    (function(){\n      var theme = 'dark';\n      try {\n        var saved = localStorage.getItem('nathauxfx_theme');\n        if (saved === 'light' || saved === 'dark') theme = saved;\n        else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches) theme = 'light';\n      } catch (_error) {}\n      document.documentElement.setAttribute('data-theme', theme);\n    })();\n  </script>\n  <link rel="stylesheet" href="theme-auto.css?v=2">\n  <script src="theme-toggle.js?v=1" defer></script>'''
+          language = '        <select id="landingLang" aria-label="Language"><option value="EN">EN</option><option value="FR">FR</option><option value="ES">ES</option></select>'
+          switch = '''        <button id="themeToggle" class="theme-toggle" type="button" role="switch" aria-checked="false" aria-label="Switch to light mode" title="Switch to light mode">\n          <span class="theme-icon theme-icon-sun" aria-hidden="true">☀</span>\n          <span class="theme-toggle-track" aria-hidden="true"><span class="theme-toggle-knob"></span></span>\n          <span class="theme-icon theme-icon-moon" aria-hidden="true">☾</span>\n        </button>'''
+
+          for path in pages:
+              text = path.read_text()
+              if 'theme-toggle.js?v=1' not in text:
+                  if old_link not in text:
+                      raise SystemExit(f'Missing theme link in {path}')
+                  text = text.replace(old_link, new_head, 1)
+              if 'id="themeToggle"' not in text:
+                  if language not in text:
+                      raise SystemExit(f'Missing language selector in {path}')
+                  text = text.replace(language, language + '\n' + switch, 1)
+              path.write_text(text)
+          PY
+
+      - name: Commit switch and remove workflow
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add Frontend/index.html Frontend/home.html Frontend/theme-auto.css Frontend/theme-toggle.js
+          git rm .github/workflows/add-public-theme-switch-once.yml
+          git commit -m "Add public light dark theme switch"
+          git push
