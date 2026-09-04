@@ -1,0 +1,36 @@
+name: Bump auth cache once
+
+on:
+  push:
+    paths:
+      - '.github/workflows/bump-auth-cache-once.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Bump auth script versions
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('Frontend/startup.js')
+          s=p.read_text(encoding='utf-8').replace('tab-role-session.js?v=12','tab-role-session.js?v=13')
+          p.write_text(s,encoding='utf-8')
+          p=Path('Frontend/tab-role-session.js')
+          s=p.read_text(encoding='utf-8').replace("user-auth.js?v=4","user-auth.js?v=5")
+          p.write_text(s,encoding='utf-8')
+          PY
+      - name: Commit
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add Frontend/startup.js Frontend/tab-role-session.js
+          git rm .github/workflows/bump-auth-cache-once.yml
+          git commit -m "Load persisted auth recovery without cache"
+          git push
