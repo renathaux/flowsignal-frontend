@@ -1,6 +1,8 @@
 (function () {
   const state = { lastApiCalled: null, statusCode: null, errorMessage: null };
   const DEFAULT_TIMEOUT_MS = 12000;
+  const PRIMARY_BACKEND_ORIGIN = "https://api.nathauxfx.com";
+  const LEGACY_BACKEND_ORIGIN = "https://flowsignal-backend-3.onrender.com";
   const TAB_WINDOW_PREFIX = "flowsignal-tab:";
   const TAB_ROLE_KEY = "flowsignal_tab_role";
   const OWNER_SESSION_KEY = "flowsignal_session_token";
@@ -28,6 +30,24 @@
     "/ctrader/accounts/forget",
     "/ctrader/accounts/clear",
   ]);
+
+  function canonicalBackendInput(input) {
+    try {
+      if (typeof input === "string" || input instanceof URL) {
+        const url = new URL(String(input), window.location.href);
+        if (url.origin !== LEGACY_BACKEND_ORIGIN) return input;
+        const target = new URL(url.pathname + url.search + url.hash, PRIMARY_BACKEND_ORIGIN);
+        return input instanceof URL ? target : target.toString();
+      }
+      if (input instanceof Request) {
+        const url = new URL(input.url);
+        if (url.origin !== LEGACY_BACKEND_ORIGIN) return input;
+        const target = new URL(url.pathname + url.search + url.hash, PRIMARY_BACKEND_ORIGIN);
+        return new Request(target.toString(), input);
+      }
+    } catch (_error) {}
+    return input;
+  }
 
   function requestUrl(input) {
     try {
@@ -164,11 +184,12 @@
   }
 
   function requestWithTimeout(input, init = {}) {
+    const routedInput = canonicalBackendInput(input);
     const timeoutMs = Number(init.timeoutMs || DEFAULT_TIMEOUT_MS);
-    const requestInit = applyOwnerAuthorization(input, { ...init });
+    const requestInit = applyOwnerAuthorization(routedInput, { ...init });
     delete requestInit.timeoutMs;
     delete requestInit.suppressErrorPanel;
-    if (!Number.isFinite(timeoutMs) || timeoutMs <= 0) return window.FlowSignalApi.nativeFetch(input, requestInit);
+    if (!Number.isFinite(timeoutMs) || timeoutMs <= 0) return window.FlowSignalApi.nativeFetch(routedInput, requestInit);
     const controller = new AbortController();
     const upstreamSignal = requestInit.signal;
     const abortFromUpstream = () => controller.abort(upstreamSignal?.reason);
@@ -178,7 +199,7 @@
     }
     requestInit.signal = controller.signal;
     const timeout = window.setTimeout(() => controller.abort("FlowSignal request timeout"), timeoutMs);
-    return window.FlowSignalApi.nativeFetch(input, requestInit)
+    return window.FlowSignalApi.nativeFetch(routedInput, requestInit)
       .catch((error) => {
         if (controller.signal.aborted && !upstreamSignal?.aborted) {
           const timeoutError = new Error(`Request timed out after ${timeoutMs}ms`);
@@ -217,8 +238,9 @@
   }
 
   async function apiFetch(input, init) {
-    const url = typeof input === "string" ? input : input?.url;
-    const ownerAccessCodeResponse = adminAccessCodeSessionResponse(input);
+    const routedInput = canonicalBackendInput(input);
+    const url = typeof routedInput === "string" ? routedInput : routedInput?.url;
+    const ownerAccessCodeResponse = adminAccessCodeSessionResponse(routedInput);
     if (ownerAccessCodeResponse) return ownerAccessCodeResponse;
 
     const suppressErrorPanel = Boolean(
@@ -232,8 +254,8 @@
     );
     if (!suppressErrorPanel) state.lastApiCalled = url || "unknown";
     try {
-      const response = await requestWithTimeout(input, init);
-      await redirectExpiredOwnerMutation(input, init, response);
+      const response = await requestWithTimeout(routedInput, init);
+      await redirectExpiredOwnerMutation(routedInput, init, response);
       if (suppressErrorPanel) return response;
       state.statusCode = response.status;
       if (!response.ok) {
