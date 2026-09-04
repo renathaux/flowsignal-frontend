@@ -38,7 +38,12 @@
     .trust-point{border:1px solid #183654;background:#061425;border-radius:13px;padding:15px}.trust-point strong{display:block;color:#4d91ff;font-size:15px;margin-bottom:6px}.trust-point span{font-size:13px;line-height:1.5;color:#aebfd4}
     .legal-links{display:flex;flex-wrap:wrap;gap:16px;justify-content:center;margin-top:20px;font-size:13px}.legal-links a{color:#8db7ff;text-decoration:none}.legal-links a:hover{text-decoration:underline}
     .risk-note{margin-top:16px!important;padding-top:16px;border-top:1px solid #17324e;font-size:13px!important;color:#91a5bd!important}
-    @media(max-width:800px){.trust-points{grid-template-columns:1fr 1fr}.trust-section{padding:0 15px 28px}}@media(max-width:520px){.trust-points{grid-template-columns:1fr}.trust-card{padding:20px}.legal-links{gap:12px}}
+    .hero-stats{height:auto!important;min-height:122px!important;padding-top:14px!important;padding-bottom:16px!important}
+    .hero-stats>.risk-note{grid-column:1/-1;width:auto;margin:12px 24px 0!important;padding-top:16px!important;text-align:left;line-height:1.55}
+    .hero-stats>.legal-links{grid-column:1/-1;margin-top:14px!important;padding:0 24px 2px!important;border-right:0!important;display:flex!important;flex-direction:row!important;align-items:center!important;justify-content:center!important;gap:16px!important}
+    @media(max-width:800px){.trust-points{grid-template-columns:1fr 1fr}.trust-section{padding:0 15px 28px}}
+    @media(max-width:700px){.hero-stats>.risk-note,.hero-stats>.legal-links{grid-column:1/-1}.hero-stats>.risk-note{margin:10px 10px 0!important}.hero-stats>.legal-links{padding:0 10px 4px!important;gap:12px!important}}
+    @media(max-width:520px){.trust-points{grid-template-columns:1fr}.trust-card{padding:20px}.legal-links{gap:12px}}
   </style>
 </head>
 <body>
@@ -88,10 +93,6 @@
           <div class="trust-point"><strong>User-controlled automation</strong><span>Automation can be enabled or disabled by the account user.</span></div>
           <div class="trust-point"><strong>Transparent purpose</strong><span>Analysis, alerts, risk tools, cTrader integration and signal sharing.</span></div>
         </div>
-        <p class="risk-note">Risk disclosure: Forex and leveraged trading can result in substantial losses. NathauxFX provides software tools and information; it does not guarantee performance, returns or successful trades.</p>
-        <div class="legal-links">
-          <a href="/about.html">About</a><a href="/how-it-works.html">How It Works</a><a href="/risk-disclosure.html">Risk Disclosure</a><a href="/terms.html">Terms</a><a href="/privacy.html">Privacy</a><a href="mailto:renathauxfx@outlook.com">Contact</a>
-        </div>
       </div>
     </section>
 
@@ -100,6 +101,10 @@
       <div><strong>cTrader</strong><span>User-authorized trade execution</span></div>
       <div><strong>Email</strong><span>Signal sharing and alerts</span></div>
       <div><strong>Risk</strong><span>No guaranteed profits or returns</span></div>
+      <p class="risk-note">Risk disclosure: Forex and leveraged trading can result in substantial losses. NathauxFX provides software tools and information; it does not guarantee performance, returns or successful trades.</p>
+      <div class="legal-links">
+        <a href="/about.html">About</a><a href="/how-it-works.html">How It Works</a><a href="/risk-disclosure.html">Risk Disclosure</a><a href="/terms.html">Terms</a><a href="/privacy.html">Privacy</a><a href="mailto:renathauxfx@outlook.com">Contact</a>
+      </div>
     </section>
 
     <div class="mobile-footer">
