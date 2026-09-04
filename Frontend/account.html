@@ -50,6 +50,7 @@
       const PUBLIC_HOME_KEY='flowsignal_public_home_mode';
       const TAB_SIGNED_OUT_KEY='flowsignal_tab_signed_out';
       const USER_SESSION_KEY='flowsignal_user_session_token';
+      const PERSISTED_USER_SESSION_KEY='flowsignal_user_session_persist';
       const TAB_WINDOW_PREFIX='flowsignal-tab:';
       function ensureTabId(){
         const current=String(window.name||'');
@@ -95,6 +96,7 @@
         const tabId=ensureTabId();
         sessionStorage.setItem(USER_SESSION_KEY,String(data.session_token));
         localStorage.setItem(`flowsignal_tab_user_session:${tabId}`,JSON.stringify({token:String(data.session_token),csrf:String(data.csrf_token||'')}));
+        localStorage.setItem(PERSISTED_USER_SESSION_KEY,JSON.stringify({token:String(data.session_token),csrf:String(data.csrf_token||''),saved_at:Date.now()}));
         sessionStorage.removeItem(PUBLIC_HOME_KEY);
         sessionStorage.removeItem(TAB_SIGNED_OUT_KEY);
         sessionStorage.setItem('flowsignal_user_portal_intent','1');

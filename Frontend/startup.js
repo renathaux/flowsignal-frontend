@@ -1,9 +1,10 @@
 (function () {
   const earlyParams = new URLSearchParams(window.location.search);
   const isPublicRoot = /^\/$/.test(window.location.pathname);
-  const isAppRoute = /^\/app\/?$/i.test(window.location.pathname);
+  const isAppRoute = /^\/app(?:\.html)?\/?$/i.test(window.location.pathname);
   const TAB_WINDOW_PREFIX = 'flowsignal-tab:';
   const USER_SESSION_KEY = 'flowsignal_user_session_token';
+  const PERSISTED_USER_SESSION_KEY = 'flowsignal_user_session_persist';
   const CSRF_KEY = 'flowsignal_csrf_token';
   const TAB_ROLE_KEY = 'flowsignal_tab_role';
 
@@ -11,30 +12,54 @@
   // by tab-role-session.js, so relying on its recovery routine creates a boot
   // race: the route gate redirects before that script can restore this tab.
   function recoverThisTabBeforeRouteGate() {
+    if (sessionStorage.getItem(USER_SESSION_KEY)) return;
+
     const current = String(window.name || '');
-    if (!current.startsWith(TAB_WINDOW_PREFIX)) return;
-    const tabId = current.slice(TAB_WINDOW_PREFIX.length);
-    if (!tabId || sessionStorage.getItem(USER_SESSION_KEY)) return;
+    const tabId = current.startsWith(TAB_WINDOW_PREFIX)
+      ? current.slice(TAB_WINDOW_PREFIX.length)
+      : '';
+
+    if (tabId) {
+      try {
+        const customer = JSON.parse(localStorage.getItem(`flowsignal_tab_user_session:${tabId}`) || 'null');
+        if (customer?.token) {
+          sessionStorage.setItem(USER_SESSION_KEY, String(customer.token));
+          if (customer.csrf) sessionStorage.setItem(CSRF_KEY, String(customer.csrf));
+          sessionStorage.setItem(TAB_ROLE_KEY, 'user');
+          sessionStorage.removeItem('flowsignal_public_home_mode');
+          sessionStorage.removeItem('flowsignal_tab_signed_out');
+          return;
+        }
+      } catch (_error) {}
+
+      try {
+        const owner = JSON.parse(localStorage.getItem(`flowsignal_tab_admin_session:${tabId}`) || 'null');
+        if (owner?.token) {
+          sessionStorage.setItem(TAB_ROLE_KEY, 'admin');
+          localStorage.setItem('flowsignal_session_token', String(owner.token));
+          sessionStorage.removeItem('flowsignal_public_home_mode');
+          sessionStorage.removeItem('flowsignal_tab_signed_out');
+          return;
+        }
+      } catch (_error) {}
+    }
 
     try {
-      const customer = JSON.parse(localStorage.getItem(`flowsignal_tab_user_session:${tabId}`) || 'null');
-      if (customer?.token) {
-        sessionStorage.setItem(USER_SESSION_KEY, String(customer.token));
-        if (customer.csrf) sessionStorage.setItem(CSRF_KEY, String(customer.csrf));
-        sessionStorage.setItem(TAB_ROLE_KEY, 'user');
-        sessionStorage.removeItem('flowsignal_public_home_mode');
-        sessionStorage.removeItem('flowsignal_tab_signed_out');
-        return;
-      }
-    } catch (_error) {}
+      const saved = JSON.parse(localStorage.getItem(PERSISTED_USER_SESSION_KEY) || 'null');
+      if (!saved?.token) return;
+      sessionStorage.setItem(USER_SESSION_KEY, String(saved.token));
+      if (saved.csrf) sessionStorage.setItem(CSRF_KEY, String(saved.csrf));
+      sessionStorage.setItem(TAB_ROLE_KEY, 'user');
+      sessionStorage.removeItem('flowsignal_public_home_mode');
+      sessionStorage.removeItem('flowsignal_tab_signed_out');
 
-    try {
-      const owner = JSON.parse(localStorage.getItem(`flowsignal_tab_admin_session:${tabId}`) || 'null');
-      if (owner?.token) {
-        sessionStorage.setItem(TAB_ROLE_KEY, 'admin');
-        localStorage.setItem('flowsignal_session_token', String(owner.token));
-        sessionStorage.removeItem('flowsignal_public_home_mode');
-        sessionStorage.removeItem('flowsignal_tab_signed_out');
+      if (!tabId) {
+        const newTabId = (crypto.randomUUID?.() || `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`);
+        window.name = `${TAB_WINDOW_PREFIX}${newTabId}`;
+        localStorage.setItem(`flowsignal_tab_user_session:${newTabId}`, JSON.stringify({
+          token: String(saved.token),
+          csrf: String(saved.csrf || '')
+        }));
       }
     } catch (_error) {}
   }

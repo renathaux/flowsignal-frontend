@@ -8,6 +8,7 @@
   const AUTH_BACKEND=IS_LOCAL?LOCAL_BACKEND:DIRECT_BACKEND;
   const CSRF_KEY='flowsignal_csrf_token';
   const USER_SESSION_KEY='flowsignal_user_session_token';
+  const PERSISTED_USER_SESSION_KEY='flowsignal_user_session_persist';
   const LEGACY_SESSION_TOKEN_KEY='flowsignal_session_token';
   const PUBLIC_HOME_KEY='flowsignal_public_home_mode';
   const TAB_SIGNED_OUT_KEY='flowsignal_tab_signed_out';
@@ -17,9 +18,11 @@
     const current=String(window.name||'');
     return current.startsWith(TAB_WINDOW_PREFIX)?current.slice(TAB_WINDOW_PREFIX.length):'';
   }
+  function savedDeviceSession(){try{return JSON.parse(localStorage.getItem(PERSISTED_USER_SESSION_KEY)||'null');}catch(_error){return null;}}
+  function saveDeviceSession(token,csrf=''){if(!token)return;localStorage.setItem(PERSISTED_USER_SESSION_KEY,JSON.stringify({token:String(token),csrf:String(csrf||''),saved_at:Date.now()}));}
+  function clearDeviceSession(){localStorage.removeItem(PERSISTED_USER_SESSION_KEY);}
   function recoverTabAuth(){
     const id=currentTabId();
-    if(!id)return;
     if(!sessionStorage.getItem(USER_SESSION_KEY)){
       try{
         const saved=JSON.parse(localStorage.getItem(`flowsignal_tab_user_session:${id}`)||'null');
@@ -33,7 +36,7 @@
         }
       }catch(_error){}
     }
-    if(!sessionStorage.getItem(USER_SESSION_KEY)&&sessionStorage.getItem(TAB_ROLE_KEY)!=='admin'){
+    if(!sessionStorage.getItem(USER_SESSION_KEY)&&sessionStorage.getItem(TAB_ROLE_KEY)!=='admin'&&id){
       try{
         const saved=JSON.parse(localStorage.getItem(`flowsignal_tab_admin_session:${id}`)||'null');
         if(saved?.token){
@@ -43,6 +46,16 @@
           sessionStorage.removeItem(TAB_SIGNED_OUT_KEY);
         }
       }catch(_error){}
+    }
+    if(!sessionStorage.getItem(USER_SESSION_KEY)&&sessionStorage.getItem(TAB_ROLE_KEY)!=='admin'){
+      const saved=savedDeviceSession();
+      if(saved?.token){
+        sessionStorage.setItem(USER_SESSION_KEY,String(saved.token));
+        if(saved.csrf)sessionStorage.setItem(CSRF_KEY,String(saved.csrf));
+        sessionStorage.setItem(TAB_ROLE_KEY,'user');
+        sessionStorage.removeItem(PUBLIC_HOME_KEY);
+        sessionStorage.removeItem(TAB_SIGNED_OUT_KEY);
+      }
     }
   }
   recoverTabAuth();
@@ -211,10 +224,11 @@
     try{
       const response=await nativeFetch(`${AUTH_BACKEND}/auth/session`,{cache:'no-store',headers:{'Authorization':`FlowSignalUser ${token}`}});
       const data=await response.json().catch(()=>({}));
-      if(data?.authenticated&&data?.user){csrfToken=String(data.csrf_token||'');sessionStorage.setItem(CSRF_KEY,csrfToken);applyUser(data.user);return data.user;}
+      if(data?.authenticated&&data?.user){csrfToken=String(data.csrf_token||'');sessionStorage.setItem(CSRF_KEY,csrfToken);saveDeviceSession(token,csrfToken);applyUser(data.user);return data.user;}
     }catch(_error){}
     sessionStorage.removeItem(USER_SESSION_KEY);
     sessionStorage.removeItem(TAB_ROLE_KEY);
+    clearDeviceSession();
     sessionUser=null;csrfToken='';sessionStorage.removeItem(CSRF_KEY);
     if(location.pathname.startsWith('/app')) location.replace('/account.html?expired=1');
     else showLanding();
@@ -228,6 +242,7 @@
     }
     const tabId=currentTabId();
     if(tabId)localStorage.removeItem(`flowsignal_tab_user_session:${tabId}`);
+    clearDeviceSession();
     window.name='';
     sessionStorage.setItem(TAB_SIGNED_OUT_KEY,'1');
     sessionStorage.removeItem(USER_SESSION_KEY);
