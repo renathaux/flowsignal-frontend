@@ -1,0 +1,70 @@
+(function () {
+  'use strict';
+
+  const THEME_KEY = 'nathauxfx_theme';
+  const systemTheme = window.matchMedia ? window.matchMedia('(prefers-color-scheme: light)') : null;
+
+  function getSavedTheme() {
+    try {
+      const saved = localStorage.getItem(THEME_KEY);
+      return saved === 'light' || saved === 'dark' ? saved : null;
+    } catch (_error) {
+      return null;
+    }
+  }
+
+  function getEffectiveTheme() {
+    const saved = getSavedTheme();
+    if (saved) return saved;
+    return systemTheme && systemTheme.matches ? 'light' : 'dark';
+  }
+
+  function updateButton(theme) {
+    const button = document.getElementById('themeToggle');
+    if (!button) return;
+    const isDark = theme === 'dark';
+    const nextTheme = isDark ? 'light' : 'dark';
+    button.setAttribute('aria-checked', String(isDark));
+    button.setAttribute('aria-label', `Switch to ${nextTheme} mode`);
+    button.title = `Switch to ${nextTheme} mode`;
+  }
+
+  function applyTheme(theme, persist) {
+    document.documentElement.setAttribute('data-theme', theme);
+    if (persist) {
+      try {
+        localStorage.setItem(THEME_KEY, theme);
+      } catch (_error) {}
+    }
+    updateButton(theme);
+  }
+
+  function initThemeToggle() {
+    applyTheme(getEffectiveTheme(), false);
+
+    const button = document.getElementById('themeToggle');
+    if (button) {
+      button.addEventListener('click', function () {
+        const current = document.documentElement.getAttribute('data-theme') || getEffectiveTheme();
+        applyTheme(current === 'dark' ? 'light' : 'dark', true);
+      });
+    }
+
+    if (systemTheme) {
+      const onSystemThemeChange = function (event) {
+        if (!getSavedTheme()) applyTheme(event.matches ? 'light' : 'dark', false);
+      };
+      if (typeof systemTheme.addEventListener === 'function') {
+        systemTheme.addEventListener('change', onSystemThemeChange);
+      } else if (typeof systemTheme.addListener === 'function') {
+        systemTheme.addListener(onSystemThemeChange);
+      }
+    }
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initThemeToggle, { once: true });
+  } else {
+    initThemeToggle();
+  }
+})();

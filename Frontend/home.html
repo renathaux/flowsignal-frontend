@@ -15,7 +15,19 @@
   <link rel="stylesheet" href="style.css?v=61">
   <link rel="stylesheet" href="desktop.css?v=1" media="(min-width: 701px)">
   <link rel="stylesheet" href="phone.css?v=49" media="(max-width: 700px)">
-  <link rel="stylesheet" href="theme-auto.css?v=1">
+  <script>
+    (function(){
+      var theme = 'dark';
+      try {
+        var saved = localStorage.getItem('nathauxfx_theme');
+        if (saved === 'light' || saved === 'dark') theme = saved;
+        else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches) theme = 'light';
+      } catch (_error) {}
+      document.documentElement.setAttribute('data-theme', theme);
+    })();
+  </script>
+  <link rel="stylesheet" href="theme-auto.css?v=2">
+  <script src="theme-toggle.js?v=1" defer></script>
   <style>
     html,body{margin:0;min-height:100%;background:#020812}
     body{overflow-x:hidden}
@@ -40,6 +52,11 @@
       </div>
       <div class="landing-nav-actions">
         <select id="landingLang" aria-label="Language"><option value="EN">EN</option><option value="FR">FR</option><option value="ES">ES</option></select>
+        <button id="themeToggle" class="theme-toggle" type="button" role="switch" aria-checked="false" aria-label="Switch to light mode" title="Switch to light mode">
+          <span class="theme-icon theme-icon-sun" aria-hidden="true">☀</span>
+          <span class="theme-toggle-track" aria-hidden="true"><span class="theme-toggle-knob"></span></span>
+          <span class="theme-icon theme-icon-moon" aria-hidden="true">☾</span>
+        </button>
         <button id="loginBtn" class="landing-login-btn" type="button">Login</button>
         <button id="signupBtn" class="landing-get-btn" type="button">Get Started</button>
         <button id="ownerBtn" class="landing-login-btn" type="button">Owner</button>
