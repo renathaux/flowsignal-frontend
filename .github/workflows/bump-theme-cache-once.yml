@@ -1,0 +1,25 @@
+name: Bump public theme cache
+
+on:
+  push:
+    paths:
+      - .github/workflows/bump-theme-cache-once.yml
+
+permissions:
+  contents: write
+
+jobs:
+  bump:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Bump theme stylesheet version
+        run: |
+          sed -i 's/theme-auto.css?v=2/theme-auto.css?v=3/g' Frontend/index.html Frontend/home.html
+      - name: Commit
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add Frontend/index.html Frontend/home.html
+          git commit -m "Bump public theme stylesheet cache" || exit 0
+          git push
