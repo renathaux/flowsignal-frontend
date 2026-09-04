@@ -1,0 +1,37 @@
+name: Remove duplicate centered NathauxFX header
+
+on:
+  push:
+    paths:
+      - '.github/workflows/remove-center-nathauxfx-once.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Remove centered duplicate brand text
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('Frontend/app.html')
+          s = p.read_text()
+          old = '<div class="header">NathauxFX</div>'
+          new = '<div class="header" aria-hidden="true"></div>'
+          if old not in s:
+              raise SystemExit('Target header not found')
+          p.write_text(s.replace(old, new, 1))
+          PY
+
+      - name: Commit cleanup and remove one-time workflow
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add Frontend/app.html
+          git rm .github/workflows/remove-center-nathauxfx-once.yml
+          git commit -m "Remove duplicate centered NathauxFX header"
+          git push
