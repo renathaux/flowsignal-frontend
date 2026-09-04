@@ -3,19 +3,19 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>FlowSignal Health</title>
+  <title>NathauxFX Health</title>
   <link rel="stylesheet" href="style.css?v=22" />
 </head>
 <body class="fit-mode health-page">
   <main class="health-shell">
-    <h1>FlowSignal System Status</h1>
+    <h1>NathauxFX System Status</h1>
     <section id="healthStatus" class="health-card">Loading backend-authoritative status...</section>
   </main>
   <script src="apiClient.js?v=1"></script>
   <script>
     const baseUrl = location.hostname === "127.0.0.1" || location.hostname === "localhost"
       ? "http://127.0.0.1:8001"
-      : "https://flowsignal-backend-3.onrender.com";
+      : "https://api.nathauxfx.com";
 
     const value = (input, fallback = "--") =>
       input === null || input === undefined || input === "" ? fallback : input;
