@@ -2,7 +2,7 @@
   'use strict';
 
   const LOCAL_BACKEND='http://127.0.0.1:8001';
-  const DIRECT_BACKEND='https://flowsignal-backend-3.onrender.com';
+  const DIRECT_BACKEND='https://api.nathauxfx.com';
   const IS_LOCAL=location.hostname==='localhost'||location.hostname==='127.0.0.1';
   const BACKEND=IS_LOCAL?LOCAL_BACKEND:`${location.origin}/api/proxy`;
   const AUTH_BACKEND=IS_LOCAL?LOCAL_BACKEND:DIRECT_BACKEND;
