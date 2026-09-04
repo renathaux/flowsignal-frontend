@@ -198,7 +198,7 @@
       else upstreamSignal.addEventListener("abort", abortFromUpstream, { once: true });
     }
     requestInit.signal = controller.signal;
-    const timeout = window.setTimeout(() => controller.abort("FlowSignal request timeout"), timeoutMs);
+    const timeout = window.setTimeout(() => controller.abort("NathauxFX request timeout"), timeoutMs);
     return window.FlowSignalApi.nativeFetch(routedInput, requestInit)
       .catch((error) => {
         if (controller.signal.aborted && !upstreamSignal?.aborted) {
@@ -283,4 +283,96 @@
     clearError: () => { state.errorMessage = null; renderErrorPanel(); },
   };
   window.fetch = apiFetch;
+})();
+
+(function installNathauxFXBrandCompatibility() {
+  'use strict';
+  const replacements = [
+    [/FLOW SIGNAL/g, 'NATHAUXFX'],
+    [/FlowSignal/g, 'NathauxFX'],
+    [/nathaux\.Fx/g, 'NathauxFX'],
+    [/nathaux\.fx/g, 'NathauxFX'],
+  ];
+
+  function rebrandText(value) {
+    let next = String(value ?? '');
+    replacements.forEach(([pattern, replacement]) => {
+      next = next.replace(pattern, replacement);
+    });
+    return next;
+  }
+
+  function rebrandElement(element) {
+    if (!(element instanceof Element)) return;
+    ['title', 'aria-label', 'alt', 'placeholder'].forEach((attribute) => {
+      if (!element.hasAttribute(attribute)) return;
+      const current = element.getAttribute(attribute);
+      const next = rebrandText(current);
+      if (next !== current) element.setAttribute(attribute, next);
+    });
+  }
+
+  function rebrandTree(root) {
+    if (!root) return;
+    if (root.nodeType === Node.TEXT_NODE) {
+      const parent = root.parentElement;
+      if (parent?.matches('script,style,noscript,textarea')) return;
+      const next = rebrandText(root.nodeValue);
+      if (next !== root.nodeValue) root.nodeValue = next;
+      return;
+    }
+    if (root instanceof Element) rebrandElement(root);
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT | NodeFilter.SHOW_ELEMENT);
+    let node;
+    while ((node = walker.nextNode())) {
+      if (node.nodeType === Node.TEXT_NODE) {
+        const parent = node.parentElement;
+        if (parent?.matches('script,style,noscript,textarea')) continue;
+        const next = rebrandText(node.nodeValue);
+        if (next !== node.nodeValue) node.nodeValue = next;
+      } else {
+        rebrandElement(node);
+      }
+    }
+  }
+
+  function applyBrand() {
+    const nextTitle = rebrandText(document.title || '');
+    document.title = nextTitle && nextTitle !== 'nathaux.Fx' ? nextTitle : 'NathauxFX';
+    rebrandTree(document.body);
+  }
+
+  if (document.body) applyBrand();
+  else document.addEventListener('DOMContentLoaded', applyBrand, { once: true });
+
+  const observer = new MutationObserver((mutations) => {
+    mutations.forEach((mutation) => {
+      if (mutation.type === 'characterData') rebrandTree(mutation.target);
+      mutation.addedNodes?.forEach?.(rebrandTree);
+    });
+  });
+  const startObserver = () => {
+    if (document.body) observer.observe(document.body, { childList: true, subtree: true, characterData: true });
+  };
+  if (document.body) startObserver();
+  else document.addEventListener('DOMContentLoaded', startObserver, { once: true });
+
+  try {
+    const synth = window.speechSynthesis;
+    if (synth && typeof synth.speak === 'function' && !synth.speak.__nathauxFXBrandGuard) {
+      const upstreamSpeak = synth.speak.bind(synth);
+      const brandedSpeak = function (utterance) {
+        try {
+          if (utterance && typeof utterance.text === 'string') {
+            utterance.text = rebrandText(utterance.text);
+          }
+        } catch (_error) {}
+        return upstreamSpeak(utterance);
+      };
+      brandedSpeak.__nathauxFXBrandGuard = true;
+      synth.speak = brandedSpeak;
+    }
+  } catch (_error) {}
+
+  window.NathauxFXBrand = { rebrandText, applyBrand };
 })();
