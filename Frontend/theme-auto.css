@@ -32,18 +32,35 @@ html[data-theme="light"] #landingPage .theme-toggle-track { background:#dbeafe; 
 html[data-theme="light"] #landingPage .theme-icon-sun { opacity:1; color:#d97706; }
 html[data-theme="light"] #landingPage .theme-toggle-knob { transform:translateX(0); }
 
-/* Let the original 100vw / 58px desktop padding from style.css stay in control.
-   Only remove the old 100vh clipping so the new sections can sit below the hero. */
 body:has(#landingPage:not(.hidden)),
 body.fit-mode:has(#landingPage:not(.hidden)) {
   overflow-y:auto !important;
   overflow-x:hidden !important;
 }
 
+/* Explicitly restore the original desktop page inset. Previous theme overrides
+   could make the content appear zoomed/shifted by removing this 58px padding. */
 #landingPage.landing-pro {
+  width:100vw !important;
+  max-width:none !important;
+  box-sizing:border-box !important;
+  margin:0 !important;
+  padding:24px 58px 40px !important;
+  transform:none !important;
+  left:0 !important;
+  right:auto !important;
   height:auto !important;
   min-height:100vh !important;
   overflow:visible !important;
+}
+
+#landingPage > .landing-nav,
+#landingPage > .hero-section {
+  width:100% !important;
+  max-width:none !important;
+  margin-left:0 !important;
+  margin-right:0 !important;
+  transform:none !important;
 }
 
 @media (min-width:701px) {
@@ -53,8 +70,7 @@ body.fit-mode:has(#landingPage:not(.hidden)) {
   }
 }
 
-/* Lower sections share the same left edge as the original page content.
-   No zoom, scale, transform, viewport-width override, or page repositioning. */
+/* Lower sections share the exact same left edge as the hero content. */
 #landingPage > .trust-section,
 #landingPage > .hero-stats {
   position:relative !important;
@@ -64,6 +80,7 @@ body.fit-mode:has(#landingPage:not(.hidden)) {
   max-width:1180px !important;
   margin-left:0 !important;
   margin-right:0 !important;
+  transform:none !important;
 }
 
 #landingPage > .trust-section {
@@ -123,14 +140,19 @@ body.fit-mode:has(#landingPage:not(.hidden)) {
 
 @media (max-width:700px) {
   #landingPage .theme-toggle { height:32px; padding:0 7px; }
-  #landingPage.landing-pro { height:auto !important; min-height:100vh !important; }
+  #landingPage.landing-pro {
+    width:100% !important;
+    padding:16px !important;
+    height:auto !important;
+    min-height:100vh !important;
+  }
   #landingPage > .hero-section { min-height:0 !important; }
   #landingPage > .trust-section,
   #landingPage > .hero-stats {
     width:100% !important;
     max-width:none !important;
-    margin-left:auto !important;
-    margin-right:auto !important;
+    margin-left:0 !important;
+    margin-right:0 !important;
   }
   #landingPage > .hero-stats { grid-template-columns:1fr 1fr !important; }
   #landingPage > .hero-stats > .risk-note { margin:10px 6px 0 !important; }
