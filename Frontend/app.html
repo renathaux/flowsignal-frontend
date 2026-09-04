@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>nathaux.Fx</title>
+  <title>NathauxFX</title>
   <script>
     (function () {
       if (window.innerWidth <= 700) {
@@ -79,7 +79,7 @@
       var sessionReady = await window.establishFlowSignalSession?.(code);
       if (!sessionReady) {
         if (authMsg) {
-          authMsg.textContent = "Could not authenticate with the FlowSignal backend";
+          authMsg.textContent = "Could not authenticate with the NathauxFX backend";
           authMsg.style.color = "#ff8f8f";
         }
         return;
@@ -117,7 +117,7 @@
   <nav class="landing-nav">
     <div class="landing-logo">
       <span class="logo-wave">≋</span>
-      <span>FlowSignal</span>
+      <span>NathauxFX</span>
     </div>
 
     <div class="landing-links">
@@ -168,7 +168,7 @@
     </div>
 
  <div class="hero-right">
-  <img src="dashboard-preview.png" class="hero-dashboard-img" alt="FlowSignal Dashboard">
+  <img src="dashboard-preview.png" class="hero-dashboard-img" alt="NathauxFX Dashboard">
 </div>
 
 </section>
@@ -209,7 +209,7 @@
 </div>
 
 <div class="login-box hidden" id="accessBox">
-  <h2>FlowSignal Access</h2>
+  <h2>NathauxFX Access</h2>
 
   <input type="text" id="accessCode" placeholder="Enter access code" />
 
@@ -854,9 +854,9 @@
     <div class="footer">
       <div id="utcLabel" class="utc-label">UTC --:--:--</div>
     </div>
-    <a class="mobile-domain-pill" href="https://flowsignalfx.com" target="_blank" rel="noopener">
+    <a class="mobile-domain-pill" href="https://nathauxfx.com" target="_blank" rel="noopener">
       <span aria-hidden="true">▣</span>
-      flowsignalfx.com
+      nathauxfx.com
     </a>
 
     <nav class="mobile-bottom-nav" aria-label="Mobile app navigation">
@@ -992,7 +992,7 @@
     <div class="performance-pro-panels">
       <section class="performance-pro-panel">
         <h3><span>▥</span> App Analytics</h3>
-        <div data-panel-icon="♟"><span>Total Visits<small>All time visits to FlowSignal</small></span><strong id="totalVisitorsCount">0</strong></div>
+        <div data-panel-icon="♟"><span>Total Visits<small>All time visits to NathauxFX</small></span><strong id="totalVisitorsCount">0</strong></div>
         <div data-panel-icon="♙"><span>Unique Visitors<small>All time unique visitors</small></span><strong id="uniqueVisitorsCount">0</strong></div>
         <div data-panel-icon="▦"><span>Today Visits<small>Visits today</small></span><strong id="todayVisitsCount">0</strong></div>
         <div data-panel-icon="◷"><span>Last Visit<small>Most recent visit</small></span><strong id="lastVisitTime">--</strong></div>
@@ -1316,7 +1316,7 @@
       <header class="broker-settings-header">
         <div>
           <h2>Broker Accounts</h2>
-          <p>Manage your cTrader connection and accounts. Select which account FlowSignal should use for live trading.</p>
+          <p>Manage your cTrader connection and accounts. Select which account NathauxFX should use for live trading.</p>
         </div>
         <button id="closeBrokerAccountsBtn" class="broker-mobile-close" type="button" aria-label="Close Broker Accounts">×</button>
       </header>
@@ -1391,11 +1391,11 @@
             <h3>Account Actions</h3>
             <button class="broker-side-action" id="forgetCtraderAccountBtn">
               <strong>⌫ Forget Account</strong>
-              <span>Remove selected account from FlowSignal</span>
+              <span>Remove selected account from NathauxFX</span>
             </button>
             <button class="broker-side-action" id="clearAllBrokerAccountsBtn">
               <strong>🗑 Clear All Accounts</strong>
-              <span>Remove all saved accounts from FlowSignal</span>
+              <span>Remove all saved accounts from NathauxFX</span>
             </button>
           </section>
         </aside>
@@ -1575,7 +1575,7 @@
         <p>Edit Streamer Voice Text</p>
         <button id="streamerVoiceEditBtn" class="streamer-voice-edit-btn" type="button">✎ Edit Text</button>
         <div class="assistant-preview">
-          Welcome to FlowSignal, let's watch the market.<br><br>
+          Welcome to NathauxFX, let's watch the market.<br><br>
           Please like the live if you enjoy the signals.<br><br>
           Manage risk and stay disciplined.
         </div>
