@@ -1,17 +1,42 @@
-/* NathauxFX public landing theme.
-   Keep the original landing-page geometry. Theme CSS only adds light/dark colors,
-   vertical page flow for the extra trust content, and the two stacked lower cards. */
+/* NathauxFX public light/dark theme.
+   IMPORTANT: this file does not reposition, scale, or resize the original hero/navbar. */
 
 :root,
 html[data-theme="dark"] { color-scheme: dark; }
 html[data-theme="light"] { color-scheme: light; }
 
+/* Prevent Safari from keeping a horizontal offset after older wide layouts. */
+html,
+body {
+  max-width: 100%;
+  overflow-x: clip !important;
+}
+
+@supports not (overflow: clip) {
+  html,
+  body { overflow-x: hidden !important; }
+}
+
+body:has(#landingPage:not(.hidden)),
+body.fit-mode:has(#landingPage:not(.hidden)) {
+  overflow-y: auto !important;
+}
+
+/* Keep the ORIGINAL landing geometry from style.css.
+   Only remove the old viewport-height clipping so the extra cards can sit below it. */
+#landingPage.landing-pro {
+  height: auto !important;
+  min-height: 100vh !important;
+  overflow: visible !important;
+}
+
+/* Theme switch */
 #landingPage .theme-toggle {
   height: 34px;
   padding: 0 8px;
   border: 1px solid #24415f;
   border-radius: 999px;
-  background: rgba(7,20,37,.92);
+  background: rgba(7, 20, 37, .92);
   color: #dbe7f7;
   display: inline-flex;
   align-items: center;
@@ -19,187 +44,222 @@ html[data-theme="light"] { color-scheme: light; }
   gap: 5px;
   cursor: pointer;
   flex: 0 0 auto;
-  transition: background .2s ease,border-color .2s ease,box-shadow .2s ease;
+  transition: background .2s ease, border-color .2s ease, box-shadow .2s ease;
 }
-#landingPage .theme-toggle:hover { border-color:#3b82f6; box-shadow:0 0 0 3px rgba(59,130,246,.10); }
-#landingPage .theme-icon { width:12px; font-size:12px; line-height:1; text-align:center; opacity:.62; transition:opacity .2s ease,color .2s ease; }
-#landingPage .theme-toggle-track { position:relative; width:30px; height:16px; border-radius:999px; background:#15304d; box-shadow:inset 0 0 0 1px rgba(148,163,184,.18); }
-#landingPage .theme-toggle-knob { position:absolute; top:2px; left:2px; width:12px; height:12px; border-radius:50%; background:#fff; box-shadow:0 1px 4px rgba(0,0,0,.35); transition:transform .22s ease; }
-html[data-theme="dark"] #landingPage .theme-toggle-knob { transform:translateX(14px); }
-html[data-theme="dark"] #landingPage .theme-icon-moon { opacity:1; color:#fff; }
-html[data-theme="light"] #landingPage .theme-toggle { background:rgba(255,255,255,.94); color:#0f172a; border-color:#cbd5e1; box-shadow:0 6px 18px rgba(15,23,42,.05); }
-html[data-theme="light"] #landingPage .theme-toggle-track { background:#dbeafe; box-shadow:inset 0 0 0 1px rgba(37,99,235,.16); }
-html[data-theme="light"] #landingPage .theme-icon-sun { opacity:1; color:#d97706; }
-html[data-theme="light"] #landingPage .theme-toggle-knob { transform:translateX(0); }
-
-body:has(#landingPage:not(.hidden)),
-body.fit-mode:has(#landingPage:not(.hidden)) {
-  overflow-y:auto !important;
-  overflow-x:hidden !important;
+#landingPage .theme-toggle:hover {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, .10);
 }
-
-/* Explicitly restore the original desktop page inset. Previous theme overrides
-   could make the content appear zoomed/shifted by removing this 58px padding. */
-#landingPage.landing-pro {
-  width:100vw !important;
-  max-width:none !important;
-  box-sizing:border-box !important;
-  margin:0 !important;
-  padding:24px 58px 40px !important;
-  transform:none !important;
-  left:0 !important;
-  right:auto !important;
-  height:auto !important;
-  min-height:100vh !important;
-  overflow:visible !important;
+#landingPage .theme-icon {
+  width: 12px;
+  font-size: 12px;
+  line-height: 1;
+  text-align: center;
+  opacity: .62;
+  transition: opacity .2s ease, color .2s ease;
 }
-
-#landingPage > .landing-nav,
-#landingPage > .hero-section {
-  width:100% !important;
-  max-width:none !important;
-  margin-left:0 !important;
-  margin-right:0 !important;
-  transform:none !important;
+#landingPage .theme-toggle-track {
+  position: relative;
+  width: 30px;
+  height: 16px;
+  border-radius: 999px;
+  background: #15304d;
+  box-shadow: inset 0 0 0 1px rgba(148, 163, 184, .18);
 }
-
-@media (min-width:701px) {
-  #landingPage > .hero-section {
-    flex:0 0 auto !important;
-    min-height:620px !important;
-  }
+#landingPage .theme-toggle-knob {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, .35);
+  transition: transform .22s ease;
 }
+html[data-theme="dark"] #landingPage .theme-toggle-knob { transform: translateX(14px); }
+html[data-theme="dark"] #landingPage .theme-icon-moon { opacity: 1; color: #fff; }
+html[data-theme="light"] #landingPage .theme-toggle {
+  background: rgba(255, 255, 255, .94);
+  color: #0f172a;
+  border-color: #cbd5e1;
+  box-shadow: 0 6px 18px rgba(15, 23, 42, .05);
+}
+html[data-theme="light"] #landingPage .theme-toggle-track {
+  background: #dbeafe;
+  box-shadow: inset 0 0 0 1px rgba(37, 99, 235, .16);
+}
+html[data-theme="light"] #landingPage .theme-icon-sun { opacity: 1; color: #d97706; }
+html[data-theme="light"] #landingPage .theme-toggle-knob { transform: translateX(0); }
 
-/* Lower sections share the exact same left edge as the hero content. */
+/* Two lower cards only. They use the landing page's existing 58px desktop inset. */
 #landingPage > .trust-section,
 #landingPage > .hero-stats {
-  position:relative !important;
-  z-index:2 !important;
-  box-sizing:border-box !important;
-  width:100% !important;
-  max-width:1180px !important;
-  margin-left:0 !important;
-  margin-right:0 !important;
-  transform:none !important;
+  position: relative !important;
+  z-index: 2 !important;
+  box-sizing: border-box !important;
+  width: 100% !important;
+  max-width: 1180px !important;
+  margin-left: 0 !important;
+  margin-right: auto !important;
 }
 
 #landingPage > .trust-section {
-  margin-top:22px !important;
-  margin-bottom:0 !important;
-  padding:0 !important;
+  margin-top: 22px !important;
+  margin-bottom: 0 !important;
+  padding: 0 !important;
 }
 #landingPage > .trust-section > .trust-card {
-  width:100% !important;
-  height:auto !important;
-  box-sizing:border-box !important;
+  width: 100% !important;
+  height: auto !important;
+  box-sizing: border-box !important;
 }
 
 #landingPage > .hero-stats {
-  display:grid !important;
-  grid-template-columns:repeat(4,minmax(0,1fr)) !important;
-  flex:0 0 auto !important;
-  height:auto !important;
-  min-height:0 !important;
-  margin-top:22px !important;
-  margin-bottom:34px !important;
-  padding:16px 16px 18px !important;
-  overflow:visible !important;
-  align-content:start !important;
+  display: grid !important;
+  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  grid-auto-rows: auto !important;
+  align-items: stretch !important;
+  align-content: start !important;
+  flex: 0 0 auto !important;
+  height: auto !important;
+  min-height: 0 !important;
+  margin-top: 22px !important;
+  margin-bottom: 34px !important;
+  padding: 16px 16px 18px !important;
+  overflow: visible !important;
 }
 #landingPage > .hero-stats > div:not(.legal-links) {
-  min-height:76px !important;
-  justify-content:center !important;
-  text-align:center !important;
+  min-height: 76px !important;
+  justify-content: center !important;
+  text-align: center !important;
 }
 #landingPage > .hero-stats > .risk-note {
-  display:block !important;
-  visibility:visible !important;
-  opacity:1 !important;
-  grid-column:1 / -1 !important;
-  width:auto !important;
-  margin:12px 8px 0 !important;
-  padding:16px 2px 0 !important;
-  text-align:left !important;
-  line-height:1.55 !important;
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  grid-column: 1 / -1 !important;
+  width: auto !important;
+  height: auto !important;
+  margin: 12px 8px 0 !important;
+  padding: 16px 2px 0 !important;
+  text-align: left !important;
+  line-height: 1.55 !important;
 }
 #landingPage > .hero-stats > .legal-links {
-  display:flex !important;
-  visibility:visible !important;
-  opacity:1 !important;
-  grid-column:1 / -1 !important;
-  margin:14px 8px 0 !important;
-  padding:0 2px 2px !important;
-  border-right:0 !important;
-  flex-direction:row !important;
-  flex-wrap:wrap !important;
-  align-items:center !important;
-  justify-content:center !important;
-  gap:10px 16px !important;
+  display: flex !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  grid-column: 1 / -1 !important;
+  width: auto !important;
+  min-height: 0 !important;
+  margin: 14px 8px 0 !important;
+  padding: 0 2px 2px !important;
+  border-right: 0 !important;
+  flex-flow: row wrap !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 10px 16px !important;
 }
-#landingPage > .mobile-footer { display:none !important; }
+#landingPage > .mobile-footer { display: none !important; }
 
-@media (max-width:700px) {
-  #landingPage .theme-toggle { height:32px; padding:0 7px; }
-  #landingPage.landing-pro {
-    width:100% !important;
-    padding:16px !important;
-    height:auto !important;
-    min-height:100vh !important;
-  }
-  #landingPage > .hero-section { min-height:0 !important; }
+@media (max-width: 700px) {
+  #landingPage .theme-toggle { height: 32px; padding: 0 7px; }
   #landingPage > .trust-section,
   #landingPage > .hero-stats {
-    width:100% !important;
-    max-width:none !important;
-    margin-left:0 !important;
-    margin-right:0 !important;
+    width: 100% !important;
+    max-width: none !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
   }
-  #landingPage > .hero-stats { grid-template-columns:1fr 1fr !important; }
-  #landingPage > .hero-stats > .risk-note { margin:10px 6px 0 !important; }
-  #landingPage > .hero-stats > .legal-links { margin-left:6px !important; margin-right:6px !important; gap:10px 12px !important; }
+  #landingPage > .hero-stats { grid-template-columns: 1fr 1fr !important; }
+  #landingPage > .hero-stats > .risk-note { margin: 10px 6px 0 !important; }
+  #landingPage > .hero-stats > .legal-links {
+    margin-left: 6px !important;
+    margin-right: 6px !important;
+    gap: 10px 12px !important;
+  }
 }
-@media (max-width:520px) {
-  #landingPage > .hero-stats { grid-template-columns:1fr !important; }
+@media (max-width: 520px) {
+  #landingPage > .hero-stats { grid-template-columns: 1fr !important; }
 }
 
 /* Light mode colors only. */
 html[data-theme="light"] body:has(#landingPage:not(.hidden)),
-html[data-theme="light"] body.fit-mode:has(#landingPage:not(.hidden)) { background:#f7f9fc !important; color:#0f172a !important; }
+html[data-theme="light"] body.fit-mode:has(#landingPage:not(.hidden)) {
+  background: #f7f9fc !important;
+  color: #0f172a !important;
+}
 html[data-theme="light"] #landingPage.landing-page,
 html[data-theme="light"] #landingPage.landing-pro {
-  background:radial-gradient(circle at 72% 36%,rgba(37,99,235,.08),transparent 34%),linear-gradient(180deg,#fff 0%,#f7f9fc 100%) !important;
-  color:#0f172a !important;
+  background:
+    radial-gradient(circle at 72% 36%, rgba(37, 99, 235, .08), transparent 34%),
+    linear-gradient(180deg, #fff 0%, #f7f9fc 100%) !important;
+  color: #0f172a !important;
 }
-html[data-theme="light"] #landingPage.landing-pro::after { background:radial-gradient(ellipse at center,rgba(37,99,235,.14),transparent 58%) !important; opacity:.45 !important; }
-html[data-theme="light"] #landingPage .landing-nav { background:rgba(255,255,255,.82) !important; border-bottom:1px solid rgba(148,163,184,.22) !important; backdrop-filter:blur(18px); -webkit-backdrop-filter:blur(18px); }
+html[data-theme="light"] #landingPage.landing-pro::after {
+  background: radial-gradient(ellipse at center, rgba(37, 99, 235, .14), transparent 58%) !important;
+  opacity: .45 !important;
+}
+html[data-theme="light"] #landingPage .landing-nav {
+  background: rgba(255, 255, 255, .82) !important;
+  border-bottom: 1px solid rgba(148, 163, 184, .22) !important;
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+}
 html[data-theme="light"] #landingPage .landing-logo,
 html[data-theme="light"] #landingPage .landing-logo span:last-child,
 html[data-theme="light"] #landingPage .hero-left h1,
-html[data-theme="light"] #landingPage .trust-card h2 { color:#0f172a !important; }
+html[data-theme="light"] #landingPage .trust-card h2 { color: #0f172a !important; }
 html[data-theme="light"] #landingPage .landing-links,
 html[data-theme="light"] #landingPage .hero-badges,
-html[data-theme="light"] #landingPage .trust-section { color:#334155 !important; }
+html[data-theme="light"] #landingPage .trust-section { color: #334155 !important; }
 html[data-theme="light"] #landingPage .landing-links a,
-html[data-theme="light"] #landingPage .legal-links a { color:#2563eb !important; }
+html[data-theme="light"] #landingPage .legal-links a { color: #2563eb !important; }
 html[data-theme="light"] #landingPage #landingLang,
 html[data-theme="light"] #landingPage .landing-login-btn,
-html[data-theme="light"] #landingPage .hero-secondary { background:rgba(255,255,255,.94) !important; border-color:#cbd5e1 !important; color:#0f172a !important; box-shadow:0 6px 18px rgba(15,23,42,.05) !important; }
+html[data-theme="light"] #landingPage .hero-secondary {
+  background: rgba(255, 255, 255, .94) !important;
+  border-color: #cbd5e1 !important;
+  color: #0f172a !important;
+  box-shadow: 0 6px 18px rgba(15, 23, 42, .05) !important;
+}
 html[data-theme="light"] #landingPage .landing-login-btn:hover,
-html[data-theme="light"] #landingPage .hero-secondary:hover { background:#f1f5f9 !important; border-color:#94a3b8 !important; }
+html[data-theme="light"] #landingPage .hero-secondary:hover {
+  background: #f1f5f9 !important;
+  border-color: #94a3b8 !important;
+}
 html[data-theme="light"] #landingPage .landing-get-btn,
-html[data-theme="light"] #landingPage .hero-primary { color:#fff !important; box-shadow:0 14px 30px rgba(37,99,235,.22) !important; }
-html[data-theme="light"] #landingPage .hero-pill { background:rgba(239,246,255,.92) !important; border-color:#bfdbfe !important; color:#2563eb !important; }
+html[data-theme="light"] #landingPage .hero-primary {
+  color: #fff !important;
+  box-shadow: 0 14px 30px rgba(37, 99, 235, .22) !important;
+}
+html[data-theme="light"] #landingPage .hero-pill {
+  background: rgba(239, 246, 255, .92) !important;
+  border-color: #bfdbfe !important;
+  color: #2563eb !important;
+}
 html[data-theme="light"] #landingPage .hero-left h1 span,
 html[data-theme="light"] #landingPage .hero-stats strong,
-html[data-theme="light"] #landingPage .trust-point strong { color:#2563eb !important; }
+html[data-theme="light"] #landingPage .trust-point strong { color: #2563eb !important; }
 html[data-theme="light"] #landingPage .hero-left > p,
 html[data-theme="light"] #landingPage .trust-card p,
-html[data-theme="light"] #landingPage .risk-note { color:#526177 !important; }
-html[data-theme="light"] #landingPage .hero-dashboard-img { border-color:rgba(148,163,184,.38) !important; box-shadow:0 28px 70px rgba(15,23,42,.12),0 0 0 1px rgba(255,255,255,.75) inset !important; }
+html[data-theme="light"] #landingPage .risk-note { color: #526177 !important; }
+html[data-theme="light"] #landingPage .hero-dashboard-img {
+  border-color: rgba(148, 163, 184, .38) !important;
+  box-shadow: 0 28px 70px rgba(15, 23, 42, .12), 0 0 0 1px rgba(255, 255, 255, .75) inset !important;
+}
 html[data-theme="light"] #landingPage .hero-stats,
-html[data-theme="light"] #landingPage .trust-card { background:radial-gradient(circle at 100% 0%,rgba(37,99,235,.06),transparent 34%),#fff !important; border-color:#dbe3ee !important; box-shadow:0 18px 46px rgba(15,23,42,.07) !important; }
-html[data-theme="light"] #landingPage .hero-stats div { border-right-color:rgba(148,163,184,.24) !important; }
+html[data-theme="light"] #landingPage .trust-card {
+  background: radial-gradient(circle at 100% 0%, rgba(37, 99, 235, .06), transparent 34%), #fff !important;
+  border-color: #dbe3ee !important;
+  box-shadow: 0 18px 46px rgba(15, 23, 42, .07) !important;
+}
+html[data-theme="light"] #landingPage .hero-stats div { border-right-color: rgba(148, 163, 184, .24) !important; }
 html[data-theme="light"] #landingPage .hero-stats span,
-html[data-theme="light"] #landingPage .trust-point span { color:#64748b !important; }
-html[data-theme="light"] #landingPage .trust-point { background:#f8fafc !important; border-color:#e2e8f0 !important; }
-html[data-theme="light"] #landingPage .risk-note { border-top-color:#e2e8f0 !important; }
+html[data-theme="light"] #landingPage .trust-point span { color: #64748b !important; }
+html[data-theme="light"] #landingPage .trust-point {
+  background: #f8fafc !important;
+  border-color: #e2e8f0 !important;
+}
+html[data-theme="light"] #landingPage .risk-note { border-top-color: #e2e8f0 !important; }
