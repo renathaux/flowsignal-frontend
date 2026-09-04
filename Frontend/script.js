@@ -1781,6 +1781,7 @@ async function persistNewsTradingMode(mode) {
   }
 }
 const DEFAULT_DASHBOARD_PREFS = {
+  showDailyPnl: true,
   showWeeklyPnl: true,
   showMonthlyPnl: false,
   showFloatingPnl: true,
@@ -1788,6 +1789,7 @@ const DEFAULT_DASHBOARD_PREFS = {
   showBuySellPct: true,
   showManualTradeButtons: false,
   showOpenTradesCounter: true,
+  showTradeLevels: true,
   showMarketStructurePanel: true,
   showRecentSignalHistory: true,
   showAccountBalance: true,
@@ -1879,11 +1881,13 @@ function initializeSignalAlertSettings() {
 function applyDashboardPreferences() {
   const prefs = loadLocalObject(DASHBOARD_PREFS_KEY, DEFAULT_DASHBOARD_PREFS);
   const phoneView = isCompactPhoneView();
+  document.body.classList.toggle("hide-daily-pnl", !prefs.showDailyPnl);
   document.body.classList.toggle("hide-weekly-pnl", !prefs.showWeeklyPnl);
   document.body.classList.toggle("hide-monthly-pnl", !phoneView && !prefs.showMonthlyPnl);
   document.body.classList.toggle("hide-floating-pnl", !phoneView && !prefs.showFloatingPnl);
   document.body.classList.toggle("hide-manual-trade-buttons", !prefs.showManualTradeButtons);
   document.body.classList.toggle("hide-open-trades-counter", !prefs.showOpenTradesCounter);
+  document.body.classList.toggle("hide-trade-levels", !prefs.showTradeLevels);
   document.body.classList.toggle("hide-confidence-ui", !prefs.showConfidence);
   document.body.classList.toggle("hide-buy-sell-ui", !prefs.showBuySellPct);
   document.body.classList.toggle("hide-market-structure-ui", !prefs.showMarketStructurePanel);
@@ -1891,6 +1895,12 @@ function applyDashboardPreferences() {
   document.body.classList.toggle("hide-account-balance-ui", !prefs.showAccountBalance);
   document.body.classList.toggle("hide-account-number-ui", !prefs.showAccountNumber);
   document.body.classList.toggle("hide-broker-info-ui", !prefs.showBrokerInfo);
+
+  if (prefs.showTradeLevels === false && chartModuleInitialized) {
+    clearTradeLines("EURUSD");
+    clearTradeLines("XAUUSD");
+    clearTradeLevelDragLayer({ force: true });
+  }
 
   document.querySelectorAll("[data-dashboard-pref]").forEach((input) => {
     input.checked = Boolean(prefs[input.dataset.dashboardPref]);
@@ -13012,6 +13022,14 @@ function hasCompleteTradeChartLevels(levels) {
 function drawTradeVisualLevels() {
   if (chartLevelDragState.active || chartLevelDragState.pending) return;
 
+  const dashboardPrefs = loadLocalObject(DASHBOARD_PREFS_KEY, DEFAULT_DASHBOARD_PREFS);
+  if (dashboardPrefs.showTradeLevels === false) {
+    clearTradeLines("EURUSD");
+    clearTradeLines("XAUUSD");
+    clearTradeLevelDragLayer({ force: true });
+    return;
+  }
+
   clearTradeVisualLevels();
   clearInactiveTradeVisualLines();
   clearTradeLevelDragLayer();
@@ -14094,6 +14112,9 @@ document.querySelectorAll("[data-dashboard-pref]").forEach((input) => {
     prefs[input.dataset.dashboardPref] = input.checked;
     saveLocalObject(DASHBOARD_PREFS_KEY, prefs);
     applyDashboardPreferences();
+    if (input.dataset.dashboardPref === "showTradeLevels" && input.checked) {
+      drawTradeVisualLevels();
+    }
   });
 });
 

@@ -8975,6 +8975,7 @@ body.fit-mode .app:not(.locked) > .dashboard-grid {
   margin-bottom: 12px;
 }
 
+body.hide-daily-pnl .performance-daily,
 body.hide-weekly-pnl .performance-weekly,
 body.hide-monthly-pnl .performance-monthly,
 body.hide-floating-pnl .performance-floating,
