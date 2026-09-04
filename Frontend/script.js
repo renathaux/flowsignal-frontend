@@ -1789,6 +1789,7 @@ const DEFAULT_DASHBOARD_PREFS = {
   showBuySellPct: true,
   showManualTradeButtons: false,
   showOpenTradesCounter: true,
+  showPerformanceBar: true,
   showTradeLevels: true,
   showMarketStructurePanel: true,
   showRecentSignalHistory: true,
@@ -1887,6 +1888,7 @@ function applyDashboardPreferences() {
   document.body.classList.toggle("hide-floating-pnl", !phoneView && !prefs.showFloatingPnl);
   document.body.classList.toggle("hide-manual-trade-buttons", !prefs.showManualTradeButtons);
   document.body.classList.toggle("hide-open-trades-counter", !prefs.showOpenTradesCounter);
+  document.body.classList.toggle("hide-performance-bar", !prefs.showPerformanceBar);
   document.body.classList.toggle("hide-trade-levels", !prefs.showTradeLevels);
   document.body.classList.toggle("hide-confidence-ui", !prefs.showConfidence);
   document.body.classList.toggle("hide-buy-sell-ui", !prefs.showBuySellPct);

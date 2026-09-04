@@ -12,7 +12,7 @@
       }
     })();
   </script>
-  <link rel="stylesheet" href="style.css?v=61" />
+  <link rel="stylesheet" href="style.css?v=62" />
   <link rel="stylesheet" href="desktop.css?v=3" media="(min-width: 701px)" />
   <link rel="stylesheet" href="phone.css?v=49" media="(max-width: 700px)" />
   <script>
@@ -385,8 +385,10 @@
     </section>
 
     <div class="topbar">
-      <div id="status" class="status status-loading" title="LIVE loading..." data-mobile-label="● LIVE loading...">● LIVE loading...</div>
-      <div id="runtimeStatusDetail" class="runtime-status-detail" data-state="loading">Broker status loading</div>
+      <div class="connection-status-stack">
+        <div id="status" class="status status-loading" title="LIVE loading..." data-mobile-label="● LIVE loading...">● LIVE loading...</div>
+        <div id="runtimeStatusDetail" class="runtime-status-detail" data-state="loading">Broker status loading</div>
+      </div>
 
       <div class="controls">
   <label class="switch-wrap">
@@ -1075,6 +1077,7 @@
         <label><input type="checkbox" data-dashboard-pref="showBuySellPct"> Show Bullish/Bearish Bias</label>
         <label><input type="checkbox" data-dashboard-pref="showManualTradeButtons"> Show Buy/Sell Buttons</label>
         <label><input type="checkbox" data-dashboard-pref="showOpenTradesCounter"> Show Open Trades Counter</label>
+        <label><input type="checkbox" data-dashboard-pref="showPerformanceBar"> Show Performance Bar (P/L / Open Trades)</label>
         <label><input type="checkbox" data-dashboard-pref="showTradeLevels"> Show Trade Levels (Entry / SL / TP)</label>
         <label><input type="checkbox" data-dashboard-pref="showMarketStructurePanel"> Show News Impact Panel</label>
         <label><input type="checkbox" data-dashboard-pref="showRecentSignalHistory"> Show Recent Signal History</label>
@@ -1637,7 +1640,7 @@
   <script src="performance.js?v=1"></script>
   <script src="history.js?v=1"></script>
   <script src="responsiveLayout.js?v=1"></script>
-  <script src="script.js?v=123"></script>
+  <script src="script.js?v=124"></script>
 </body>
 </html>
   
